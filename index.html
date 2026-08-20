@@ -73,6 +73,9 @@
   .cal .ci.gmid{background:rgba(234,179,8,.14);color:#a16207;font-size:10px}
   .cal .ci.clk{cursor:pointer}
   .cal .ci.clk:hover{filter:brightness(.95);text-decoration:underline}
+  .cal .ci[draggable="true"]{cursor:grab}
+  .cal .ci[draggable="true"]:active{cursor:grabbing}
+  .cal td.dragover{outline:2px dashed var(--limit);outline-offset:-2px;background:rgba(217,45,32,.09)}
   .sumrow{display:flex;gap:10px;flex-wrap:wrap}
   .sumtile{flex:1;min-width:120px;background:var(--bg);border:1px solid var(--line);border-radius:10px;padding:12px 14px}
   .sumtile .v{font-size:19px;font-weight:800;letter-spacing:-.5px}
@@ -8472,7 +8475,7 @@ function buildMonthCal(y,m,d,opts){
   const dim=new Date(y,m+1,0).getDate(), today=realToday();
   const sch={},ev={},rev={},fxByDay={},done={},schKeys=new Set();
   if(opts.schedule)(d.schedule||[]).forEach((s,idx)=>{ if(!s.date)return; (sch[s.date]=sch[s.date]||[]).push({s,idx}); schKeys.add(s.date+'|'+s.site); });
-  if(opts.events)(d.calendar||[]).forEach(e=>{ if(!e.date)return; (ev[e.date]=ev[e.date]||[]).push(e); });
+  if(opts.events)(d.calendar||[]).forEach((e,ei)=>{ if(!e.date)return; (ev[e.date]=ev[e.date]||[]).push({e,ei}); });
   if(opts.revenue)(d.settlements||[]).forEach(s=>{ if(!s.date)return; rev[s.date]=(rev[s.date]||0)+(+s.quote||0)+(+s.extra||0); });
   if(opts.completed)(d.settlements||[]).forEach((s,idx)=>{ if(!s.date)return; (done[s.date]=done[s.date]||[]).push({s,idx}); });
   if(opts.fixed)(d.fixedExpenses||[]).forEach(f=>{ const dd=+f.dueDay; if(dd>=1&&dd<=31)(fxByDay[dd]=fxByDay[dd]||[]).push(f); });
@@ -8492,11 +8495,11 @@ function buildMonthCal(y,m,d,opts){
     let items='';
     (sch[ds]||[]).forEach(({s,idx})=>{ const assigned=!!(s.crew&&String(s.crew).trim()); const cr=assigned?crewNames(s).split(/,\s*/)[0]:'';
       items+=assigned
-        ? `<span class="ci sch clk" onclick="calJobInfo(${idx})" title="클릭해 배치 인원 확인">🧹 ${esc(s.site)}${cr?' ·'+esc(cr):''}</span>`
-        : `<span class="ci noassign clk" onclick="editSchedCrew(${idx})" title="인원 미배정 — 클릭해 배치">⚠️ ${esc(s.site)} <span style="font-size:9px">미배정</span></span>`; });
+        ? `<span class="ci sch clk" draggable="true" data-dt="sch" data-di="${idx}" onclick="calJobInfo(${idx})" title="클릭=인원확인 · 끌어서 날짜 이동">🧹 ${esc(s.site)}${cr?' ·'+esc(cr):''}</span>`
+        : `<span class="ci noassign clk" draggable="true" data-dt="sch" data-di="${idx}" onclick="editSchedCrew(${idx})" title="인원 미배정 — 클릭해 배치 · 끌어서 이동">⚠️ ${esc(s.site)} <span style="font-size:9px">미배정</span></span>`; });
     (done[ds]||[]).forEach(({s,idx})=>{ if(schKeys.has(ds+'|'+s.site))return; const cr=(crewNames(s)||'').split(/,\s*/)[0];
       items+=`<span class="ci done clk" onclick="calDoneInfo(${idx})" title="완료 현장 — 클릭해 인원 확인">✅ ${esc(s.site)}${cr?' ·'+esc(cr):''}</span>`; });
-    (ev[ds]||[]).forEach(e=>{ items+=`<span class="ci ev" title="${esc(e.title)} ${esc(e.note)}">📌 ${e.time?esc(e.time)+' ':''}${esc(e.title)}</span>`; });
+    (ev[ds]||[]).forEach(({e,ei})=>{ items+=`<span class="ci ev" draggable="true" data-dt="ev" data-di="${ei}" title="${esc(e.title)} ${esc(e.note)} · 끌어서 날짜 이동">📌 ${e.time?esc(e.time)+' ':''}${esc(e.title)}</span>`; });
     (fxByDay[dayNum]||[]).forEach(f=>{ items+=`<span class="ci fx" title="${esc(f.name)} ${KRW(f.amount)}">💳 ${esc(f.name)}</span>`; });
     if(opts.revenue&&rev[ds])items+=`<span class="ci rev" title="이 날 매출 ${KRW(rev[ds])}">💰 ${KRWm(rev[ds])}</span>`;
     if(opts.grants){
@@ -8506,7 +8509,7 @@ function buildMonthCal(y,m,d,opts){
       if(mid>0) items+=`<span class="ci gmid" title="접수 진행중 ${mid}건">🟡 접수중 ${mid}</span>`;
     }
     const dc=dow===0?'sun':dow===6?'sat':'';
-    h+=`<td class="${isToday?'today':''}"><div class="dnum ${dc}">${dayNum}${isToday?' <span style="font-size:9px;color:var(--limit)">오늘</span>':''}</div>${items}</td>`;
+    h+=`<td class="${isToday?'today':''}" data-date="${ds}"><div class="dnum ${dc}">${dayNum}${isToday?' <span style="font-size:9px;color:var(--limit)">오늘</span>':''}</div>${items}</td>`;
   }
   return h+'</tr></tbody></table></div>';
 }
@@ -8523,6 +8526,47 @@ function renderCalInto(elId,opts){
     <span style="margin-left:auto;font-size:11px;color:var(--muted)">${opts.legend||''}</span></div>`;
   el.innerHTML=header+buildMonthCal(y,m,d,opts);
 }
+// ─── 달력 드래그로 일정 이동 (구글 캘린더식) ───
+let DRAG_PAYLOAD=null;
+function calMoveItem(dt, idx, newDate){
+  const d=getData();
+  let moved=false;
+  if(dt==='sch'){ const s=(d.schedule||[])[idx]; if(s && s.date!==newDate){ s.date=newDate; moved=true; } }
+  else if(dt==='ev'){ const e=(d.calendar||[])[idx]; if(e && e.date!==newDate){ e.date=newDate; moved=true; } }
+  if(moved){ setData(d); render(); }
+}
+(function initCalDrag(){
+  document.addEventListener('dragstart', function(e){
+    const el=e.target && e.target.closest ? e.target.closest('.ci[draggable="true"]') : null;
+    if(!el){ return; }
+    DRAG_PAYLOAD={ dt:el.dataset.dt, di:parseInt(el.dataset.di,10) };
+    try{ e.dataTransfer.setData('text/plain', el.dataset.dt+':'+el.dataset.di); e.dataTransfer.effectAllowed='move'; }catch(_){}
+    el.style.opacity='0.4';
+  });
+  document.addEventListener('dragend', function(e){
+    const el=e.target && e.target.closest ? e.target.closest('.ci') : null; if(el) el.style.opacity='';
+    document.querySelectorAll('.cal td.dragover').forEach(function(td){ td.classList.remove('dragover'); });
+    DRAG_PAYLOAD=null;
+  });
+  document.addEventListener('dragover', function(e){
+    if(!DRAG_PAYLOAD) return;
+    const td=e.target && e.target.closest ? e.target.closest('.cal td[data-date]') : null;
+    if(td){ e.preventDefault(); try{ e.dataTransfer.dropEffect='move'; }catch(_){} }
+  });
+  document.addEventListener('dragenter', function(e){
+    if(!DRAG_PAYLOAD) return;
+    const td=e.target && e.target.closest ? e.target.closest('.cal td[data-date]') : null;
+    if(td){ document.querySelectorAll('.cal td.dragover').forEach(function(x){ x.classList.remove('dragover'); }); td.classList.add('dragover'); }
+  });
+  document.addEventListener('drop', function(e){
+    if(!DRAG_PAYLOAD) return;
+    const td=e.target && e.target.closest ? e.target.closest('.cal td[data-date]') : null;
+    if(!td) return;
+    e.preventDefault();
+    const p=DRAG_PAYLOAD; DRAG_PAYLOAD=null;
+    calMoveItem(p.dt, p.di, td.dataset.date);
+  });
+})();
 const ORDER_QUICK=[
   {n:'락스',c:'세제'},{n:'PB세제',c:'세제'},{n:'오븐클리너',c:'세제'},{n:'티크린',c:'세제'},
   {n:'스티커제거제',c:'세제'},{n:'곰팡이제거제',c:'세제'},{n:'유리세정제',c:'세제'},{n:'실리콘',c:'소모품'},
