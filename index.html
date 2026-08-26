@@ -987,6 +987,46 @@ const DEFAULT_DATA = {
   ]
 };
 
+/* ── 구글 캘린더 최신화 (2026-08-26 동기화): calendar·schedule 교체 ── */
+if(window.AIHQ_DATA){
+  window.AIHQ_DATA.schedule = [
+    {date:"2026-08-26",co:"daman",site:"고미 초전엠코 39평 301동 501호",work:"",crew:"",contact:"",quote:680000,status:"예약"},
+    {date:"2026-08-27",co:"daman",site:"진양호로397번길 4 바닥세척",work:"13:30",crew:"",contact:"01062321167",quote:360000,status:"예약"},
+    {date:"2026-08-28",co:"daman",site:"산청군 단성면 묵곡리 572-3 외벽세척",work:"14:30",crew:"",contact:"01035076763",quote:300000,status:"예약"},
+    {date:"2026-09-03",co:"daman",site:"초전엠코 39평 외창 유리제로(추가)",work:"11:30·5명 필요",crew:"",contact:"01088322654",quote:850000,status:"예약"},
+    {date:"2026-09-16",co:"daman",site:"고미 금산이편한세상 103동 1503호 47평",work:"",crew:"",contact:"",quote:850000,status:"예약"},
+    {date:"2026-09-19",co:"daman",site:"고미 초전 힐스테이트 34평 107동 1301호",work:"16:00",crew:"",contact:"",quote:540000,status:"예약"},
+    {date:"2026-09-22",co:"daman",site:"성하 친형 대경파미르 34평",work:"19:30",crew:"",contact:"01047426425",quote:500000,status:"예약"},
+    {date:"2026-09-28",co:"daman",site:"역세권 또오리 유리",work:"17:30",crew:"",contact:"",quote:0,status:"예약"},
+    {date:"2026-09-29",co:"daman",site:"한림풀에버 34평",work:"17:00",crew:"",contact:"01040152007",quote:510000,status:"예약"},
+    {date:"2026-10-02",co:"daman",site:"고미 상대한보 106동 912호",work:"",crew:"",contact:"",quote:0,status:"예약"},
+    {date:"2026-10-14",co:"daman",site:"고미 남해 주은파크빌 가동 101호",work:"",crew:"",contact:"",quote:0,status:"예약"},
+    {date:"2026-11-10",co:"daman",site:"고미 남해 주은파크빌 가동 101호",work:"07:00",crew:"",contact:"",quote:0,status:"예약"},
+    {date:"2026-12-04",co:"daman",site:"고미 금호석류아파트 115동 2001호",work:"12:30",crew:"",contact:"",quote:0,status:"예약"}
+  ];
+  window.AIHQ_DATA.calendar = [
+    {date:"2026-08-27",time:"07:00",title:"지하상가 방역"},
+    {date:"2026-08-29",time:"09:00",title:"본부 방역"},
+    {date:"2026-09-03",time:"07:00",title:"지하상가 방역"},
+    {date:"2026-09-10",time:"07:00",title:"지하상가 방역"},
+    {date:"2026-09-17",time:"07:00",title:"지하상가 방역"},
+    {date:"2026-09-24",time:"07:00",title:"지하상가 방역"},
+    {date:"2026-10-01",time:"07:00",title:"지하상가 방역"},
+    {date:"2026-10-08",time:"07:00",title:"지하상가 방역"},
+    {date:"2026-10-15",time:"07:00",title:"지하상가 방역"},
+    {date:"2026-10-22",time:"07:00",title:"지하상가 방역"},
+    {date:"2026-10-29",time:"07:00",title:"지하상가 방역"},
+    {date:"2026-11-05",time:"07:00",title:"지하상가 방역"},
+    {date:"2026-11-12",time:"07:00",title:"지하상가 방역"},
+    {date:"2026-11-19",time:"07:00",title:"지하상가 방역"},
+    {date:"2026-11-26",time:"07:00",title:"지하상가 방역"},
+    {date:"2026-12-03",time:"07:00",title:"지하상가 방역"},
+    {date:"2026-12-10",time:"07:00",title:"지하상가 방역"},
+    {date:"2026-12-17",time:"07:00",title:"지하상가 방역"},
+    {date:"2026-12-24",time:"07:00",title:"지하상가 방역"}
+  ];
+  window.AIHQ_DATA.calSync = "2026-08-26";
+}
 const KRW  = n => "₩" + Math.round(n||0).toLocaleString("ko-KR");
 const KRWm = n => (n/10000).toLocaleString("ko-KR",{maximumFractionDigits:0}) + "만";
 const num  = id => { const v=parseFloat(document.getElementById(id).value); return isNaN(v)?0:v; };
@@ -1029,6 +1069,14 @@ function _seed(data){    // 메시지·지원사업 시드/마이그레이션 (�
   data.asOf = realToday();   // 기준일 = 항상 실제 오늘 (예전 고정 날짜가 클라우드에 굳는 문제 방지)
   return data;
 }
+function _applyCalSync(d){   // 구글 캘린더 최신화: calSync 값이 바뀌면 calendar·schedule 교체(1회만)
+  const cur=window.AIHQ_DATA;
+  if(!cur || !cur.calSync || d._calSync===cur.calSync) return false;
+  if(Array.isArray(cur.calendar)) d.calendar=JSON.parse(JSON.stringify(cur.calendar));
+  if(Array.isArray(cur.schedule)) d.schedule=JSON.parse(JSON.stringify(cur.schedule));
+  d._calSync=cur.calSync;
+  return true;
+}
 function getData(){
   if(CLOUD_MODE) return CLOUD_D || _seed(_merge(_rawSource()));
   return _seed(_merge(_rawSource()));
@@ -1050,6 +1098,7 @@ function startCloudSync(){
   fbDB.collection('app').doc('state').onSnapshot(function(snap){
     if(!snap.exists){ fbDB.collection('app').doc('state').set(_clean(_seed(_merge(_rawSource())))).catch(function(e){ console.error('클라우드 초기화 실패', e); }); return; }
     CLOUD_D=_seed(snap.data());
+    if(_applyCalSync(CLOUD_D)){ _cloudSave(CLOUD_D); }   // 구글 캘린더 최신화 1회 반영
     render();
   }, function(e){ console.error('클라우드 동기화 오류', e); });
 }
