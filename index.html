@@ -759,48 +759,57 @@
   </div><!-- /인사 -->
 
   <div class="pg" data-pg="분석">
-  <!-- 📊 월별 요약 -->
-  <div class="card" style="margin-top:22px">
-    <h2>📊 월별 요약 <span style="font-weight:500;color:var(--muted);font-size:12px">행을 클릭하면 그 달로 조회됩니다</span></h2>
-    <div style="overflow-x:auto"><table>
-      <thead><tr><th>월</th><th class="num">건수</th><th class="num">매출</th><th class="num">인건비</th><th class="num">경비</th><th class="num">순이익</th><th class="num">이익률</th></tr></thead>
-      <tbody id="monthSummary"></tbody>
-    </table></div>
+  <div class="subtabs">
+    <button class="subtab" data-subtab="분석조회" onclick="showSub('분석조회')">🔎 결산 조회</button>
+    <button class="subtab" data-subtab="분석월별" onclick="showSub('분석월별')">📊 월별 요약</button>
   </div>
 
-  <!-- 👥 인원별 · 🏆 현장 TOP -->
-  <div class="grid cols2b" style="margin-top:22px">
-    <div class="card">
-      <h2>👥 인원별 투입·인건비 <span style="font-weight:500;color:var(--muted);font-size:12px">아래 조회 필터 반영</span></h2>
-      <div style="max-height:320px;overflow-y:auto"><table>
-        <thead><tr><th>이름</th><th class="num">투입</th><th class="num">인건비 합</th></tr></thead>
-        <tbody id="byPerson"></tbody></table></div>
+  <!-- 🔎 결산 조회 (1번째 하위탭) -->
+  <div class="subpg" data-subpg="분석조회">
+    <div class="card" style="margin-top:8px">
+      <h2>🔎 결산 조회 <span id="querySummary" style="font-weight:600;font-size:12.5px;margin-left:auto;color:var(--text-secondary)"></span></h2>
+      <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:12px">
+        <select id="q_month" onchange="applyQuery()" style="padding:8px 10px;border:1px solid var(--line);border-radius:8px;background:var(--bg);color:var(--ink);font-family:inherit;font-size:13px"></select>
+        <input id="q_text" placeholder="🔍 현장·이름 검색 (예: 고미, 소이)" oninput="applyQuery()" style="flex:1;min-width:160px;padding:8px 10px;border:1px solid var(--line);border-radius:8px;background:var(--bg);color:var(--ink);font-family:inherit;font-size:13px">
+        <select id="q_sort" onchange="applyQuery()" style="padding:8px 10px;border:1px solid var(--line);border-radius:8px;background:var(--bg);color:var(--ink);font-family:inherit;font-size:13px">
+          <option value="date">최신순</option>
+          <option value="rev">매출 높은순</option>
+          <option value="profit">순이익 높은순</option>
+        </select>
+      </div>
+      <div style="overflow-x:auto"><table>
+        <thead><tr><th>날짜</th><th>현장</th><th>인원</th><th class="num">매출</th><th class="num">인건비</th><th class="num">경비</th><th class="num">순이익</th><th></th></tr></thead>
+        <tbody id="settleRows"></tbody>
+      </table></div>
     </div>
-    <div class="card">
-      <h2>🏆 현장 매출 TOP <span style="font-weight:500;color:var(--muted);font-size:12px">조회 필터 반영 · 상위 15</span></h2>
-      <div style="max-height:320px;overflow-y:auto"><table>
-        <thead><tr><th>현장</th><th>월</th><th class="num">매출</th><th class="num">순이익</th></tr></thead>
-        <tbody id="topSites"></tbody></table></div>
-    </div>
-  </div>
 
-  <!-- 🔎 결산 조회 -->
-  <div class="card" style="margin-top:22px">
-    <h2>🔎 결산 조회 <span id="querySummary" style="font-weight:600;font-size:12.5px;margin-left:auto;color:var(--text-secondary)"></span></h2>
-    <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:12px">
-      <select id="q_month" onchange="applyQuery()" style="padding:8px 10px;border:1px solid var(--line);border-radius:8px;background:var(--bg);color:var(--ink);font-family:inherit;font-size:13px"></select>
-      <input id="q_text" placeholder="🔍 현장·이름 검색 (예: 고미, 소이)" oninput="applyQuery()" style="flex:1;min-width:160px;padding:8px 10px;border:1px solid var(--line);border-radius:8px;background:var(--bg);color:var(--ink);font-family:inherit;font-size:13px">
-      <select id="q_sort" onchange="applyQuery()" style="padding:8px 10px;border:1px solid var(--line);border-radius:8px;background:var(--bg);color:var(--ink);font-family:inherit;font-size:13px">
-        <option value="date">최신순</option>
-        <option value="rev">매출 높은순</option>
-        <option value="profit">순이익 높은순</option>
-      </select>
+    <!-- 👥 인원별 · 🏆 현장 TOP (조회 필터 반영) -->
+    <div class="grid cols2b" style="margin-top:22px">
+      <div class="card">
+        <h2>👥 인원별 투입·인건비 <span style="font-weight:500;color:var(--muted);font-size:12px">위 조회 필터 반영</span></h2>
+        <div style="max-height:320px;overflow-y:auto"><table>
+          <thead><tr><th>이름</th><th class="num">투입</th><th class="num">인건비 합</th></tr></thead>
+          <tbody id="byPerson"></tbody></table></div>
+      </div>
+      <div class="card">
+        <h2>🏆 현장 매출 TOP <span style="font-weight:500;color:var(--muted);font-size:12px">조회 필터 반영 · 상위 15</span></h2>
+        <div style="max-height:320px;overflow-y:auto"><table>
+          <thead><tr><th>현장</th><th>월</th><th class="num">매출</th><th class="num">순이익</th></tr></thead>
+          <tbody id="topSites"></tbody></table></div>
+      </div>
     </div>
-    <div style="overflow-x:auto"><table>
-      <thead><tr><th>날짜</th><th>현장</th><th>인원</th><th class="num">매출</th><th class="num">인건비</th><th class="num">경비</th><th class="num">순이익</th><th></th></tr></thead>
-      <tbody id="settleRows"></tbody>
-    </table></div>
-  </div>
+  </div><!-- /분석조회 -->
+
+  <!-- 📊 월별 요약 (2번째 하위탭) -->
+  <div class="subpg" data-subpg="분석월별">
+    <div class="card" style="margin-top:8px">
+      <h2>📊 월별 요약 <span style="font-weight:500;color:var(--muted);font-size:12px">행을 클릭하면 결산 조회 탭에서 그 달로 조회됩니다</span></h2>
+      <div style="overflow-x:auto"><table>
+        <thead><tr><th>월</th><th class="num">건수</th><th class="num">매출</th><th class="num">인건비</th><th class="num">경비</th><th class="num">순이익</th><th class="num">이익률</th></tr></thead>
+        <tbody id="monthSummary"></tbody>
+      </table></div>
+    </div>
+  </div><!-- /분석월별 -->
 
   </div><!-- /분석 -->
 
@@ -1620,7 +1629,7 @@ function render(){
   S.forEach(s=>{ const ym=s.date.slice(0,7); if(!msMap[ym])msMap[ym]={c:0,rev:0,lab:0,exp:0}; const r=calcRow(s); msMap[ym].c++; msMap[ym].rev+=r.rev; msMap[ym].lab+=r.lab; msMap[ym].exp+=r.exp; });
   let tC=0,tR=0,tL=0,tE=0;
   const msRows=Object.keys(msMap).sort().map(k=>{ const o=msMap[k]; const prof=o.rev-o.lab-o.exp; tC+=o.c;tR+=o.rev;tL+=o.lab;tE+=o.exp; const rate=o.rev?Math.round(prof/o.rev*100):0;
-    return `<tr style="cursor:pointer" onclick="document.getElementById('q_month').value='${k}';applyQuery();document.getElementById('querySummary').scrollIntoView({behavior:'smooth',block:'center'})"><td>${parseInt(k.slice(5),10)}월</td><td class="num">${o.c}</td><td class="num">${KRW(o.rev)}</td><td class="num">${KRW(o.lab)}</td><td class="num">${KRW(o.exp)}</td><td class="num" style="font-weight:700">${KRW(prof)}</td><td class="num">${rate}%</td></tr>`; }).join("");
+    return `<tr style="cursor:pointer" onclick="showSub('분석조회');document.getElementById('q_month').value='${k}';applyQuery();document.getElementById('querySummary').scrollIntoView({behavior:'smooth',block:'center'})"><td>${parseInt(k.slice(5),10)}월</td><td class="num">${o.c}</td><td class="num">${KRW(o.rev)}</td><td class="num">${KRW(o.lab)}</td><td class="num">${KRW(o.exp)}</td><td class="num" style="font-weight:700">${KRW(prof)}</td><td class="num">${rate}%</td></tr>`; }).join("");
   const tP=tR-tL-tE;
   document.getElementById("monthSummary").innerHTML=msRows + `<tr style="border-top:2px solid var(--border-strong);font-weight:800"><td>합계</td><td class="num">${tC}</td><td class="num">${KRW(tR)}</td><td class="num">${KRW(tL)}</td><td class="num">${KRW(tE)}</td><td class="num">${KRW(tP)}</td><td class="num">${tR?Math.round(tP/tR*100):0}%</td></tr>`;
 
@@ -2636,6 +2645,7 @@ render();
 showPage('대시보드');   // 기본 페이지
 showSub('개요일정');    // 대시보드 기본 하위탭 = 일정 달력
 showSub('운영달력');    // 운영팀 기본 하위탭 = 일정 달력
+showSub('분석조회');    // 분석팀 기본 하위탭 = 결산 조회
 showSub('재무달력');    // 재무팀 기본 하위탭 = 일정 달력
 showSub('기업달력');    // 기업지원사업팀 기본 하위탭 = 모집 캘린더
 // ═══ 로그인 초기화 ═══
