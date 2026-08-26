@@ -147,6 +147,23 @@
   .rate-row input{padding:6px 8px;border:1px solid var(--line);border-radius:7px;background:var(--bg);color:var(--ink);font-size:12.5px}
   .rate-row input.nm{width:130px}
   .rate-row input.amt{width:120px}
+  .rate-row select{padding:6px 8px;border:1px solid var(--line);border-radius:7px;background:var(--bg);color:var(--ink);font-size:12.5px;font-family:inherit}
+  /* 배치인원 명단 선택 칩 */
+  .crewpick{display:flex;flex-wrap:wrap;gap:7px;align-items:center}
+  .crewchip{display:inline-flex;align-items:center;gap:5px;padding:6px 11px;border:1px solid var(--line);border-radius:18px;background:var(--card);color:var(--ink);font-size:12.5px;cursor:pointer;user-select:none}
+  .crewchip em{font-style:normal;font-size:10.5px;color:var(--muted)}
+  .crewchip.on{border-color:var(--limit);background:rgba(37,99,235,.10);font-weight:600}
+  .crewchip.on em{color:var(--limit)}
+  .crewchip.adhoc.on{border-color:var(--daman);background:rgba(245,158,11,.12)}
+  .crewchip.adhoc.on em{color:var(--daman)}
+  .crewchip .hrs{width:60px;padding:3px 6px;border:1px solid var(--warn);border-radius:6px;background:var(--bg);color:var(--ink);font-size:12px;font-family:inherit}
+  .crewadd{display:inline-flex;gap:4px;align-items:center}
+  .crewadd input{width:200px;padding:6px 9px;border:1px dashed var(--line);border-radius:8px;background:var(--bg);color:var(--ink);font-size:12px;font-family:inherit}
+  .crewadd button{padding:6px 10px;border:1px solid var(--line);border-radius:8px;background:var(--bg);color:var(--ink);font-size:12px;cursor:pointer}
+  /* 재무팀 시급 표시 */
+  .payperson .hrscalc{font-size:11px;color:var(--ink);background:rgba(37,99,235,.08);border:1px solid var(--line);border-radius:6px;padding:5px 7px;display:flex;align-items:center;gap:4px;flex-wrap:wrap}
+  .payperson .hrscalc input{width:52px;padding:3px 5px;border:1px solid var(--warn);border-radius:5px;background:var(--bg);color:var(--ink);font-size:12px;font-family:inherit}
+  .payperson .hrscalc b{color:var(--limit)}
   /* 당일 이체 */
   .pay-line{display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:1px solid var(--line);font-size:13px}
   .pay-line .who{flex:1}
@@ -241,7 +258,7 @@
   </div>
 
   <div class="banner" id="demoBanner">
-    📌 지금은 <b>예시 데이터</b>입니다. 흐름: <b>소이 팀장</b>이 🧾 이름만 입력 → <b>재무팀</b>이 🧮 일당 입력(단가표로 자동) →
+    📌 지금은 <b>예시 데이터</b>입니다. 흐름: <b>소이 팀장</b>이 🧾 명단에서 인원 클릭(시급은 시간 입력=금액 자동) → <b>재무팀</b>이 🧮 시간·금액 확인 →
     💸 <b>당일 이체</b> 확인 → 매출·순이익·미수금 자동 정리.
   </div>
 
@@ -342,7 +359,7 @@
       <div class="fld wide"><label>현장명</label><input id="f_site" placeholder="예: △△물류창고"></div>
       <div class="fld"><label>견적금액 (원)</label><input type="number" id="f_quote" placeholder="0" oninput="calcLive()"></div>
       <div class="fld"><label>추가금 (원)</label><input type="number" id="f_extra" placeholder="0" oninput="calcLive()"></div>
-      <div class="fld wide"><label>배치인원 (이름만, 쉼표)</label><input id="f_crew" placeholder="예: 소이, 반장B, 은규, 일용직1"></div>
+      <div class="fld wide"><label>배치인원 <span style="font-weight:500;color:var(--muted);font-size:11px">· 명단에서 클릭 선택 · 시급 인원은 시간 입력하면 금액 자동</span></label><div id="f_crewPick" class="crewpick"></div></div>
       <div class="fld"><label>📞 고객 연락처 <span style="color:var(--warn);font-weight:700">*필수</span></label><input id="f_contact" placeholder="담당자·전화"></div>
       <div class="fld"><label>💳 입금자명 <span style="color:var(--warn);font-weight:700">*필수</span></label><input id="f_payer" placeholder="입금자 이름"></div>
       <div class="fld"><label>⛽ 주유 (원)</label><input type="number" id="f_fuel" placeholder="0" oninput="calcLive()"></div>
@@ -491,7 +508,7 @@
 
   <!-- ===== 기본 일당 단가표 ===== -->
   <div class="card" style="margin-top:22px">
-    <h2>💵 기본 일당 단가표 <span style="font-weight:500;color:var(--muted);font-size:12px">이름 등록 → 소이가 그 이름 넣으면 일당 자동</span></h2>
+    <h2>💵 인원 명단 · 일당/시급 <span style="font-weight:500;color:var(--muted);font-size:12px">이름·구분 등록 → 결산에서 클릭 배치 · 시급은 시간만 넣으면 자동계산</span></h2>
     <div id="rateArea"></div>
     <div style="margin-top:10px"><button onclick="addRate()">＋ 인원 추가</button></div>
   </div>
@@ -959,8 +976,9 @@ const DEFAULT_DATA = {
   ],
   /* 기본 일당 단가표: 이름→일당. 소이가 이 이름을 넣으면 자동 채움 */
   rates: [
-    {name:"소이", pay:0}, {name:"반장A", pay:0}, {name:"반장B", pay:0},
-    {name:"은규", pay:100000}, {name:"일용직1", pay:150000}, {name:"일용직2", pay:140000}
+    {name:"소이", type:"월급", pay:0}, {name:"반장A", type:"월급", pay:0}, {name:"반장B", type:"월급", pay:0},
+    {name:"은규", type:"일당", pay:100000}, {name:"일용직1", type:"일당", pay:150000}, {name:"일용직2", type:"일당", pay:140000},
+    {name:"알바(시급)", type:"시급", hourly:12000}
   ],
   /* 배치인원=[{name,pay,sent}] · 매출=공급가액(부가세 별도) · vat:과세/면세 · tax:미발행/발행/발행예정 */
   settlements: [
@@ -1064,22 +1082,106 @@ function agg(list){
 }
 function daysBetween(a,b){ return Math.max(0, Math.round((new Date(b)-new Date(a))/86400000)); }
 
-/* 단가표 */
-function rateFor(d,name){ const r=(d.rates||[]).find(x=>x.name===name); return r?(+r.pay||0):null; }
-function setRate(i,f,v){ const d=getData(); d.rates=d.rates||[];
-  if(f==='pay') d.rates[i].pay=(v===''?0:(parseFloat(v)||0)); else d.rates[i].name=v.trim();
+/* 단가표(명단) */
+function rateEntry(d,name){ return (d.rates||[]).find(x=>x.name===name)||null; }
+function personType(e){ if(!e) return '일당'; if(e.type) return e.type; return (+e.pay>0)?'일당':'월급'; }
+function hourlyOf(e){ return e?(+e.hourly||0):0; }
+function rateFor(d,name){ const r=rateEntry(d,name); return r?(+r.pay||0):null; }
+function setRate(i,f,v){ const d=getData(); d.rates=d.rates||[]; const r=d.rates[i]; if(!r) return;
+  if(f==='pay') r.pay=(v===''?0:(parseFloat(v)||0));
+  else if(f==='hourly') r.hourly=(v===''?0:(parseFloat(v)||0));
+  else if(f==='type') r.type=v;
+  else r.name=v.trim();
   setData(d); render(); }
-function addRate(){ const d=getData(); d.rates=d.rates||[]; d.rates.push({name:"",pay:0}); setData(d); render(); }
+function addRate(){ const d=getData(); d.rates=d.rates||[]; d.rates.push({name:"",type:"일당",pay:0}); setData(d); render(); }
 function delRate(i){ const d=getData(); d.rates.splice(i,1); setData(d); render(); }
 function applyRates(){ const d=getData(); let n=0;
   (d.settlements||[]).forEach(s=>{ if(Array.isArray(s.crew)) s.crew.forEach(p=>{
-    if(isMissing(p)){ const r=rateFor(d,p.name); if(r!==null){ p.pay=r; n++; } } }); });
+    if(p.mode==='시급') return;   // 시급 인원은 시간으로 자동계산 → 일당 채우기 제외
+    if(isMissing(p)){ const r=rateFor(d,p.name); if(r!==null && r>0){ p.pay=r; n++; } } }); });
   setData(d); render(); alert(n+"명 일당을 단가표로 채웠습니다."); }
+
+/* ── 배치인원 명단 선택(운영팀 결산 입력) ── */
+window.CREW_SEL = window.CREW_SEL || [];   // [{name, hours}]
+function renderCrewPick(){
+  const box=document.getElementById('f_crewPick'); if(!box) return;
+  const d=getData();
+  const sel=window.CREW_SEL||[];
+  const roster=(d.rates||[]).filter(r=>r.name);
+  const esc=(x)=>String(x).replace(/'/g,"\\'");
+  const chips=roster.map(r=>{
+    const t=personType(r);
+    const cur=sel.find(p=>p.name===r.name);
+    const on=!!cur;
+    const badge = t==='시급'?('시급 '+KRW(hourlyOf(r))):(t==='월급'?'월급':('일당 '+KRW(+r.pay||0)));
+    let hrs='';
+    if(on && t==='시급'){
+      hrs=` <input class="hrs" type="number" step="0.5" min="0" placeholder="시간" value="${cur.hours!=null?cur.hours:''}" onclick="event.stopPropagation()" onkeydown="event.stopPropagation()" onchange="setCrewHours('${esc(r.name)}',this.value)">시간`;
+    }
+    return `<span class="crewchip ${on?'on':''}" onclick="toggleCrewPick('${esc(r.name)}')">${r.name} <em>${badge}</em>${hrs}</span>`;
+  }).join('');
+  const adhoc=sel.filter(p=>!roster.some(r=>r.name===p.name)).map(p=>
+    `<span class="crewchip adhoc on" onclick="toggleCrewPick('${esc(p.name)}')">${p.name} <em>임시 ✕</em></span>`).join('');
+  box.innerHTML = chips + adhoc +
+    `<span class="crewadd"><input id="f_crewAdd" placeholder="명단에 없는 임시 인원 + Enter" onkeydown="if(event.key==='Enter'){event.preventDefault();addAdhocCrew();}"><button type="button" onclick="addAdhocCrew()">＋임시</button></span>`;
+}
+function toggleCrewPick(name){
+  window.CREW_SEL=window.CREW_SEL||[];
+  const i=window.CREW_SEL.findIndex(p=>p.name===name);
+  if(i>=0) window.CREW_SEL.splice(i,1); else window.CREW_SEL.push({name, hours:null});
+  renderCrewPick(); calcLive();
+}
+function setCrewHours(name,val){
+  const p=(window.CREW_SEL||[]).find(x=>x.name===name); if(!p) return;
+  p.hours = (val===''?null:(parseFloat(val)||0));
+  calcLive();
+}
+function addAdhocCrew(){
+  const el=document.getElementById('f_crewAdd'); if(!el) return;
+  const nm=(el.value||'').trim(); if(!nm) return;
+  window.CREW_SEL=window.CREW_SEL||[];
+  if(!window.CREW_SEL.some(p=>p.name===nm)) window.CREW_SEL.push({name:nm, hours:null});
+  el.value=''; renderCrewPick(); calcLive();
+}
+/* 선택목록 → crew 객체 배열 (시급 자동계산) */
+function crewFromSel(d, sel, oldCrew){
+  oldCrew=oldCrew||[];
+  return (sel||[]).map(p=>{
+    const e=rateEntry(d,p.name);
+    const t=personType(e);
+    const old=oldCrew.find(o=>o.name===p.name);
+    if(t==='시급'){
+      const rate=(old&&+old.rate)||hourlyOf(e);
+      const hrs=(p.hours===''||p.hours==null)?null:(+p.hours||0);
+      const pay=(hrs==null)?null:Math.round(rate*hrs);
+      return {name:p.name, mode:'시급', rate:rate, hours:hrs, pay:pay, sent: old?!!old.sent:false};
+    }
+    if(t==='월급'){ return {name:p.name, pay:0, sent: old?!!old.sent:false}; }
+    let pay = (old && !isMissing(old)) ? old.pay : rateFor(d,p.name);
+    if(pay===0) pay=null;
+    return {name:p.name, pay:pay, sent: old?!!old.sent:false};
+  });
+}
+/* 기존 crew → 선택목록(편집·스케줄 채우기) */
+function selFromCrew(list){
+  return crewList({crew:list}).map(p=>({name:p.name, hours:(p.hours!=null?p.hours:null)}));
+}
 
 /* 재무팀: 사람별 일당 */
 function setPay(i,j,val){ const d=getData(); const s=d.settlements[i];
   if(!Array.isArray(s.crew)) s.crew=crewList(s);
   s.crew[j].pay = val===""?null:(parseFloat(val)||0); setData(d); render(); }
+
+/* 재무팀/운영팀: 시급 인원 근무시간 → 금액 자동 */
+function setHours(i,j,val){ const d=getData(); const s=d.settlements[i];
+  if(!Array.isArray(s.crew)) s.crew=crewList(s);
+  const p=s.crew[j];
+  const hrs = (val===""?null:(parseFloat(val)||0));
+  p.hours=hrs;
+  if(p.rate==null){ const e=rateEntry(d,p.name); p.rate=hourlyOf(e); }
+  p.mode='시급';
+  p.pay = (hrs==null)?null:Math.round((+p.rate||0)*hrs);
+  setData(d); render(); }
 
 /* 당일 이체 토글 */
 function toggleSent(i,j){ const d=getData(); const s=d.settlements[i];
@@ -1096,8 +1198,14 @@ function toggleTax(i){ const d=getData(); const s=d.settlements[i];
 function calcLive(){
   const rev=num('f_quote')+num('f_extra');
   const exp=num('f_fuel')+num('f_meal')+num('f_supply')+num('f_etc');
+  const d=getData();
+  const crew=crewFromSel(d, window.CREW_SEL||[], []);
+  let lab=0, pending=0;
+  crew.forEach(p=>{ if(isMissing(p)) pending++; else lab+=(+p.pay||0); });
+  const labTxt = lab>0 ? ` − 인건비 ${KRW(lab)}` : '';
+  const pendTxt = pending>0 ? ` <span style="color:var(--warn)">(${pending}명 일당은 재무팀 입력)</span>` : '';
   document.getElementById('liveCalc').innerHTML =
-    `매출 <b>${KRW(rev)}</b> − 경비 ${KRW(exp)} = <b>${KRW(rev-exp)}</b> <span style="color:var(--muted)">(인건비는 재무팀 입력 후 확정)</span>`;
+    `매출 <b>${KRW(rev)}</b> − 경비 ${KRW(exp)}${labTxt} = <b>${KRW(rev-exp-lab)}</b>${pendTxt}`;
 }
 
 function addSettlement(){
@@ -1105,15 +1213,15 @@ function addSettlement(){
   if(!site){ alert("현장명을 입력하세요."); return; }
   if(!document.getElementById('f_contact').value.trim()){ alert("고객 연락처를 입력해야 저장됩니다."); document.getElementById('f_contact').focus(); return; }
   if(!document.getElementById('f_payer').value.trim()){ alert("입금자명을 입력해야 저장됩니다."); document.getElementById('f_payer').focus(); return; }
-  const names=document.getElementById('f_crew').value.split(/[,、]/).map(x=>x.trim()).filter(Boolean);
   const d=getData();
   const editing = EDIT_SETTLE!=null && d.settlements && d.settlements[EDIT_SETTLE];
   const oldCrew = editing ? crewList(d.settlements[EDIT_SETTLE]) : [];
+  const crew = crewFromSel(d, window.CREW_SEL||[], oldCrew);
   const rec={
     date: document.getElementById('f_date').value || d.asOf,
     co:   document.getElementById('f_co').value,
     site, quote:num('f_quote'), extra:num('f_extra'),
-    crew: names.map(n=>{ const ex=oldCrew.find(p=>p.name===n); return ex?ex:{name:n, pay: rateFor(d,n), sent:false}; }),  // 수정 시 기존 인건비(일당·이체)는 유지, 새 이름만 단가표 자동
+    crew: crew,   // 명단 선택 → 시급=시간×시급 자동 · 일당=단가표 자동 · 월급=0
     fuel:num('f_fuel'), meal:num('f_meal'), supply:num('f_supply'), etc:num('f_etc'),
     paid: document.getElementById('f_paid').value,
     status: document.getElementById('f_status').value,
@@ -1133,8 +1241,9 @@ function addSettlement(){
   else { d.settlements.push(rec); }
   d.demo=false;
   setData(d); render();
-  ['f_site','f_quote','f_extra','f_crew','f_contact','f_payer','f_fuel','f_meal','f_supply','f_etc','f_note']
+  ['f_site','f_quote','f_extra','f_contact','f_payer','f_fuel','f_meal','f_supply','f_etc','f_note']
     .forEach(id=>document.getElementById(id).value="");
+  window.CREW_SEL=[]; renderCrewPick();
   updateSettleBtn();
   calcLive();
   if(editing){ alert('결산이 수정되었습니다.'); }
@@ -1189,13 +1298,26 @@ function render(){
     `<div class="payblock ${laborMissing(s)?'miss':''}">
       <div class="payhead">${s.date.slice(5)} · <span class="pill ${coPill(s.co)}">${coName(s.co)}</span> ${s.site}
         <span style="color:var(--muted);font-size:11px;font-weight:500">인건비 합계 ${KRW(laborOf(s))}</span></div>
-      <div class="paygrid">${crewList(s).map((p,j)=>
-        `<div class="payperson">${p.name}
+      <div class="paygrid">${crewList(s).map((p,j)=>{
+        const isHr = (p.mode==='시급') || (p.rate!=null);
+        if(isHr){
+          const rate=+(p.rate||0);
+          const hasH = p.hours!=null && p.hours!=='';
+          const amt = hasH?Math.round(rate*(+p.hours||0)):null;
+          const chk = (amt>0)
+            ? `<span class="sentchk ${p.sent?'done':''}" onclick="toggleSent(${i},${j})">${p.sent?'✅ 이체완료':'⬜ 이체확인'}</span>`
+            : '<span class="sentchk na">시간 입력</span>';
+          return `<div class="payperson">${p.name} <span style="color:var(--limit);font-size:10px">시급</span>
+            <div class="hrscalc"><input type="number" step="0.5" min="0" placeholder="시간" value="${hasH?p.hours:''}" class="${hasH?'':'empty'}" onchange="setHours(${i},${j},this.value)">시간 × ${KRW(rate)} = <b>${amt!=null?KRW(amt):'—'}</b></div>
+            ${chk}</div>`;
+        }
+        return `<div class="payperson">${p.name}
           <input type="number" placeholder="일당" value="${isMissing(p)?'':p.pay}" class="${isMissing(p)?'empty':''}"
             onchange="setPay(${i},${j},this.value)">
           ${isMissing(p) ? '<span class="sentchk na">일당 먼저</span>' : (+p.pay>0
               ? `<span class="sentchk ${p.sent?'done':''}" onclick="toggleSent(${i},${j})">${p.sent?'✅ 이체완료':'⬜ 이체확인'}</span>`
-              : '<span class="sentchk na">월급</span>')}</div>`).join("")}</div>
+              : '<span class="sentchk na">월급</span>')}</div>`;
+      }).join("")}</div>
     </div>`).join("") : `<div style="color:var(--muted);font-size:13px">배치인원이 있는 결산이 없습니다.</div>`;
 
   // ❗ 재무팀 배지 (미이체 일당 + 오늘 납부 고정지출)
@@ -1255,13 +1377,22 @@ function render(){
       <button class="sendbtn ${taxStatus(s)==='발행예정'?'':''}" onclick="toggleTax(${i})">🧾 ${taxStatus(s)} → 발행</button></div>`;
   }).join("") : `<div style="color:var(--muted);font-size:13px">발행할 세금계산서가 없습니다. (과세·매출 발생 건이 여기 표시됩니다)</div>`;
 
-  // 단가표
-  document.getElementById("rateArea").innerHTML=(d.rates||[]).map((r,i)=>
-    `<div class="rate-row">
+  // 단가표(명단)
+  document.getElementById("rateArea").innerHTML=(d.rates||[]).map((r,i)=>{
+    const t=personType(r);
+    const opt=(v)=>`<option value="${v}" ${t===v?'selected':''}>${v}</option>`;
+    let amtField;
+    if(t==='시급') amtField=`<input class="amt" type="number" value="${r.hourly??''}" placeholder="시급(원)" onchange="setRate(${i},'hourly',this.value)">`;
+    else if(t==='월급') amtField=`<span style="font-size:12px;color:var(--muted)">현장 인건비 없음(고정급)</span>`;
+    else amtField=`<input class="amt" type="number" value="${r.pay??''}" placeholder="일당(원)" onchange="setRate(${i},'pay',this.value)">`;
+    return `<div class="rate-row">
       <input class="nm" value="${r.name||''}" placeholder="이름" onchange="setRate(${i},'name',this.value)">
-      <input class="amt" type="number" value="${r.pay??''}" placeholder="일당(원)" onchange="setRate(${i},'pay',this.value)">
-      <button class="del" onclick="delRate(${i})">✕</button></div>`).join("")
-    || `<div style="color:var(--muted);font-size:13px">등록된 단가가 없습니다. ＋ 인원 추가로 시작하세요.</div>`;
+      <select onchange="setRate(${i},'type',this.value)">${opt('일당')}${opt('시급')}${opt('월급')}</select>
+      ${amtField}
+      <button class="del" onclick="delRate(${i})">✕</button></div>`;
+  }).join("")
+    || `<div style="color:var(--muted);font-size:13px">등록된 인원이 없습니다. ＋ 인원 추가로 시작하세요.</div>`;
+  renderCrewPick();
 
   // KPI
   document.getElementById("kpis").innerHTML=[
@@ -1946,7 +2077,7 @@ function fillFromSchedule(i){
   document.getElementById('f_date').value=s.date||d.asOf;
   document.getElementById('f_co').value=s.co||'limit';
   document.getElementById('f_site').value=s.site||'';
-  document.getElementById('f_crew').value=s.crew||'';
+  window.CREW_SEL=selFromCrew(crewList({crew:s.crew})); renderCrewPick();
   document.getElementById('f_contact').value=s.contact||'';
   document.getElementById('f_quote').value=s.quote||'';
   document.getElementById('f_payer').value='';
@@ -1970,7 +2101,7 @@ function editSettledJob(i){
   document.getElementById('f_date').value=s.date||d.asOf;
   document.getElementById('f_co').value=s.co||'limit';
   document.getElementById('f_site').value=s.site||'';
-  document.getElementById('f_crew').value=crewList(s).map(p=>p.name).join(', ');
+  window.CREW_SEL=selFromCrew(crewList(s)); renderCrewPick();
   document.getElementById('f_quote').value=s.quote||'';
   document.getElementById('f_extra').value=s.extra||'';
   document.getElementById('f_fuel').value=s.fuel||'';
@@ -1991,8 +2122,9 @@ function editSettledJob(i){
 }
 function cancelSettleEdit(){
   EDIT_SETTLE=null;
-  ['f_site','f_quote','f_extra','f_crew','f_contact','f_payer','f_fuel','f_meal','f_supply','f_etc','f_note']
+  ['f_site','f_quote','f_extra','f_contact','f_payer','f_fuel','f_meal','f_supply','f_etc','f_note']
     .forEach(id=>document.getElementById(id).value="");
+  window.CREW_SEL=[]; renderCrewPick();
   updateSettleBtn();
   calcLive();
   showSub('배치');   // 배치표로 복귀
