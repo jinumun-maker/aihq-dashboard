@@ -236,11 +236,28 @@
     </div>
     <div class="toolbar">
       <span id="userLabel" style="font-weight:700;font-size:13px;margin-right:2px"></span>
+      <button onclick="openPwChange()" title="로그인 비밀번호 변경">🔑 비밀번호</button>
       <button onclick="logout()" title="다른 사용자로 전환">🔓 전환</button>
       <button onclick="toggleTheme()">🌗 테마</button>
       <button onclick="toggleEditor()">⚙️ 원본데이터</button>
     </div>
   </header>
+
+  <!-- 비밀번호 변경 모달 -->
+  <div id="pwModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:200;align-items:center;justify-content:center;padding:16px">
+    <div style="background:var(--card);border:1px solid var(--line);border-radius:14px;padding:22px;width:min(370px,94vw);box-shadow:0 12px 44px rgba(0,0,0,.35)">
+      <h3 style="margin:0 0 4px;font-size:16px">🔑 비밀번호 변경</h3>
+      <div style="font-size:12px;color:var(--muted);margin-bottom:14px" id="pw_who"></div>
+      <input id="pw_cur" type="password" placeholder="현재 비밀번호" autocomplete="current-password" style="width:100%;padding:11px 13px;border:1px solid var(--line);border-radius:9px;background:var(--bg);color:var(--ink);font-size:14px;margin-bottom:10px;font-family:inherit">
+      <input id="pw_new1" type="password" placeholder="새 비밀번호 (6자 이상)" autocomplete="new-password" style="width:100%;padding:11px 13px;border:1px solid var(--line);border-radius:9px;background:var(--bg);color:var(--ink);font-size:14px;margin-bottom:10px;font-family:inherit">
+      <input id="pw_new2" type="password" placeholder="새 비밀번호 확인" autocomplete="new-password" onkeydown="if(event.key==='Enter')submitPwChange()" style="width:100%;padding:11px 13px;border:1px solid var(--line);border-radius:9px;background:var(--bg);color:var(--ink);font-size:14px;margin-bottom:8px;font-family:inherit">
+      <div id="pw_msg" style="font-size:12.5px;min-height:16px;margin-bottom:10px;color:var(--warn)"></div>
+      <div style="display:flex;gap:8px;justify-content:flex-end">
+        <button onclick="closePwChange()" style="padding:9px 15px;border:1px solid var(--line);border-radius:9px;background:var(--bg);color:var(--ink);cursor:pointer">취소</button>
+        <button class="primary" onclick="submitPwChange()" style="padding:9px 17px;border-radius:9px">변경</button>
+      </div>
+    </div>
+  </div>
 
   <div class="tabs">
     <button class="tab" data-tab="대시보드" onclick="showPage('대시보드')">📊 경영관리팀</button>
@@ -2297,6 +2314,45 @@ function logout(){
   document.querySelectorAll('.tab').forEach(function(b){ b.classList.remove('locked'); });
   if(CLOUD_MODE && fbAuth){ fbAuth.signOut(); }   // onAuthStateChanged가 로그인 화면 표시
   const ls=document.getElementById('loginScreen'); if(ls) ls.style.display='flex';
+}
+/* ── 로그인 비밀번호 변경 (현재 비번 재인증 후 새 비번 적용) ── */
+function openPwChange(){
+  if(!(CLOUD_MODE && fbAuth && fbAuth.currentUser)){ alert('클라우드에 로그인한 상태에서만 비밀번호를 변경할 수 있어요.'); return; }
+  const m=document.getElementById('pwModal'); if(!m) return;
+  ['pw_cur','pw_new1','pw_new2'].forEach(function(id){ const el=document.getElementById(id); if(el) el.value=''; });
+  const msg=document.getElementById('pw_msg'); if(msg){ msg.textContent=''; }
+  const who=document.getElementById('pw_who'); if(who) who.textContent=(fbAuth.currentUser.email||'')+' 계정';
+  m.style.display='flex';
+  setTimeout(function(){ const el=document.getElementById('pw_cur'); if(el) el.focus(); },50);
+}
+function closePwChange(){ const m=document.getElementById('pwModal'); if(m) m.style.display='none'; }
+function submitPwChange(){
+  const cur=(document.getElementById('pw_cur').value||'');
+  const p1=(document.getElementById('pw_new1').value||'');
+  const p2=(document.getElementById('pw_new2').value||'');
+  const msg=document.getElementById('pw_msg');
+  const setMsg=function(t,c){ if(msg){ msg.textContent=t; msg.style.color=c||'var(--warn)'; } };
+  if(!cur){ setMsg('현재 비밀번호를 입력하세요.'); return; }
+  if(p1.length<6){ setMsg('새 비밀번호는 6자 이상이어야 합니다.'); return; }
+  if(p1!==p2){ setMsg('새 비밀번호 두 개가 서로 다릅니다.'); return; }
+  if(p1===cur){ setMsg('현재 비밀번호와 다른 새 비밀번호를 입력하세요.'); return; }
+  const user=fbAuth&&fbAuth.currentUser;
+  if(!user){ setMsg('로그인이 만료됐어요. 다시 로그인 후 시도해주세요.'); return; }
+  setMsg('변경 중…','var(--muted)');
+  const cred=firebase.auth.EmailAuthProvider.credential(user.email, cur);
+  user.reauthenticateWithCredential(cred)
+    .then(function(){ return user.updatePassword(p1); })
+    .then(function(){
+      setMsg('✅ 변경되었습니다. 다음 로그인부터 새 비밀번호를 쓰세요.','var(--good)');
+      setTimeout(closePwChange, 1600);
+    })
+    .catch(function(e){
+      const code=e.code||'';
+      if(code==='auth/wrong-password'||code==='auth/invalid-credential') setMsg('현재 비밀번호가 맞지 않습니다.');
+      else if(code==='auth/weak-password') setMsg('새 비밀번호가 너무 약합니다. 6자 이상, 조금 더 복잡하게.');
+      else if(code==='auth/too-many-requests') setMsg('시도가 많습니다. 잠시 후 다시 시도하세요.');
+      else setMsg('변경 실패: '+(code||e.message));
+    });
 }
 function showPage(name){
   if(!canAccess(name)){ alert('🔒 소이 부장님은 운영팀 메뉴만 사용할 수 있어요.\n(다른 메뉴는 보기 전용입니다)'); return; }
