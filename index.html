@@ -202,7 +202,8 @@
     <!-- 클라우드 로그인 (이메일/비밀번호) -->
     <div id="loginCloud" style="display:none">
       <div class="fld" style="text-align:left;margin-bottom:10px"><input id="li_email" type="email" placeholder="이메일" autocomplete="username" style="width:100%;padding:12px 14px;border:1px solid var(--line);border-radius:10px;background:var(--bg);color:var(--ink);font-size:14px;font-family:inherit"></div>
-      <div class="fld" style="text-align:left;margin-bottom:14px"><input id="li_pw" type="password" placeholder="비밀번호" autocomplete="current-password" onkeydown="if(event.key==='Enter')cloudLogin()" style="width:100%;padding:12px 14px;border:1px solid var(--line);border-radius:10px;background:var(--bg);color:var(--ink);font-size:14px;font-family:inherit"></div>
+      <div class="fld" style="text-align:left;margin-bottom:12px"><input id="li_pw" type="password" placeholder="비밀번호" autocomplete="current-password" onkeydown="if(event.key==='Enter')cloudLogin()" style="width:100%;padding:12px 14px;border:1px solid var(--line);border-radius:10px;background:var(--bg);color:var(--ink);font-size:14px;font-family:inherit"></div>
+      <label style="display:flex;align-items:center;gap:7px;font-size:12.5px;color:var(--muted);margin-bottom:12px;cursor:pointer;text-align:left"><input type="checkbox" id="li_remember" checked style="width:16px;height:16px;cursor:pointer"> 아이디(이메일) 저장</label>
       <button class="primary" onclick="cloudLogin()" style="width:100%;padding:13px;font-size:15px;border-radius:10px">로그인</button>
       <div id="li_err" style="color:var(--limit);font-size:12.5px;margin-top:10px;min-height:16px"></div>
     </div>
@@ -2086,6 +2087,12 @@ function cloudLogin(){
   const err=document.getElementById('li_err');
   if(!email||!pw){ if(err) err.textContent='이메일과 비밀번호를 입력하세요.'; return; }
   if(!fbAuth){ if(err) err.textContent='로그인 서버 연결 실패(인터넷 확인).'; return; }
+  // 아이디(이메일)만 저장 — 비밀번호는 절대 저장하지 않음
+  try{
+    const rm=document.getElementById('li_remember');
+    if(rm && rm.checked){ localStorage.setItem('aihq_last_email', email); localStorage.setItem('aihq_remember','1'); }
+    else{ localStorage.removeItem('aihq_last_email'); localStorage.setItem('aihq_remember','0'); }
+  }catch(e){}
   if(err) err.textContent='로그인 중…';
   fbAuth.signInWithEmailAndPassword(email,pw).catch(function(e){
     const map={'auth/invalid-credential':'이메일 또는 비밀번호가 맞지 않습니다.','auth/invalid-email':'이메일 형식이 올바르지 않습니다.','auth/user-not-found':'등록되지 않은 계정입니다.','auth/wrong-password':'비밀번호가 틀렸습니다.','auth/too-many-requests':'시도가 많습니다. 잠시 후 다시.'};
@@ -2412,6 +2419,18 @@ showSub('기업달력');    // 기업지원사업팀 기본 하위탭 = 모집 �
     document.getElementById('loginOffline').style.display='none';
     if(note) note.textContent='※ 계정이 없으면 대표님께 문의하세요.';
     if(ls) ls.style.display='flex';
+    // 저장된 아이디(이메일) 자동 채우기 → 있으면 비밀번호 칸으로 포커스
+    try{
+      const savedEmail=localStorage.getItem('aihq_last_email');
+      const remember=localStorage.getItem('aihq_remember'); // '0'이면 저장 끔
+      const emailEl=document.getElementById('li_email');
+      const rmEl=document.getElementById('li_remember');
+      if(rmEl) rmEl.checked=(remember!=='0'); // 기본 켜짐, 끈 적 있으면 꺼짐
+      if(savedEmail && emailEl && remember!=='0'){
+        emailEl.value=savedEmail;
+        const pw=document.getElementById('li_pw'); if(pw) setTimeout(function(){pw.focus();},100);
+      }
+    }catch(e){}
     fbAuth.onAuthStateChanged(function(user){
       if(user){
         CLOUD_MODE=true;
