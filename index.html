@@ -202,7 +202,7 @@
     <!-- 클라우드 로그인 (이메일/비밀번호) -->
     <div id="loginCloud" style="display:none">
       <div class="fld" style="text-align:left;margin-bottom:10px"><input id="li_email" type="email" placeholder="이메일" autocomplete="username" style="width:100%;padding:12px 14px;border:1px solid var(--line);border-radius:10px;background:var(--bg);color:var(--ink);font-size:14px;font-family:inherit"></div>
-      <div class="fld" style="text-align:left;margin-bottom:12px"><input id="li_pw" type="password" placeholder="비밀번호" autocomplete="current-password" onkeydown="if(event.key==='Enter')cloudLogin()" style="width:100%;padding:12px 14px;border:1px solid var(--line);border-radius:10px;background:var(--bg);color:var(--ink);font-size:14px;font-family:inherit"></div>
+      <div class="fld" style="text-align:left;margin-bottom:12px"><input id="li_pw" type="password" placeholder="비밀번호 (매번 입력)" autocomplete="new-password" onkeydown="if(event.key==='Enter')cloudLogin()" style="width:100%;padding:12px 14px;border:1px solid var(--line);border-radius:10px;background:var(--bg);color:var(--ink);font-size:14px;font-family:inherit"></div>
       <label style="display:flex;align-items:center;gap:7px;font-size:12.5px;color:var(--muted);margin-bottom:12px;cursor:pointer;text-align:left"><input type="checkbox" id="li_remember" checked style="width:16px;height:16px;cursor:pointer"> 아이디(이메일) 저장</label>
       <button class="primary" onclick="cloudLogin()" style="width:100%;padding:13px;font-size:15px;border-radius:10px">로그인</button>
       <div id="li_err" style="color:var(--limit);font-size:12.5px;margin-top:10px;min-height:16px"></div>
