@@ -212,6 +212,13 @@
   <div class="login-card">
     <div class="login-logo">🏢 AI경영본부</div>
     <div class="login-sub" id="loginSub">리미트 · 다만산업 — 로그인</div>
+    <!-- 인앱 브라우저(카톡·인스타 등) 경고 -->
+    <div id="inappWarn" style="display:none;text-align:left;background:rgba(220,38,38,.10);border:1px solid var(--warn);border-radius:12px;padding:13px 15px;margin-bottom:16px;font-size:13px;line-height:1.55;color:var(--ink)">
+      ⚠️ <b>지금 앱 안(카톡·문자·인스타)에서 열려 있어요.</b><br>여기선 로그인이 안 돼요. <b>크롬·사파리로 열어야</b> 됩니다.<br>
+      <span style="color:var(--muted);font-size:12px">→ 화면 구석의 <b>⋮ 또는 공유 아이콘</b> → <b>'다른 브라우저로 열기'</b></span>
+      <button onclick="copyLoginUrl()" style="margin-top:11px;width:100%;padding:11px;border:1px solid var(--limit);border-radius:9px;background:var(--limit);color:#fff;font-weight:700;font-size:13.5px;cursor:pointer;font-family:inherit">🔗 주소 복사하기</button>
+      <div id="inappCopyMsg" style="font-size:12px;color:var(--good);margin-top:7px;min-height:14px"></div>
+    </div>
     <!-- 클라우드 로그인 (이메일/비밀번호) -->
     <div id="loginCloud" style="display:none">
       <div class="fld" style="text-align:left;margin-bottom:10px"><input id="li_email" type="email" placeholder="이메일" autocomplete="username" style="width:100%;padding:12px 14px;border:1px solid var(--line);border-radius:10px;background:var(--bg);color:var(--ink);font-size:14px;font-family:inherit"></div>
@@ -2293,10 +2300,33 @@ function cloudLogin(){
   let _p;
   try{ _p=fbAuth.setPersistence(firebase.auth.Auth.Persistence.NONE).then(_signIn); }
   catch(e){ _p=_signIn(); }
-  _p.catch(function(e){
-    const map={'auth/invalid-credential':'이메일 또는 비밀번호가 맞지 않습니다.','auth/invalid-email':'이메일 형식이 올바르지 않습니다.','auth/user-not-found':'등록되지 않은 계정입니다.','auth/wrong-password':'비밀번호가 틀렸습니다.','auth/too-many-requests':'시도가 많습니다. 잠시 후 다시.'};
-    if(err) err.textContent = map[e.code] || ('로그인 실패: '+(e.code||e.message));
-  });
+  // 인앱 브라우저 등에서 응답 없이 멈추면 안내 (10초)
+  let _done=false;
+  const _timer=setTimeout(function(){
+    if(_done) return;
+    if(err) err.innerHTML='로그인이 지연됩니다. <b>카톡 등 앱 안이면 크롬·사파리로 열어주세요.</b>';
+    const w=document.getElementById('inappWarn'); if(w) w.style.display='block';
+  }, 10000);
+  _p.then(function(){ _done=true; clearTimeout(_timer); })
+    .catch(function(e){
+      _done=true; clearTimeout(_timer);
+      const map={'auth/invalid-credential':'이메일 또는 비밀번호가 맞지 않습니다.','auth/invalid-email':'이메일 형식이 올바르지 않습니다.','auth/user-not-found':'등록되지 않은 계정입니다.','auth/wrong-password':'비밀번호가 틀렸습니다.','auth/too-many-requests':'시도가 많습니다. 잠시 후 다시.','auth/network-request-failed':'네트워크 오류입니다. 앱 안(카톡 등)이면 크롬·사파리로 열어주세요.'};
+      if(err) err.textContent = map[e.code] || ('로그인 실패: '+(e.code||e.message));
+      if(e.code==='auth/network-request-failed'){ const w=document.getElementById('inappWarn'); if(w) w.style.display='block'; }
+    });
+}
+/* 인앱 브라우저(카톡·인스타 등) 감지 + 주소 복사 */
+function detectInApp(){
+  const ua=navigator.userAgent||'';
+  return /KAKAOTALK|Instagram|FBAN|FBAV|FB_IAB|Line\/|NAVER\(inapp|DaumApps|; wv\)|Snapchat|BAND|everytimeApp/i.test(ua);
+}
+function copyLoginUrl(){
+  const url=(location.href||'').split('?')[0].split('#')[0];
+  const msg=document.getElementById('inappCopyMsg');
+  const ok=function(){ if(msg) msg.textContent='✅ 복사됐어요! 크롬·사파리 주소창에 붙여넣어 여세요.'; };
+  const fail=function(){ if(msg) msg.textContent='주소: '+url+' (길게 눌러 복사)'; try{ window.prompt('아래 주소를 복사하세요:', url); }catch(e){} };
+  try{ if(navigator.clipboard && navigator.clipboard.writeText){ navigator.clipboard.writeText(url).then(ok).catch(fail); } else { fail(); } }
+  catch(e){ fail(); }
 }
 function canAccess(tab){
   const r=ROLE_INFO[CURRENT_ROLE];
@@ -2658,6 +2688,8 @@ showSub('기업달력');    // 기업지원사업팀 기본 하위탭 = 모집 �
     // 클라우드 모드: 이메일/비밀번호 로그인
     document.getElementById('loginCloud').style.display='block';
     document.getElementById('loginOffline').style.display='none';
+    // 카톡·인스타 등 앱 안(인앱 브라우저)에서 열면 로그인 불가 → 안내 배너
+    try{ if(detectInApp()){ const w=document.getElementById('inappWarn'); if(w) w.style.display='block'; } }catch(e){}
     if(note) note.textContent='※ 계정이 없으면 대표님께 문의하세요.';
     if(ls) ls.style.display='flex';
     // 저장된 아이디(이메일) 자동 채우기 → 있으면 비밀번호 칸으로 포커스
