@@ -428,7 +428,7 @@
       <div class="fld wide"><label>알바 (시급) <span style="font-weight:500;color:var(--muted);font-size:11px">· 이름 + 몇시간 했는지만 · 시급/금액은 재무팀이 입력</span></label><div id="f_albaSlots" class="alba-slots"></div></div>
       <div class="fld"><label>📞 고객 연락처 <span style="color:var(--warn);font-weight:700">*필수</span></label><input id="f_contact" placeholder="담당자·전화"></div>
       <div class="fld"><label>💳 입금자명 <span style="color:var(--warn);font-weight:700">*필수</span></label><input id="f_payer" placeholder="입금자 이름"></div>
-      <div class="fld"><label>🏦 입금 계좌 <span style="color:var(--warn);font-weight:700">*필수</span></label><select id="f_bank"><option value="">선택하세요</option><option>하나(계산서 발행)</option><option>국민</option><option>농협</option><option>현금</option></select></div>
+      <div class="fld"><label>🏦 입금 계좌 <span style="color:var(--warn);font-weight:700">*필수</span></label><select id="f_bank"><option value="">선택하세요</option><option>하나(계산서 발행)</option><option>국민</option><option>농협</option><option>현금</option><option>카드</option></select></div>
       <div class="fld"><label>⛽ 주유 (원)</label><input type="number" id="f_fuel" placeholder="0" oninput="calcLive()"></div>
       <div class="fld"><label>🍚 식대 (원)</label><input type="number" id="f_meal" placeholder="0" oninput="calcLive()"></div>
       <div class="fld"><label>🧴 소모품 (원)</label><input type="number" id="f_supply" placeholder="0" oninput="calcLive()"></div>
@@ -1191,6 +1191,10 @@ const KRWm = n => (n/10000).toLocaleString("ko-KR",{maximumFractionDigits:0}) + 
 const num  = id => { const v=parseFloat(document.getElementById(id).value); return isNaN(v)?0:v; };
 const coName = c => c==="limit"?"리미트":(c==="daman"?"다만":"공통");
 const coPill = c => c==="limit"?"p-limit":(c==="daman"?"p-daman":"");
+function bankTag(bank){ if(!bank) return '';
+  const ico = bank==='현금'?'💵':(bank==='카드'?'💳':'🏦');
+  const label = bank==='하나(계산서 발행)'?'하나 📄':bank;
+  return `<span class="pill" style="background:rgba(37,99,235,.10);color:var(--limit);font-size:10.5px;margin-left:5px;font-weight:600">${ico} ${label}</span>`; }
 
 // ═══ 데이터 계층: 클라우드(Firestore 실시간) / 오프라인(localStorage) 이중 ═══
 let CLOUD_MODE=false, CLOUD_D=null, _saveTimer=null;
@@ -1488,8 +1492,8 @@ function render(){
   const mMiss=missingCount(monthList), allMiss=missingCount(S);
 
   let recv=[];
-  (d.receivables||[]).forEach((r,idx)=>recv.push({kind:'recv',idx,name:r.name,co:r.co||'limit',amt:(+r.amt||0),contact:r.contact||'',payer:r.payer||'',days:(r.date?daysBetween(r.date,d.asOf):null)}));
-  S.forEach((s,idx)=>{ if(s.paid==="미수금") recv.push({kind:'settle',idx,name:s.site,co:s.co,amt:calcRow(s).rev,contact:s.contact||'',payer:s.payer||'',days:daysBetween(s.date,d.asOf)}); });
+  (d.receivables||[]).forEach((r,idx)=>recv.push({kind:'recv',idx,name:r.name,co:r.co||'limit',amt:(+r.amt||0),contact:r.contact||'',payer:r.payer||'',bank:r.bank||'',days:(r.date?daysBetween(r.date,d.asOf):null)}));
+  S.forEach((s,idx)=>{ if(s.paid==="미수금") recv.push({kind:'settle',idx,name:s.site,co:s.co,amt:calcRow(s).rev,contact:s.contact||'',payer:s.payer||'',bank:s.bank||'',days:daysBetween(s.date,d.asOf)}); });
   recv.sort((a,b)=>((b.days==null?-1:b.days))-((a.days==null?-1:a.days)));
   const recvTotal=recv.reduce((a,r)=>a+r.amt,0);
 
@@ -1619,8 +1623,8 @@ function render(){
       ? `<span style="color:var(--limit);font-weight:600">${r.contact}</span> <button class="del" style="color:var(--muted)" onclick="editContact('${r.kind}',${r.idx})" title="연락처 수정">✏️</button>`
       : `<button class="del" style="color:var(--limit)" onclick="editContact('${r.kind}',${r.idx})">＋ 연락처</button>`;
     const pcell = r.payer
-      ? `<b>${r.payer}</b> <button class="del" style="color:var(--muted)" onclick="editPayer('${r.kind}',${r.idx})" title="입금자명 수정">✏️</button>`
-      : `<button class="del" style="color:var(--limit)" onclick="editPayer('${r.kind}',${r.idx})">＋ 입금자</button>`;
+      ? `<b>${r.payer}</b>${bankTag(r.bank)} <button class="del" style="color:var(--muted)" onclick="editPayer('${r.kind}',${r.idx})" title="입금자명 수정">✏️</button>`
+      : `${r.bank?bankTag(r.bank)+' ':''}<button class="del" style="color:var(--limit)" onclick="editPayer('${r.kind}',${r.idx})">＋ 입금자</button>`;
     const act = `<button class="del" style="color:var(--good);font-weight:700;border:1px solid var(--good);border-radius:7px;padding:4px 9px" onclick="markPaid('${r.kind}',${r.idx})" title="입금완료 처리">✓ 입금완료</button>`;
     return `<tr><td>${r.name}</td><td><span class="pill ${coPill(r.co)}">${coName(r.co)}</span></td>
       <td style="font-size:12.5px">${ccell}</td>
@@ -1662,7 +1666,7 @@ function render(){
         <td>${(s.date||'').slice(5)}</td><td>${s.site||'-'}</td>
         <td><span class="pill ${coPill(s.co)}">${coName(s.co)}</span></td>
         <td class="num">${KRW(calcRow(s).rev)}</td>
-        <td>${s.payer||'<span style="color:var(--muted)">-</span>'}</td></tr>`).join('')
+        <td>${s.payer?escHtml(s.payer):'<span style="color:var(--muted)">-</span>'}${bankTag(s.bank)}</td></tr>`).join('')
         : `<tr><td colspan="5" style="color:var(--muted)">입금완료 현장이 없습니다.</td></tr>`;
       const pcl=document.getElementById('paidCountLabel'); if(pcl) pcl.textContent=`· ${paidList.length}건`;
     }
