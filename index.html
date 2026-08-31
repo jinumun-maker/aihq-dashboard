@@ -1124,9 +1124,27 @@ const DEFAULT_DATA = {
   ]
 };
 
-/* ── 구글 캘린더 최신화 (2026-08-31 동기화): calendar·schedule 교체 ── */
+/* ── 구글 캘린더 최신화 (2026-08-31b: 과거 8/11~ 누락분 포함): calendar·schedule 교체 ── */
 if(window.AIHQ_DATA){
   window.AIHQ_DATA.schedule = [
+    {date:"2026-08-11",co:"daman",site:"역세권 또오리 유리·방충망 등",work:"",crew:"",contact:"",quote:0,status:"예약"},
+    {date:"2026-08-11",co:"daman",site:"화재청소 벽면샌딩 (1/2일)",work:"11:00",crew:"",contact:"",quote:1700000,status:"예약"},
+    {date:"2026-08-11",co:"daman",site:"하대동 유리",work:"19:00",crew:"",contact:"01027499993",quote:0,status:"예약"},
+    {date:"2026-08-12",co:"daman",site:"화재청소 벽면샌딩 (2/2일)",work:"~12:00",crew:"",contact:"",quote:0,status:"예약"},
+    {date:"2026-08-13",co:"daman",site:"준수 포레나 청소·에어컨 (3명)",work:"15:30",crew:"",contact:"",quote:800000,status:"예약"},
+    {date:"2026-08-14",co:"daman",site:"지우후배 금산",work:"",crew:"",contact:"01057544527",quote:500000,status:"예약"},
+    {date:"2026-08-17",co:"daman",site:"달리 상대동 떡집",work:"",crew:"",contact:"",quote:0,status:"예약"},
+    {date:"2026-08-18",co:"daman",site:"해온건설 학교 청소",work:"15:00",crew:"",contact:"",quote:0,status:"예약"},
+    {date:"2026-08-19",co:"daman",site:"고미 초전힐스테이트 109동 802호 34평",work:"16:00",crew:"",contact:"",quote:0,status:"예약"},
+    {date:"2026-08-20",co:"daman",site:"그로벤 하우스 줄눈·타일 수정",work:"",crew:"",contact:"",quote:0,status:"예약"},
+    {date:"2026-08-20",co:"daman",site:"남해 에어컨",work:"",crew:"",contact:"",quote:0,status:"예약"},
+    {date:"2026-08-20",co:"daman",site:"고미 혁신 후드 (야간)",work:"08:30",crew:"",contact:"",quote:0,status:"예약"},
+    {date:"2026-08-22",co:"daman",site:"종합경기장 방역",work:"16:00",crew:"",contact:"",quote:0,status:"예약"},
+    {date:"2026-08-25",co:"daman",site:"투룸",work:"01:00",crew:"",contact:"01071958846",quote:250000,status:"예약"},
+    {date:"2026-08-26",co:"daman",site:"고미 초전엠코 39평 301동 501호",work:"",crew:"",contact:"",quote:680000,status:"예약"},
+    {date:"2026-08-27",co:"daman",site:"병길이집 쇼파 세척",work:"",crew:"",contact:"01046418404",quote:90000,status:"예약"},
+    {date:"2026-08-27",co:"daman",site:"진양호로397번길 4 바닥세척",work:"13:30",crew:"",contact:"01062321167",quote:360000,status:"예약"},
+    {date:"2026-08-28",co:"daman",site:"산청군 단성면 묵곡리 572-3 외벽세척",work:"14:30",crew:"",contact:"01035076763",quote:200000,status:"예약"},
     {date:"2026-08-31",co:"daman",site:"사천공군 원룸",work:"11:30",crew:"",contact:"01055236659",quote:120000,status:"예약"},
     {date:"2026-08-31",co:"daman",site:"시내 유리",work:"09:00",crew:"",contact:"01065943770",quote:90000,status:"예약"},
     {date:"2026-09-03",co:"daman",site:"초전엠코 39평 외창 유리제로(추가)",work:"11:30·5명 필요",crew:"",contact:"01088322654",quote:850000,status:"예약"},
@@ -1142,6 +1160,10 @@ if(window.AIHQ_DATA){
     {date:"2026-12-04",co:"daman",site:"고미 금호석류아파트 115동 2001호",work:"12:30",crew:"",contact:"",quote:0,status:"예약"}
   ];
   window.AIHQ_DATA.calendar = [
+    {date:"2026-08-13",time:"07:00",title:"지하상가 방역"},
+    {date:"2026-08-20",time:"07:00",title:"지하상가 방역"},
+    {date:"2026-08-27",time:"07:00",title:"지하상가 방역"},
+    {date:"2026-08-29",time:"09:00",title:"본부 방역"},
     {date:"2026-09-03",time:"07:00",title:"지하상가 방역"},
     {date:"2026-09-10",time:"07:00",title:"지하상가 방역"},
     {date:"2026-09-17",time:"07:00",title:"지하상가 방역"},
@@ -1161,7 +1183,7 @@ if(window.AIHQ_DATA){
     {date:"2026-12-24",time:"07:00",title:"지하상가 방역"},
     {date:"2026-12-31",time:"07:00",title:"지하상가 방역"}
   ];
-  window.AIHQ_DATA.calSync = "2026-08-31";
+  window.AIHQ_DATA.calSync = "2026-08-31b";
 }
 const KRW  = n => "₩" + Math.round(n||0).toLocaleString("ko-KR");
 const KRWm = n => (n/10000).toLocaleString("ko-KR",{maximumFractionDigits:0}) + "만";
