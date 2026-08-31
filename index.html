@@ -415,6 +415,12 @@
   </div><!-- /배치 -->
 
   <div class="subpg" data-subpg="결산">
+  <!-- ===== 미결산 현장 (누락 방지) ===== -->
+  <div class="card" style="margin-top:22px;border:1px solid var(--warn);background:rgba(220,38,38,.03)">
+    <h2>⚠️ 미결산 현장 <span id="unsettledCount" style="font-weight:500;color:var(--muted);font-size:12px"></span>
+      <span style="display:block;font-weight:500;color:var(--muted);font-size:11.5px;margin-top:3px">예약된(캘린더) 현장인데 아직 결산 안 한 것 — 오늘까지. <b>"결산하기"</b> 누르면 아래 폼에 자동으로 채워져요.</span></h2>
+    <div id="unsettledArea"></div>
+  </div>
   <!-- ===== 일일결산 입력 (소이 팀장) ===== -->
   <div class="card entry">
     <h2>🧾 일일결산 입력 <span style="font-weight:500;color:var(--muted);font-size:12px">소이 팀장 · 현장 끝나고 한 줄 · 일당은 안 적어도 됨</span></h2>
@@ -1460,6 +1466,36 @@ function addSettlement(){
 }
 function delSettlement(i){ const d=getData(); d.settlements.splice(i,1); setData(d); render(); }
 
+/* ── 미결산 현장(예약됐는데 결산 안 한 것, 오늘까지) ── */
+function unsettledList(d){
+  d=d||getData();
+  const settleKeys=new Set((d.settlements||[]).map(s=>s.date+'|'+s.site));
+  const today=realToday();
+  return (d.schedule||[]).map((s,idx)=>({s,idx}))
+    .filter(x=>x.s.date<=today && !settleKeys.has(x.s.date+'|'+x.s.site))
+    .sort((a,b)=>a.s.date.localeCompare(b.s.date));
+}
+function renderUnsettled(){
+  const el=document.getElementById('unsettledArea'); if(!el) return;
+  const d=getData(); const list=unsettledList(d);
+  const cnt=document.getElementById('unsettledCount'); if(cnt) cnt.textContent=list.length?('· '+list.length+'건'):'· 없음 ✅';
+  if(!list.length){ el.innerHTML=`<div style="color:var(--good);font-size:13px;padding:10px 2px">✅ 누락된 결산이 없어요! 예약된 현장 모두 결산 완료됐어요.</div>`; return; }
+  const today=realToday();
+  el.innerHTML=`<div style="overflow-x:auto"><table>
+    <thead><tr><th>날짜</th><th>현장</th><th class="num">견적</th><th>연락처</th><th></th></tr></thead>
+    <tbody>${list.map(({s,idx})=>{
+      const days=daysBetween(s.date,today);
+      const overTag = days>=1?` <span class="pill p-late">${days}일 지남</span>`:' <span class="pill" style="background:rgba(245,158,11,.16);color:#b45309">오늘</span>';
+      return `<tr>
+        <td style="white-space:nowrap">${s.date.slice(5)}${overTag}</td>
+        <td style="font-weight:600">${escHtml(s.site)}</td>
+        <td class="num">${s.quote?KRW(s.quote):'<span style="color:var(--muted)">-</span>'}</td>
+        <td style="font-size:12px">${s.contact?escHtml(s.contact):'-'}</td>
+        <td><button class="primary" style="padding:6px 13px;border-radius:8px;font-size:12.5px;white-space:nowrap" onclick="fillFromSchedule(${idx})">🧾 결산하기</button></td>
+      </tr>`;
+    }).join('')}</tbody></table></div>`;
+}
+
 function monthlyFromSettlements(d){
   const map={};
   (d.settlements||[]).forEach(s=>{
@@ -1548,12 +1584,13 @@ function render(){
   const _tdy=realToday();
   const todaySched=(d.schedule||[]).filter(s=>s.date===_tdy).length;
   const todaySettle=(d.settlements||[]).filter(s=>s.date===_tdy).length;
-  const opsUnlogged=Math.max(0, todaySched - todaySettle);
-  setBadge('settleBadge', opsUnlogged);
+  const opsUnlogged=Math.max(0, todaySched - todaySettle);   // 오늘분(완료율 계산용)
+  const unsettledN=unsettledList(d).length;                   // 전체 미결산(오늘까지, 과거 누락 포함)
+  setBadge('settleBadge', unsettledN);
   setBadge('ordBadge', ordSentN);               // 운영팀 발주 하위탭 = 입고 확인 대기
-  setBadge('opsBadge', opsUnlogged+ordSentN);   // 운영팀 탭 = 미결산 + 발주 입고 대기
-  // ✅ 대시보드 업무요약 하위탭 = 재무 + 운영 오늘 할 일 총합
-  setBadge('dashTaskBadge', (allUnpaid+fxDueToday.length+ordReqN)+(opsUnlogged+ordSentN));
+  setBadge('opsBadge', unsettledN+ordSentN);    // 운영팀 탭 = 미결산 + 발주 입고 대기
+  // ✅ 대시보드 업무요약 하위탭 = 재무 + 운영 할 일 총합
+  setBadge('dashTaskBadge', (allUnpaid+fxDueToday.length+ordReqN)+(unsettledN+ordSentN));
 
   // 💸 당일 이체 확인
   const sendTargets=[];
@@ -1595,6 +1632,7 @@ function render(){
       <button class="del" onclick="delRate(${i})">✕</button></div>`).join("")
     || `<div style="color:var(--muted);font-size:13px">등록된 단가가 없습니다. ＋ 인원 추가로 시작하세요.</div>`;
   renderAlbaSlots();
+  renderUnsettled();
   renderSales();
   renderDev();
 
@@ -1869,7 +1907,7 @@ function render(){
       {v:todayN+'곳',l:'오늘 배치',a:false},
       {v:wkN+'곳',l:'이번 주 예정 현장',a:false},
       {v:unassignedN+'건',l:'인원 미배정',a:unassignedN>0},
-      {v:opsUnlogged+'건',l:'오늘 결산 미등록',a:opsUnlogged>0},
+      {v:unsettledN+'건',l:'🧾 결산 누락(과거+오늘)',a:unsettledN>0},
       {v:ordSentN+'건',l:'📦 발주 입고 대기',a:ordSentN>0}
     ].map(t=>`<div class="sumtile ${t.a?'alert':''}"><div class="v">${t.v}</div><div class="l">${t.l}</div></div>`).join('');
     ['opsSummary','opsSummary2'].forEach(id=>{ const el=document.getElementById(id); if(el) el.innerHTML=opsHTML; });
