@@ -222,8 +222,11 @@
     <!-- 클라우드 로그인 (이메일/비밀번호) -->
     <div id="loginCloud" style="display:none">
       <div class="fld" style="text-align:left;margin-bottom:10px"><input id="li_email" type="email" placeholder="이메일" autocomplete="username" style="width:100%;padding:12px 14px;border:1px solid var(--line);border-radius:10px;background:var(--bg);color:var(--ink);font-size:14px;font-family:inherit"></div>
-      <div class="fld" style="text-align:left;margin-bottom:12px"><input id="li_pw" type="password" placeholder="비밀번호 (매번 입력)" autocomplete="new-password" onkeydown="if(event.key==='Enter')cloudLogin()" style="width:100%;padding:12px 14px;border:1px solid var(--line);border-radius:10px;background:var(--bg);color:var(--ink);font-size:14px;font-family:inherit"></div>
-      <label style="display:flex;align-items:center;gap:7px;font-size:12.5px;color:var(--muted);margin-bottom:12px;cursor:pointer;text-align:left"><input type="checkbox" id="li_remember" checked style="width:16px;height:16px;cursor:pointer"> 아이디(이메일) 저장</label>
+      <div class="fld" style="text-align:left;margin-bottom:12px"><input id="li_pw" type="password" placeholder="비밀번호" autocomplete="new-password" onkeydown="if(event.key==='Enter')cloudLogin()" style="width:100%;padding:12px 14px;border:1px solid var(--line);border-radius:10px;background:var(--bg);color:var(--ink);font-size:14px;font-family:inherit"></div>
+      <div style="display:flex;gap:16px;flex-wrap:wrap;margin-bottom:12px;text-align:left">
+        <label style="display:flex;align-items:center;gap:6px;font-size:12.5px;color:var(--muted);cursor:pointer"><input type="checkbox" id="li_remember" checked style="width:15px;height:15px;cursor:pointer"> 아이디 저장</label>
+        <label style="display:flex;align-items:center;gap:6px;font-size:12.5px;color:var(--muted);cursor:pointer"><input type="checkbox" id="li_keep" checked style="width:15px;height:15px;cursor:pointer"> 로그인 유지</label>
+      </div>
       <button class="primary" onclick="cloudLogin()" style="width:100%;padding:13px;font-size:15px;border-radius:10px">로그인</button>
       <div id="li_err" style="color:var(--limit);font-size:12.5px;margin-top:10px;min-height:16px"></div>
     </div>
@@ -2295,10 +2298,14 @@ function cloudLogin(){
     else{ localStorage.removeItem('aihq_last_email'); localStorage.setItem('aihq_remember','0'); }
   }catch(e){}
   if(err) err.textContent='로그인 중…';
-  // 세션 유지 안 함(NONE): 다음에 열 때 비밀번호 다시 입력. 비밀번호는 저장하지 않음.
+  // 로그인 유지 체크=LOCAL(계속 로그인, 폰 매일 사용 편함) / 해제=NONE(다음에 다시 로그인)
+  const _keepEl=document.getElementById('li_keep');
+  const _keep=_keepEl?_keepEl.checked:true;
+  try{ localStorage.setItem('aihq_keep', _keep?'1':'0'); }catch(e){}
+  const _persist=_keep?firebase.auth.Auth.Persistence.LOCAL:firebase.auth.Auth.Persistence.NONE;
   const _signIn=function(){ return fbAuth.signInWithEmailAndPassword(email,pw); };
   let _p;
-  try{ _p=fbAuth.setPersistence(firebase.auth.Auth.Persistence.NONE).then(_signIn); }
+  try{ _p=fbAuth.setPersistence(_persist).then(_signIn); }
   catch(e){ _p=_signIn(); }
   // 인앱 브라우저 등에서 응답 없이 멈추면 안내 (10초)
   let _done=false;
@@ -2683,8 +2690,10 @@ showSub('기업달력');    // 기업지원사업팀 기본 하위탭 = 모집 �
   const ls=document.getElementById('loginScreen');
   const note=document.getElementById('loginNote');
   if(FB_OK && fbAuth){
-    // 세션 유지 안 함(NONE): 페이지 열 때마다 비밀번호 입력 필요 (아이디만 저장)
-    try{ fbAuth.setPersistence(firebase.auth.Auth.Persistence.NONE); }catch(e){}
+    // 로그인 유지 설정: 저장값 '0'이면 NONE(매번 로그인), 아니면 LOCAL(계속 로그인, 기본)
+    let _keep0=true; try{ _keep0 = localStorage.getItem('aihq_keep')!=='0'; }catch(e){}
+    try{ fbAuth.setPersistence(_keep0?firebase.auth.Auth.Persistence.LOCAL:firebase.auth.Auth.Persistence.NONE); }catch(e){}
+    try{ const kEl=document.getElementById('li_keep'); if(kEl) kEl.checked=_keep0; }catch(e){}
     // 클라우드 모드: 이메일/비밀번호 로그인
     document.getElementById('loginCloud').style.display='block';
     document.getElementById('loginOffline').style.display='none';
