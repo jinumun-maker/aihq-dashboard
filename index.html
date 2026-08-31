@@ -2303,18 +2303,17 @@ function cloudLogin(){
   const _keep=_keepEl?_keepEl.checked:true;
   try{ localStorage.setItem('aihq_keep', _keep?'1':'0'); }catch(e){}
   const _persist=_keep?firebase.auth.Auth.Persistence.LOCAL:firebase.auth.Auth.Persistence.NONE;
-  const _signIn=function(){ return fbAuth.signInWithEmailAndPassword(email,pw); };
-  let _p;
-  try{ _p=fbAuth.setPersistence(_persist).then(_signIn); }
-  catch(e){ _p=_signIn(); }
-  // 인앱 브라우저 등에서 응답 없이 멈추면 안내 (10초)
+  // setPersistence가 일부 폰(저장소 제한·인앱)에서 멈출 수 있어 최대 2초만 기다리고, 그래도 로그인은 진행
+  let _spP; try{ _spP=Promise.resolve(fbAuth.setPersistence(_persist)); }catch(e){ _spP=Promise.resolve(); }
+  const _spSafe=Promise.race([ _spP.catch(function(){}), new Promise(function(r){ setTimeout(r,2000); }) ]);
   let _done=false;
   const _timer=setTimeout(function(){
     if(_done) return;
-    if(err) err.innerHTML='로그인이 지연됩니다. <b>카톡 등 앱 안이면 크롬·사파리로 열어주세요.</b>';
+    if(err) err.innerHTML='로그인이 안 끝나요. <b>카톡·인스타 앱 안에서 열면 로그인이 막혀요 → 크롬·사파리로 열어주세요.</b>';
     const w=document.getElementById('inappWarn'); if(w) w.style.display='block';
-  }, 10000);
-  _p.then(function(){ _done=true; clearTimeout(_timer); })
+  }, 8000);
+  _spSafe.then(function(){ return fbAuth.signInWithEmailAndPassword(email,pw); })
+    .then(function(){ _done=true; clearTimeout(_timer); })
     .catch(function(e){
       _done=true; clearTimeout(_timer);
       const map={'auth/invalid-credential':'이메일 또는 비밀번호가 맞지 않습니다.','auth/invalid-email':'이메일 형식이 올바르지 않습니다.','auth/user-not-found':'등록되지 않은 계정입니다.','auth/wrong-password':'비밀번호가 틀렸습니다.','auth/too-many-requests':'시도가 많습니다. 잠시 후 다시.','auth/network-request-failed':'네트워크 오류입니다. 앱 안(카톡 등)이면 크롬·사파리로 열어주세요.'};
