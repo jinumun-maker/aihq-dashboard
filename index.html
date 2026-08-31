@@ -2924,7 +2924,7 @@ showSub('기업달력');    // 기업지원사업팀 기본 하위탭 = 모집 �
   if(FB_OK && fbAuth){
     // 로그인 유지 설정: 저장값 '0'이면 NONE(매번 로그인), 아니면 LOCAL(계속 로그인, 기본)
     let _keep0=true; try{ _keep0 = localStorage.getItem('aihq_keep')!=='0'; }catch(e){}
-    try{ fbAuth.setPersistence(_keep0?firebase.auth.Auth.Persistence.LOCAL:firebase.auth.Auth.Persistence.NONE); }catch(e){}
+    try{ Promise.resolve(fbAuth.setPersistence(_keep0?firebase.auth.Auth.Persistence.LOCAL:firebase.auth.Auth.Persistence.NONE)).catch(function(){}); }catch(e){}
     try{ const kEl=document.getElementById('li_keep'); if(kEl) kEl.checked=_keep0; }catch(e){}
     // 클라우드 모드: 이메일/비밀번호 로그인
     document.getElementById('loginCloud').style.display='block';
