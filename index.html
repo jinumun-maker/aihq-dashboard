@@ -311,7 +311,7 @@
   </div>
 
   <div class="tabs">
-    <button class="tab" data-tab="대시보드" onclick="showPage('대시보드')">📊 경영관리팀</button>
+    <button class="tab" data-tab="대시보드" onclick="showPage('대시보드')">📊 경영관리팀 <span id="dashMsgBadge" class="tabbadge"></span></button>
     <button class="tab" data-tab="분석" onclick="showPage('분석')">🔎 분석팀</button>
     <button class="tab" data-tab="재무팀" onclick="showPage('재무팀')">💰 재무팀 <span id="finBadge" class="tabbadge"></span></button>
     <button class="tab" data-tab="운영팀" onclick="showPage('운영팀')">✍️ 운영팀(일일결산) <span id="opsBadge" class="tabbadge"></span></button>
@@ -1953,7 +1953,9 @@ function render(){
   {
     const msgs=d.messages||[];
     const toPend=dp=>msgs.filter(m=>m.to===dp&&!m.done).length;  // 내게 온 미처리
-    setBadge('msgBadge', toPend('대표님'));
+    const allPend=msgs.filter(m=>!m.done).length;                // 전체 미처리(팀↔팀 포함)
+    setBadge('msgBadge', allPend);        // 경영관리팀 요청함(개요요청) = 전체 종합
+    setBadge('dashMsgBadge', allPend);    // 경영관리팀 탭 = 전체 미처리 알림
     setBadge('finMsgBadge', toPend('재무팀'));
     setBadge('opsMsgBadge', toPend('운영팀'));
     setBadge('mktMsgBadge', toPend('마케팅팀'));
