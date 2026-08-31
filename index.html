@@ -428,6 +428,7 @@
       <div class="fld wide"><label>알바 (시급) <span style="font-weight:500;color:var(--muted);font-size:11px">· 이름 + 몇시간 했는지만 · 시급/금액은 재무팀이 입력</span></label><div id="f_albaSlots" class="alba-slots"></div></div>
       <div class="fld"><label>📞 고객 연락처 <span style="color:var(--warn);font-weight:700">*필수</span></label><input id="f_contact" placeholder="담당자·전화"></div>
       <div class="fld"><label>💳 입금자명 <span style="color:var(--warn);font-weight:700">*필수</span></label><input id="f_payer" placeholder="입금자 이름"></div>
+      <div class="fld"><label>🏦 입금 계좌 <span style="color:var(--warn);font-weight:700">*필수</span></label><select id="f_bank"><option value="">선택하세요</option><option>하나(계산서 발행)</option><option>국민</option><option>농협</option><option>현금</option></select></div>
       <div class="fld"><label>⛽ 주유 (원)</label><input type="number" id="f_fuel" placeholder="0" oninput="calcLive()"></div>
       <div class="fld"><label>🍚 식대 (원)</label><input type="number" id="f_meal" placeholder="0" oninput="calcLive()"></div>
       <div class="fld"><label>🧴 소모품 (원)</label><input type="number" id="f_supply" placeholder="0" oninput="calcLive()"></div>
@@ -830,7 +831,7 @@
         </select>
       </div>
       <div style="overflow-x:auto"><table>
-        <thead><tr><th>날짜</th><th>현장</th><th>인원</th><th class="num">매출</th><th class="num">인건비</th><th class="num">경비</th><th class="num">순이익</th><th></th></tr></thead>
+        <thead><tr><th>날짜</th><th>현장</th><th>입금</th><th>인원</th><th class="num">매출</th><th class="num">인건비</th><th class="num">경비</th><th class="num">순이익</th><th></th></tr></thead>
         <tbody id="settleRows"></tbody>
       </table></div>
     </div>
@@ -1414,6 +1415,7 @@ function addSettlement(){
   if(!site){ alert("현장명을 입력하세요."); return; }
   if(!document.getElementById('f_contact').value.trim()){ alert("고객 연락처를 입력해야 저장됩니다."); document.getElementById('f_contact').focus(); return; }
   if(!document.getElementById('f_payer').value.trim()){ alert("입금자명을 입력해야 저장됩니다."); document.getElementById('f_payer').focus(); return; }
+  if(!document.getElementById('f_bank').value){ alert("입금 계좌를 선택해야 저장됩니다. (하나·국민·농협·현금)"); document.getElementById('f_bank').focus(); return; }
   const d=getData();
   const editing = EDIT_SETTLE!=null && d.settlements && d.settlements[EDIT_SETTLE];
   const oldCrew = editing ? crewList(d.settlements[EDIT_SETTLE]) : [];
@@ -1431,6 +1433,7 @@ function addSettlement(){
     tax: document.getElementById('f_tax').value,
     contact: document.getElementById('f_contact').value.trim(),
     payer: document.getElementById('f_payer').value.trim(),
+    bank: document.getElementById('f_bank').value,
     note: document.getElementById('f_note').value.trim()
   };
   if(rec.paid==="미수금" && ((+rec.quote||0)+(+rec.extra||0))<=0){
@@ -1443,7 +1446,7 @@ function addSettlement(){
   else { d.settlements.push(rec); }
   d.demo=false;
   setData(d); render();
-  ['f_site','f_quote','f_extra','f_crew','f_contact','f_payer','f_fuel','f_meal','f_supply','f_etc','f_note']
+  ['f_site','f_quote','f_extra','f_crew','f_contact','f_payer','f_bank','f_fuel','f_meal','f_supply','f_etc','f_note']
     .forEach(id=>document.getElementById(id).value="");
   window.ALBA_SEL=[]; renderAlbaSlots();
   updateSettleBtn();
@@ -1742,13 +1745,14 @@ function render(){
 
   document.getElementById("settleRows").innerHTML=qrows.length? qrows.map(({s,i,r})=>
     `<tr><td>${s.date.slice(5)}</td><td>${s.site}</td>
+      <td style="font-size:11px;white-space:nowrap">${s.bank?(s.bank==='현금'?'💵 현금':(s.bank==='하나(계산서 발행)'?'🏦 하나 📄':'🏦 '+escHtml(s.bank))):'<span style="color:var(--warn)">-</span>'}</td>
       <td style="font-size:11.5px;color:var(--muted)">${crewNames(s)||'-'}</td>
       <td class="num">${KRW(r.rev)}</td>
       <td class="num">${KRW(r.lab)}${laborMissing(s)?' <span class="pill p-late">미</span>':''}</td>
       <td class="num">${KRW(r.exp)}</td>
       <td class="num" style="font-weight:700;color:${r.profit>=0?'var(--good)':'var(--warn)'}">${KRW(r.profit)}</td>
       <td><button class="del" onclick="delSettlement(${i})" title="삭제">✕</button></td></tr>`
-  ).join("") : `<tr><td colspan="8" style="color:var(--muted)">해당 결과가 없습니다.</td></tr>`;
+  ).join("") : `<tr><td colspan="9" style="color:var(--muted)">해당 결과가 없습니다.</td></tr>`;
 
   // 인원별 (필터 반영)
   const person={};
@@ -2314,6 +2318,7 @@ function editSettledJob(i){
   document.getElementById('f_tax').value=s.tax||'미발행';
   document.getElementById('f_contact').value=s.contact||'';
   document.getElementById('f_payer').value=s.payer||'';
+  document.getElementById('f_bank').value=s.bank||'';
   document.getElementById('f_note').value=s.note||'';
   updateSettleBtn();
   calcLive();
@@ -2322,7 +2327,7 @@ function editSettledJob(i){
 }
 function cancelSettleEdit(){
   EDIT_SETTLE=null;
-  ['f_site','f_quote','f_extra','f_crew','f_contact','f_payer','f_fuel','f_meal','f_supply','f_etc','f_note']
+  ['f_site','f_quote','f_extra','f_crew','f_contact','f_payer','f_bank','f_fuel','f_meal','f_supply','f_etc','f_note']
     .forEach(id=>document.getElementById(id).value="");
   window.ALBA_SEL=[]; renderAlbaSlots();
   updateSettleBtn();
