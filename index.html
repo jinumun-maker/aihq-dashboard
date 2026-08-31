@@ -1124,12 +1124,11 @@ const DEFAULT_DATA = {
   ]
 };
 
-/* ── 구글 캘린더 최신화 (2026-08-26 동기화): calendar·schedule 교체 ── */
+/* ── 구글 캘린더 최신화 (2026-08-31 동기화): calendar·schedule 교체 ── */
 if(window.AIHQ_DATA){
   window.AIHQ_DATA.schedule = [
-    {date:"2026-08-26",co:"daman",site:"고미 초전엠코 39평 301동 501호",work:"",crew:"",contact:"",quote:680000,status:"예약"},
-    {date:"2026-08-27",co:"daman",site:"진양호로397번길 4 바닥세척",work:"13:30",crew:"",contact:"01062321167",quote:360000,status:"예약"},
-    {date:"2026-08-28",co:"daman",site:"산청군 단성면 묵곡리 572-3 외벽세척",work:"14:30",crew:"",contact:"01035076763",quote:300000,status:"예약"},
+    {date:"2026-08-31",co:"daman",site:"사천공군 원룸",work:"11:30",crew:"",contact:"01055236659",quote:120000,status:"예약"},
+    {date:"2026-08-31",co:"daman",site:"시내 유리",work:"09:00",crew:"",contact:"01065943770",quote:90000,status:"예약"},
     {date:"2026-09-03",co:"daman",site:"초전엠코 39평 외창 유리제로(추가)",work:"11:30·5명 필요",crew:"",contact:"01088322654",quote:850000,status:"예약"},
     {date:"2026-09-16",co:"daman",site:"고미 금산이편한세상 103동 1503호 47평",work:"",crew:"",contact:"",quote:850000,status:"예약"},
     {date:"2026-09-19",co:"daman",site:"고미 초전 힐스테이트 34평 107동 1301호",work:"16:00",crew:"",contact:"",quote:540000,status:"예약"},
@@ -1139,11 +1138,10 @@ if(window.AIHQ_DATA){
     {date:"2026-10-02",co:"daman",site:"고미 상대한보 106동 912호",work:"",crew:"",contact:"",quote:0,status:"예약"},
     {date:"2026-10-14",co:"daman",site:"고미 남해 주은파크빌 가동 101호",work:"",crew:"",contact:"",quote:0,status:"예약"},
     {date:"2026-11-10",co:"daman",site:"고미 남해 주은파크빌 가동 101호",work:"07:00",crew:"",contact:"",quote:0,status:"예약"},
+    {date:"2026-11-23",co:"daman",site:"고미 중흥 4단지 402동 1403호",work:"11:30",crew:"",contact:"",quote:0,status:"예약"},
     {date:"2026-12-04",co:"daman",site:"고미 금호석류아파트 115동 2001호",work:"12:30",crew:"",contact:"",quote:0,status:"예약"}
   ];
   window.AIHQ_DATA.calendar = [
-    {date:"2026-08-27",time:"07:00",title:"지하상가 방역"},
-    {date:"2026-08-29",time:"09:00",title:"본부 방역"},
     {date:"2026-09-03",time:"07:00",title:"지하상가 방역"},
     {date:"2026-09-10",time:"07:00",title:"지하상가 방역"},
     {date:"2026-09-17",time:"07:00",title:"지하상가 방역"},
@@ -1160,9 +1158,10 @@ if(window.AIHQ_DATA){
     {date:"2026-12-03",time:"07:00",title:"지하상가 방역"},
     {date:"2026-12-10",time:"07:00",title:"지하상가 방역"},
     {date:"2026-12-17",time:"07:00",title:"지하상가 방역"},
-    {date:"2026-12-24",time:"07:00",title:"지하상가 방역"}
+    {date:"2026-12-24",time:"07:00",title:"지하상가 방역"},
+    {date:"2026-12-31",time:"07:00",title:"지하상가 방역"}
   ];
-  window.AIHQ_DATA.calSync = "2026-08-26";
+  window.AIHQ_DATA.calSync = "2026-08-31";
 }
 const KRW  = n => "₩" + Math.round(n||0).toLocaleString("ko-KR");
 const KRWm = n => (n/10000).toLocaleString("ko-KR",{maximumFractionDigits:0}) + "만";
