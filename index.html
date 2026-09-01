@@ -45,6 +45,7 @@
   .tab.active{background:var(--limit);color:#fff;border-color:var(--limit)}
   .tabbadge{display:none;font-size:11px;background:var(--warn);color:#fff;border-radius:11px;padding:1px 8px;font-weight:800;vertical-align:middle}
   .tabbadge.on{display:inline-block;animation:badgepulse 1.6s ease-in-out infinite}
+  .tabbadge.count{background:var(--limit);animation:none}
   @keyframes badgepulse{0%,100%{opacity:1}50%{opacity:.55}}
   .pg{display:none}
   .subtabs{display:flex;gap:6px;margin:22px 0 8px;flex-wrap:wrap}
@@ -507,7 +508,7 @@
   </div>
   <div class="subtabs">
     <button class="subtab" data-subtab="재무달력" onclick="showSub('재무달력')">📅 일정 달력</button>
-    <button class="subtab" data-subtab="미수금" onclick="showSub('미수금')">💰 미수금</button>
+    <button class="subtab" data-subtab="미수금" onclick="showSub('미수금')">💰 미수금 <span id="recvBadge" class="tabbadge"></span></button>
     <button class="subtab" data-subtab="인건비" onclick="showSub('인건비')">🧮 인건비·이체 <span id="payBadge" class="tabbadge"></span></button>
     <button class="subtab" data-subtab="세금계산서" onclick="showSub('세금계산서')">🧾 세금계산서</button>
     <button class="subtab" data-subtab="지출" onclick="showSub('지출')">💸 지출</button>
@@ -1579,6 +1580,8 @@ function render(){
   setBadge('payBadge', allUnpaid);
   setBadge('fxBadge', fxDueToday.length);
   setBadge('finOrdBadge', ordReqN);
+  // 💰 미수금 하위탭 = 미수금 건수(개수 표시 · 파란 배지, 알람 아님)
+  (function(){ const b=document.getElementById('recvBadge'); const n=recv.length; if(b){ b.textContent=n>0?n:''; b.className='tabbadge count'+(n>0?' on':''); } })();
 
   // ❗ 운영팀 배지 (오늘 예약된 배치가 있는데 아직 일일결산 안 한 건)
   const _tdy=realToday();
