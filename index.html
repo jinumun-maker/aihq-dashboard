@@ -611,6 +611,13 @@
       <input id="taxDoneSearch" oninput="TAX_DONE_Q=this.value; renderTaxDoneList()" placeholder="🔎 현장명으로 찾기 (예: 초전엠코)" style="width:100%;box-sizing:border-box;padding:8px 11px;border:1px solid var(--line);border-radius:8px;background:var(--card);color:var(--ink);font-size:13px;margin-bottom:8px">
       <div id="taxDoneArea" style="max-height:320px;overflow-y:auto"></div>
     </div>
+    <div id="taxNAWrap" style="margin-top:16px;border-top:1px dashed var(--line);padding-top:12px;display:none">
+      <div style="display:flex;align-items:center;flex-wrap:wrap;gap:6px;font-size:12.5px;font-weight:700;margin-bottom:8px">🚫 계산서 대상 아님
+        <span style="font-weight:500;color:var(--muted);font-size:11.5px">발행 건이 아닌 것으로 처리한 목록 · 되돌릴 수 있어요</span>
+        <span id="taxNASummary" style="font-weight:500;color:var(--muted);font-size:11.5px;margin-left:auto"></span></div>
+      <input id="taxNASearch" oninput="TAX_NA_Q=this.value; renderTaxNAList()" placeholder="🔎 현장명으로 찾기" style="width:100%;box-sizing:border-box;padding:8px 11px;border:1px solid var(--line);border-radius:8px;background:var(--card);color:var(--ink);font-size:13px;margin-bottom:8px">
+      <div id="taxNAArea" style="max-height:260px;overflow-y:auto"></div>
+    </div>
   </div>
   <!-- ===== 받을 계산서 (매입 = 거래처에서 받아야 할 것) ===== -->
   <div class="card entry" style="margin-top:22px">
@@ -1490,30 +1497,55 @@ const vatOf = s => !isTaxable(s) ? 0 : (vatInclusive(s) ? (grossOf(s)-supplyOf(s
 const taxStatus = s => s.tax||"미발행";
 function toggleTax(i){ const d=getData(); const s=d.settlements[i];
   s.tax = taxStatus(s)==="발행" ? "미발행" : "발행"; setData(d); render(); }
-function revertTax(i){ const d=getData(); const s=d.settlements[i]; if(!s) return;   // 잘못 발행된 것 정정
-  if(!confirm(`${s.site} (${s.date||''})\n세금계산서 '발행'을 취소하고 '미발행'으로 되돌릴까요?`)) return;
+function revertTax(i){ const d=getData(); const s=d.settlements[i]; if(!s) return;   // 발행/대상아님 → 미발행 정정
+  if(!confirm(`${s.site} (${s.date||''})\n이 건을 '미발행'으로 되돌릴까요?`)) return;
   s.tax="미발행"; setData(d); render(); }
-let TAX_DONE_Q='';
-function renderTaxDoneList(){   // 발행 완료 목록: 기본 최근 20건, 검색 시 전체에서 현장명 필터
-  const el=document.getElementById('taxDoneArea'); if(!el) return;
+function setTaxNA(i){ const d=getData(); const s=d.settlements[i]; if(!s) return;   // 계산서 발행 대상 아님
+  if(!confirm(`${s.site} (${s.date||''})\n이 건을 '계산서 발행 대상 아님'으로 처리할까요?\n(세금계산서 목록에서 빠집니다. 매출·미수금은 그대로예요.)`)) return;
+  s.tax="해당없음"; setData(d); render(); }
+function editTaxAmount(i){ const d=getData(); const s=d.settlements[i]; if(!s) return;   // 견적(금액) 수정
+  const cur=(+s.quote||0);
+  const label=(s.vat==='과세(포함)')?'견적 금액 (부가세 포함 총액, 원)':'견적 금액 (공급가, 원)';
+  const extraNote=(+s.extra>0)?`\n(추가금 ${KRW(+s.extra)}은 별도로 있습니다)`:'';
+  const v=prompt(`${s.site} (${s.date||''})\n${label} 수정${extraNote}`, cur);
+  if(v===null) return;
+  const n=parseFloat(String(v).replace(/[^0-9.]/g,''));
+  if(isNaN(n)||n<0){ alert('숫자를 입력하세요.'); return; }
+  s.quote=Math.round(n); setData(d); render(); }
+// 세금계산서 목록 한 줄(발행대상=target / 발행완료=done / 대상아님=na)
+function taxRow(s,i,section){
+  const rev=calcRow(s).rev, vat=vatOf(s);
+  const md=s.date?`${+s.date.slice(5,7)}/${+s.date.slice(8,10)}`:'';
+  const sb=(label,fn,color,title)=>`<button onclick="${fn}" title="${title||''}" style="font-size:11.5px;padding:5px 9px;border-radius:7px;border:1px solid ${color};color:${color};background:var(--card);font-weight:700;white-space:nowrap">${label}</button>`;
+  let acts='';
+  if(section==='target') acts+=sb('🧾 발행','toggleTax('+i+')','var(--good)','발행 완료로 표시');
+  if(section==='done'||section==='na') acts+=sb('↩ 미발행','revertTax('+i+')','var(--warn)','미발행으로 되돌리기');
+  if(section!=='na') acts+=sb('🚫 대상아님','setTaxNA('+i+')','var(--muted)','계산서 발행 대상이 아님');
+  acts+=sb('✏️ 금액','editTaxAmount('+i+')','var(--limit)','견적 금액 수정');
+  return `<div class="pay-line">
+    <span class="who">${md?`<span style="color:var(--muted);font-size:11px">📅 ${md}</span> `:''}${s.site} <span style="color:var(--muted);font-size:11px">· 공급가 ${KRW(rev)} + VAT ${KRW(vat)}</span></span>
+    <span class="amt">${KRW(rev+vat)}</span>
+    <span style="display:flex;gap:5px;flex-wrap:wrap;justify-content:flex-end">${acts}</span></div>`;
+}
+function _taxListRender(elId,sumId,matchFn,section,q){   // 발행완료·대상아님 공통 렌더(검색+최근20)
+  const el=document.getElementById(elId); if(!el) return 0;
   const d=getData(); const S=d.settlements||[];
-  const md=ds=>ds?`${+ds.slice(5,7)}/${+ds.slice(8,10)}`:'';
-  let done=S.map((s,i)=>({s,i})).filter(x=>isTaxable(x.s)&&calcRow(x.s).rev>0&&taxStatus(x.s)==="발행")
-    .sort((a,b)=>(b.s.date||'').localeCompare(a.s.date||''));
-  const total=done.length;
-  const q=(TAX_DONE_Q||'').trim().toLowerCase();
-  if(q) done=done.filter(x=>String(x.s.site||'').toLowerCase().includes(q));
-  const matched=done.length;
-  const shown=q?done:done.slice(0,20);   // 검색 없으면 최근 20건만
-  el.innerHTML = shown.length? shown.map(({s,i})=>{
-    const rev=calcRow(s).rev, vat=vatOf(s);
-    return `<div class="pay-line">
-      <span class="who">${s.date?`<span style="color:var(--muted);font-size:11px">📅 ${md(s.date)}</span> `:''}${s.site} <span style="color:var(--muted);font-size:11px">· 공급가 ${KRW(rev)} + VAT ${KRW(vat)}</span></span>
-      <span class="amt">${KRW(rev+vat)}</span>
-      <button onclick="revertTax(${i})" style="font-size:12px;padding:5px 10px;border-radius:8px;border:1px solid var(--warn);color:var(--warn);background:var(--card);font-weight:700;white-space:nowrap" title="발행을 취소하고 미발행으로 되돌립니다">↩ 미발행으로</button></div>`;
-  }).join("") : `<div style="color:var(--muted);font-size:12.5px">${q?'검색 결과가 없습니다.':'발행 완료된 건이 없습니다.'}</div>`;
-  const sum=document.getElementById('taxDoneSummary');
-  if(sum) sum.textContent = total ? (q?`검색 ${matched}건 / 총 ${total}건` : (total>20?`총 ${total}건 · 최근 20건 표시 (검색으로 찾기)`:`${total}건`)) : '';
+  let list=S.map((s,i)=>({s,i})).filter(x=>matchFn(x.s)).sort((a,b)=>(b.s.date||'').localeCompare(a.s.date||''));
+  const total=list.length; const qq=(q||'').trim().toLowerCase();
+  if(qq) list=list.filter(x=>String(x.s.site||'').toLowerCase().includes(qq));
+  const matched=list.length; const shown=qq?list:list.slice(0,20);
+  el.innerHTML = shown.length? shown.map(({s,i})=>taxRow(s,i,section)).join("")
+    : `<div style="color:var(--muted);font-size:12.5px">${qq?'검색 결과가 없습니다.':(section==='na'?'계산서 대상 아님으로 처리한 건이 없습니다.':'발행 완료된 건이 없습니다.')}</div>`;
+  const sum=document.getElementById(sumId);
+  if(sum) sum.textContent = total ? (qq?`검색 ${matched}건 / 총 ${total}건` : (total>20?`총 ${total}건 · 최근 20건 표시`:`${total}건`)) : '';
+  return total;
+}
+let TAX_DONE_Q='';
+function renderTaxDoneList(){ _taxListRender('taxDoneArea','taxDoneSummary',s=>isTaxable(s)&&calcRow(s).rev>0&&taxStatus(s)==="발행",'done',TAX_DONE_Q); }
+let TAX_NA_Q='';
+function renderTaxNAList(){
+  const total=_taxListRender('taxNAArea','taxNASummary',s=>taxStatus(s)==="해당없음",'na',TAX_NA_Q);
+  const wrap=document.getElementById('taxNAWrap'); if(wrap) wrap.style.display = total?'':'none';
 }
 
 function calcLive(){
@@ -1801,7 +1833,7 @@ function render(){
   const ordReqN=_orders.filter(o=>o.status==='요청').length;      // 재무팀이 주문해야
   const ordSentN=_orders.filter(o=>o.status==='주문완료').length; // 운영팀이 입고 확인해야
   const payReqN=(d.payReqs||[]).filter(p=>p.status!=='완료').length; // 재무팀이 결제해야
-  const unbilledN=S.filter(s=>isTaxable(s)&&calcRow(s).rev>0&&taxStatus(s)!=="발행").length; // 세금계산서 미발행(재무팀 발행해야)
+  const unbilledN=S.filter(s=>isTaxable(s)&&calcRow(s).rev>0&&taxStatus(s)!=="발행"&&taxStatus(s)!=="해당없음").length; // 세금계산서 미발행(재무팀 발행해야)
   setBadge('finBadge', allUnpaid+fxDueToday.length+ordReqN+payReqN+unbilledN);
   setBadge('payBadge', allUnpaid);
   setBadge('fxBadge', fxDueToday.length);
@@ -1846,19 +1878,14 @@ function render(){
     : `<div style="color:var(--muted);font-size:13px">오늘 일당 지급 대상이 없습니다. (일당이 입력된 일용직이 여기 표시됩니다)</div>`;
 
   // 🧾 세금계산서 (과세 & 매출>0 & 미발행/발행예정)
-  const taxTargets=S.map((s,i)=>({s,i})).filter(x=>isTaxable(x.s)&&calcRow(x.s).rev>0&&taxStatus(x.s)!=="발행");
+  const taxTargets=S.map((s,i)=>({s,i})).filter(x=>isTaxable(x.s)&&calcRow(x.s).rev>0&&taxStatus(x.s)!=="발행"&&taxStatus(x.s)!=="해당없음");
   const monthVat=monthList.reduce((a,s)=>a+vatOf(s),0);
   document.getElementById("taxSummary").innerHTML=
     `<span style="color:${taxTargets.length?'var(--warn)':'var(--good)'}">미발행 ${taxTargets.length}건</span> · 이번 달 예상 부가세 ${KRW(monthVat)}`;
-  const _taxMD = ds => ds?`${+ds.slice(5,7)}/${+ds.slice(8,10)}`:'';
-  document.getElementById("taxArea").innerHTML = taxTargets.length? taxTargets.map(({s,i})=>{
-    const rev=calcRow(s).rev, vat=vatOf(s);
-    return `<div class="pay-line">
-      <span class="who">${s.date?`<span style="color:var(--muted);font-size:11px">📅 ${_taxMD(s.date)}</span> `:''}${s.site} <span style="color:var(--muted);font-size:11px">· 공급가 ${KRW(rev)} + VAT ${KRW(vat)}</span></span>
-      <span class="amt">${KRW(rev+vat)}</span>
-      <button class="sendbtn ${taxStatus(s)==='발행예정'?'':''}" onclick="toggleTax(${i})">🧾 ${taxStatus(s)} → 발행</button></div>`;
-  }).join("") : `<div style="color:var(--muted);font-size:13px">발행할 세금계산서가 없습니다. (과세·매출 발생 건이 여기 표시됩니다)</div>`;
+  document.getElementById("taxArea").innerHTML = taxTargets.length? taxTargets.map(({s,i})=>taxRow(s,i,'target')).join("")
+    : `<div style="color:var(--muted);font-size:13px">발행할 세금계산서가 없습니다. (과세·매출 발생 건이 여기 표시됩니다)</div>`;
   renderTaxDoneList();   // ✅ 발행 완료 목록(검색·되돌리기)
+  renderTaxNAList();     // 🚫 계산서 대상 아님 목록(되돌리기)
 
   // 단가표(고정 인원 일당)
   document.getElementById("rateArea").innerHTML=(d.rates||[]).map((r,i)=>
