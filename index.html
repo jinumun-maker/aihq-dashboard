@@ -1246,11 +1246,42 @@ function _seed(data){    // 메시지·지원사업 시드/마이그레이션 (�
   data.asOf = realToday();   // 기준일 = 항상 실제 오늘 (예전 고정 날짜가 클라우드에 굳는 문제 방지)
   return data;
 }
-function _applyCalSync(d){   // 구글 캘린더 최신화: calSync 값이 바뀌면 calendar·schedule 교체(1회만)
+function _schedKey(s){ return String(s&&s.site||'').replace(/[\s()（）·・,.\-]/g,'').toLowerCase(); }
+function _hasCrew(s){ return (Array.isArray(s.crew)&&s.crew.length>0) || (typeof s.crew==='string'&&s.crew.trim()!==''); }
+function _mergeSchedule(oldSched, incoming){
+  // 캘린더 최신화 병합: 캘린더 일정(incoming)은 갱신하되, 사용자가 넣은 배치 인원·상태·과거·수동 항목은 보존
+  const _today = (typeof realToday==='function' ? realToday() : new Date().toISOString().slice(0,10));
+  const old = Array.isArray(oldSched)? oldSched : [];
+  const inc = JSON.parse(JSON.stringify(Array.isArray(incoming)?incoming:[]));
+  const used = new Set();
+  const carry = (from,to)=>{                       // 사용자 입력만 이어받기(캘린더값은 유지)
+    if(_hasCrew(from)) to.crew=from.crew;
+    if(from.status && from.status!=='예약') to.status=from.status;
+    if(!to.contact && from.contact) to.contact=from.contact;
+    if(from.note && !to.note) to.note=from.note;
+    if(from.manual) to.manual=true;
+  };
+  // 1차: 같은 날짜+같은 현장(또는 같은 연락처) 정확 매칭
+  inc.forEach(n=>{
+    let m = old.find(o=>!used.has(o) && o.date===n.date && _schedKey(o)===_schedKey(n));
+    if(!m && n.contact) m = old.find(o=>!used.has(o) && o.date===n.date && o.contact && o.contact===n.contact);
+    if(m){ used.add(m); carry(m,n); }
+  });
+  // 2차: 날짜만 바뀐(이동된) 일정 — 인원 배정된 미래 항목을 현장/연락처로 이어붙여 중복 방지
+  inc.forEach(n=>{
+    if(_hasCrew(n)) return;
+    let m = old.find(o=>!used.has(o) && _hasCrew(o) && o.date>=_today && (_schedKey(o)===_schedKey(n) || (n.contact&&o.contact===n.contact)));
+    if(m){ used.add(m); carry(m,n); }
+  });
+  // 3차: 캘린더에 없어도 과거 일정·배정된 인원·수동 추가 항목은 절대 잃지 않고 유지
+  const kept = old.filter(o=>!used.has(o) && (o.date < _today || _hasCrew(o) || o.manual));
+  return inc.concat(kept).sort((a,b)=> a.date<b.date?-1 : a.date>b.date?1 : 0);
+}
+function _applyCalSync(d){   // 구글 캘린더 최신화: calSync 값이 바뀌면 1회 반영 — 배치 인원·과거 데이터는 보존(병합)
   const cur=window.AIHQ_DATA;
   if(!cur || !cur.calSync || d._calSync===cur.calSync) return false;
-  if(Array.isArray(cur.calendar)) d.calendar=JSON.parse(JSON.stringify(cur.calendar));
-  if(Array.isArray(cur.schedule)) d.schedule=JSON.parse(JSON.stringify(cur.schedule));
+  if(Array.isArray(cur.calendar)) d.calendar=JSON.parse(JSON.stringify(cur.calendar)); // 방역 등은 교체
+  if(Array.isArray(cur.schedule)) d.schedule=_mergeSchedule(d.schedule, cur.schedule); // 배치는 병합(보존)
   d._calSync=cur.calSync;
   return true;
 }
@@ -2285,7 +2316,7 @@ function addSchedule(){
   const rec={date:document.getElementById('sf_date').value||realToday(), co:document.getElementById('sf_co').value,
     site:site, work:document.getElementById('sf_work').value.trim(), crew:document.getElementById('sf_crew').value.trim(),
     contact:document.getElementById('sf_contact').value.trim(), quote:num('sf_quote'),
-    status:document.getElementById('sf_status').value};
+    status:document.getElementById('sf_status').value, manual:true};
   d.schedule.push(rec);
   setData(d);
   SCHED_WEEK=weekOffsetOf(rec.date);   // 저장한 배치가 있는 주로 이동
