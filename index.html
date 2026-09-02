@@ -1768,7 +1768,8 @@ function render(){
   const ordReqN=_orders.filter(o=>o.status==='요청').length;      // 재무팀이 주문해야
   const ordSentN=_orders.filter(o=>o.status==='주문완료').length; // 운영팀이 입고 확인해야
   const payReqN=(d.payReqs||[]).filter(p=>p.status!=='완료').length; // 재무팀이 결제해야
-  setBadge('finBadge', allUnpaid+fxDueToday.length+ordReqN+payReqN);
+  const unbilledN=S.filter(s=>isTaxable(s)&&calcRow(s).rev>0&&taxStatus(s)!=="발행").length; // 세금계산서 미발행(재무팀 발행해야)
+  setBadge('finBadge', allUnpaid+fxDueToday.length+ordReqN+payReqN+unbilledN);
   setBadge('payBadge', allUnpaid);
   setBadge('fxBadge', fxDueToday.length);
   setBadge('payReqFinBadge', payReqN);   // 재무팀 결제요청 하위탭 = 처리 대기(빨간 알림)
@@ -1777,8 +1778,8 @@ function render(){
   setBadge('finOrdBadge', ordReqN);
   // 💰 미수금 하위탭 = 미수금 건수(개수 표시 · 파란 배지, 알람 아님)
   (function(){ const b=document.getElementById('recvBadge'); const n=recv.length; if(b){ b.textContent=n>0?n:''; b.className='tabbadge count'+(n>0?' on':''); } })();
-  // 🧾 세금계산서 하위탭 = 받을 계산서(매입) 미수취 건수(파란 개수 배지)
-  (function(){ const b=document.getElementById('taxBadge'); const n=(d.purchases||[]).filter(p=>!p.got).length; if(b){ b.textContent=n>0?n:''; b.className='tabbadge count'+(n>0?' on':''); } })();
+  // 🧾 세금계산서 하위탭 = 미발행(발행해야) + 받을 계산서(매입) 미수취 건수(파란 개수 배지)
+  (function(){ const b=document.getElementById('taxBadge'); const n=unbilledN+(d.purchases||[]).filter(p=>!p.got).length; if(b){ b.textContent=n>0?n:''; b.className='tabbadge count'+(n>0?' on':''); } })();
 
   // ❗ 운영팀 배지 (오늘 예약된 배치가 있는데 아직 일일결산 안 한 건)
   const _tdy=realToday();
@@ -2121,19 +2122,20 @@ function render(){
     let unpaidAmt=0; (d.settlements||[]).forEach(s=>crewList(s).forEach(p=>{ if(+p.pay>0 && !p.sent) unpaidAmt+=(+p.pay||0); }));
     const recvLate=recv.filter(r=>r.days!=null&&r.days>30).length;
     const fxDueAmt=fxDueToday.reduce((a,f)=>a+(+f.amount||0),0);
-    // 업무 완료율(이번 달): 입금 + 이체 + 인건비 입력 + 발주 주문
-    const monthS=(d.settlements||[]).filter(s=>(s.date||'').slice(0,7)===ym);
-    const revM=monthS.filter(s=>calcRow(s).rev>0);
-    let payItemsM=0,paySentM=0,crewM=0,crewFilledM=0;
-    monthS.forEach(s=>crewList(s).forEach(p=>{ crewM++; if(!isMissing(p)) crewFilledM++; if(+p.pay>0){ payItemsM++; if(p.sent) paySentM++; } }));
-    const _oF=d.orders||[]; const reqAllF=_oF.length; const orderedAllF=_oF.filter(o=>o.status==='주문완료'||o.status==='입고완료').length;
-    let finDone=0,finTot=0;
-    finTot+=revM.length; finDone+=revM.filter(s=>s.paid==='입금완료').length;
-    finTot+=payItemsM; finDone+=paySentM;
-    finTot+=crewM; finDone+=crewFilledM;
-    finTot+=reqAllF; finDone+=orderedAllF;
-    const finPct=finTot>0?Math.round(finDone/finTot*100):100;
-    const finHTML=pctBar(finPct,finDone,finTot,'💰 재무팀 업무 완료율(이번 달)')+[
+    // 재무팀 할 일 완료율: 남아있는 처리 항목 기준(밀린 일 포함 · 이번 달 국한 X)
+    // 각 항목이 0이면 완료 → 미발행·미이체 등 밀린 게 있으면 100%가 되지 않음
+    const _finItems=[
+      allUnpaid===0,          // 일당 이체
+      allMiss===0,            // 인건비 입력
+      taxTargets.length===0,  // 세금계산서 발행
+      ordReqN===0,            // 발주 주문
+      payReqN===0,            // 결제요청 처리
+      fxDueToday.length===0   // 오늘 고정지출 납부
+    ];
+    const finTot=_finItems.length;
+    const finDone=_finItems.filter(Boolean).length;
+    const finPct=Math.round(finDone/finTot*100);
+    const finHTML=pctBar(finPct,finDone,finTot,'💰 재무팀 할 일 완료율')+[
       {v:KRW(recvTotal),l:`미수금 ${recv.length}건 (30일↑ ${recvLate})`,a:recvLate>0},
       {v:allUnpaid+'명',l:`미이체 일당 ${KRW(unpaidAmt)}`,a:allUnpaid>0},
       {v:fxDueToday.length+'건',l:`오늘 고정지출 ${KRW(fxDueAmt)}`,a:fxDueToday.length>0},
