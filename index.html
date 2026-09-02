@@ -1300,6 +1300,24 @@ function _seed(data){    // 메시지·지원사업 시드/마이그레이션 (�
   ];
   if(!data.devReview) data.devReview={ month:'2026-08', summary:'뼈대(일일결산 단일입력→자동집계, 재무 인건비·미수금)는 탄탄합니다. 지금 가장 큰 시간낭비는 <b>구글캘린더 수동 최신화</b>와 <b>팀 리마인더 수동</b> — 이 둘을 자동화하면 손이 확 줄어요. (중복 입력은 거의 없음 👍)', decisions:[ {text:'구글캘린더 자동 최신화 (매일 자동, 캘린더=원본으로 덮어씀)', done:false}, {text:'카톡 방장봇 리마인더 (5시 운영팀·6시 재무팀)', done:false} ] };
   data.asOf = realToday();   // 기준일 = 항상 실제 오늘 (예전 고정 날짜가 클라우드에 굳는 문제 방지)
+  // ── 배치 인원 보호(crewMap): 캘린더 최신화가 절대 못 건드리는 durable 저장소 + 결산으로 복구 ──
+  if(!data.crewMap || typeof data.crewMap!=='object') data.crewMap={};
+  var _ckN = function(t){ return String(t||'').replace(/[\s()（）·・,.\-]/g,'').toLowerCase(); };
+  // (1) 현재 schedule의 crew를 map에 반영(수동 배정 마이그레이션)
+  (data.schedule||[]).forEach(function(s){ if(s && s.crew && String(s.crew).trim()) data.crewMap[s.date+'|'+s.site]=String(s.crew).trim(); });
+  // (2) 결산(인건비 내역)의 배치 인원으로 복구: 같은 날짜+현장(정규화) 결산의 크루 이름
+  var _settleCrew={};
+  (data.settlements||[]).forEach(function(st){
+    if(!st) return;
+    var names=crewList(st).map(function(p){return p&&p.name;}).filter(Boolean).join(', ');
+    if(names){ var kk=st.date+'|'+_ckN(st.site); if(!_settleCrew[kk]) _settleCrew[kk]=names; }
+  });
+  (data.schedule||[]).forEach(function(s){
+    if(!s) return; var k=s.date+'|'+s.site;
+    if(!data.crewMap[k]){ var hit=_settleCrew[s.date+'|'+_ckN(s.site)]; if(hit) data.crewMap[k]=hit; }
+  });
+  // (3) schedule 각 항목에 crew 재부착(비어있으면 map에서) — 최신화로 지워져도 여기서 되살아남
+  (data.schedule||[]).forEach(function(s){ if(!s) return; var k=s.date+'|'+s.site; if((!s.crew||!String(s.crew).trim()) && data.crewMap[k]) s.crew=data.crewMap[k]; });
   return data;
 }
 function _schedKey(s){ return String(s&&s.site||'').replace(/[\s()（）·・,.\-]/g,'').toLowerCase(); }
@@ -2128,7 +2146,7 @@ function render(){
       <td>${s.work||'-'}</td>
       <td style="font-size:11.5px;color:var(--muted)">${s.crew||'-'}</td>
       <td><span class="pill ${s.status==='확정'?'p-good':''}">${s.status||'예약'}</span></td>
-      <td style="white-space:nowrap"><button class="del" style="color:var(--daman)" onclick="editSchedCrew(${idx})" title="인원 배정">✏️인원</button>${settledKeys.has(s.date+'|'+s.site)?`<button class="del" style="color:var(--good);font-weight:700;border:1px solid var(--good);border-radius:7px;padding:3px 8px" onclick="editSettledJob(${settledMap[s.date+'|'+s.site]})" title="결산 내용 수정">✅ 결산완료 ✏️</button>`:`<button class="del" style="color:var(--limit);font-weight:700" onclick="fillFromSchedule(${idx})">→결산</button>`}<button class="del" onclick="delSchedule(${idx})">✕</button></td></tr>`).join('')
+      <td style="white-space:nowrap"><button class="del" style="color:var(--limit)" onclick="moveSchedPrompt(${idx})" title="날짜 이동">📅이동</button><button class="del" style="color:var(--daman)" onclick="editSchedCrew(${idx})" title="인원 배정">✏️인원</button>${settledKeys.has(s.date+'|'+s.site)?`<button class="del" style="color:var(--good);font-weight:700;border:1px solid var(--good);border-radius:7px;padding:3px 8px" onclick="editSettledJob(${settledMap[s.date+'|'+s.site]})" title="결산 내용 수정">✅ 결산완료 ✏️</button>`:`<button class="del" style="color:var(--limit);font-weight:700" onclick="fillFromSchedule(${idx})">→결산</button>`}<button class="del" onclick="delSchedule(${idx})">✕</button></td></tr>`).join('')
     : `<tr><td colspan="6" style="color:var(--muted)">예정된 배치가 없습니다. 위에서 입력하면 여기에 표시됩니다.</td></tr>`;
 
   // 📅 일정 아젠다 (구글 캘린더 + 배치 통합, 날짜별 세로)
@@ -2552,6 +2570,7 @@ function addSchedule(){
     contact:document.getElementById('sf_contact').value.trim(), quote:num('sf_quote'),
     status:document.getElementById('sf_status').value, manual:true};
   d.schedule.push(rec);
+  if(rec.crew && rec.crew.trim()){ d.crewMap=d.crewMap||{}; d.crewMap[rec.date+'|'+rec.site]=rec.crew.trim(); }  // 영구 저장
   setData(d);
   SCHED_WEEK=weekOffsetOf(rec.date);   // 저장한 배치가 있는 주로 이동
   render();
@@ -2562,13 +2581,18 @@ function delSchedule(i){ const d=getData(); d.schedule.splice(i,1); setData(d); 
 function editSchedCrew(i){
   const d=getData(); const s=(d.schedule||[])[i]; if(!s) return;
   const v=prompt((s.site?`📍 ${s.site} — `:'')+'배정 인원 (이름, 쉼표):', s.crew||'');
-  if(v!==null){ s.crew=v.trim(); setData(d); render(); }
+  if(v!==null){ s.crew=v.trim();
+    d.crewMap=d.crewMap||{}; const k=s.date+'|'+s.site; if(s.crew) d.crewMap[k]=s.crew; else delete d.crewMap[k];  // 영구 저장
+    setData(d); render(); }
 }
 // 달력에서 배치 현장 클릭 → 인원 확인 (폰에서도 확인 가능)
 function calJobInfo(i){
   const d=getData(); const s=(d.schedule||[])[i]; if(!s) return;
-  const go=confirm(`📍 ${s.site}\n📅 ${s.date}\n\n👷 배치 인원\n${crewNames(s)||'(미배정)'}\n\n📞 ${s.contact||'-'}   💰 ${s.quote?KRW(s.quote):'-'}\n\n[확인]을 누르면 인원을 수정합니다.`);
-  if(go) editSchedCrew(i);
+  const act=prompt(`📍 ${s.site}\n📅 ${s.date}   👷 ${crewNames(s)||'(미배정)'}\n📞 ${s.contact||'-'}   💰 ${s.quote?KRW(s.quote):'-'}\n\n무엇을 할까요? 번호 입력:\n  1 = 날짜 이동\n  2 = 인원 수정`, '2');
+  if(act===null) return;
+  const a=String(act).trim();
+  if(a==='1') moveSchedPrompt(i);
+  else if(a==='2') editSchedCrew(i);
 }
 // 달력에서 완료 현장 클릭 → 참여 인원 확인
 function calDoneInfo(i){
@@ -3090,9 +3114,21 @@ let DRAG_PAYLOAD=null;
 function calMoveItem(dt, idx, newDate){
   const d=getData();
   let moved=false;
-  if(dt==='sch'){ const s=(d.schedule||[])[idx]; if(s && s.date!==newDate){ s.date=newDate; moved=true; } }
+  if(dt==='sch'){ const s=(d.schedule||[])[idx]; if(s && s.date!==newDate){
+      const oldK=s.date+'|'+s.site; s.date=newDate; const newK=s.date+'|'+s.site;   // 배치 인원(crewMap)도 함께 이동
+      d.crewMap=d.crewMap||{}; if(d.crewMap[oldK]){ d.crewMap[newK]=d.crewMap[oldK]; delete d.crewMap[oldK]; }
+      moved=true; } }
   else if(dt==='ev'){ const e=(d.calendar||[])[idx]; if(e && e.date!==newDate){ e.date=newDate; moved=true; } }
   if(moved){ setData(d); render(); }
+}
+// 클릭으로 일정 날짜 이동 (드래그가 안 되는 폰에서도)
+function moveSchedPrompt(i){
+  const d=getData(); const s=(d.schedule||[])[i]; if(!s) return;
+  const nd=prompt(`📍 ${s.site}\n현재 날짜: ${s.date}\n\n옮길 날짜를 입력하세요 (예: 2026-09-15)`, s.date);
+  if(nd===null) return;
+  const v=String(nd).trim();
+  if(!/^\d{4}-\d{2}-\d{2}$/.test(v)){ alert('날짜 형식이 올바르지 않습니다.\n예: 2026-09-15'); return; }
+  calMoveItem('sch', i, v);
 }
 (function initCalDrag(){
   document.addEventListener('dragstart', function(e){
