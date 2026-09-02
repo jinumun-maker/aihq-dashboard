@@ -1855,8 +1855,8 @@ function render(){
   setBadge('settleBadge', unsettledN);
   setBadge('ordBadge', ordSentN);               // 운영팀 발주 하위탭 = 입고 확인 대기
   setBadge('opsBadge', unsettledN+ordSentN);    // 운영팀 탭 = 미결산 + 발주 입고 대기
-  // ✅ 대시보드 업무요약 하위탭 = 재무 + 운영 할 일 총합
-  setBadge('dashTaskBadge', (allUnpaid+fxDueToday.length+ordReqN)+(unsettledN+ordSentN));
+  // ✅ 대시보드 업무요약 하위탭 = 재무(미이체·고정지출·발주·결제요청·미발행) + 운영(미결산·발주입고) 할 일 총합
+  setBadge('dashTaskBadge', (allUnpaid+fxDueToday.length+ordReqN+payReqN+unbilledN)+(unsettledN+ordSentN));
 
   // 💸 당일 이체 확인
   const sendTargets=[];
@@ -2163,15 +2163,16 @@ function render(){
     const ws0=weekStart(TODAY,0), we0=new Date(ws0); we0.setDate(ws0.getDate()+6);
     const wkN=SCH.filter(s=>s.date>=fmt(ws0)&&s.date<=fmt(we0)).length;
     const unassignedN=SCH.filter(s=>s.date>=TODAY && (!s.crew||!String(s.crew).trim())).length;
-    // 업무 완료율: 오늘 결산 + 이번주 인원배정 + 발주 입고
-    const wkAssigned=SCH.filter(s=>s.date>=fmt(ws0)&&s.date<=fmt(we0)&&s.crew&&String(s.crew).trim()).length;
-    const _oo=d.orders||[]; const orderedN=_oo.filter(o=>o.status==='주문완료'||o.status==='입고완료').length; const receivedN=_oo.filter(o=>o.status==='입고완료').length;
-    let opsDone=0,opsTot=0;
-    opsTot+=todaySched; opsDone+=Math.max(0,todaySched-opsUnlogged);
-    opsTot+=wkN; opsDone+=wkAssigned;
-    opsTot+=orderedN; opsDone+=receivedN;
-    const opsPct=opsTot>0?Math.round(opsDone/opsTot*100):100;
-    const opsHTML=pctBar(opsPct,opsDone,opsTot,'✍️ 운영팀 업무 완료율(오늘·이번주)')+[
+    // 운영팀 할 일 완료율: 남은 처리 항목 기준(과거 미결산 포함 · 오늘/이번주 국한 X)
+    // 항목이 0이면 완료 → 결산 누락·미배정 등 밀린 게 있으면 100%가 되지 않음
+    const _opsItems=[
+      unsettledN===0,     // 결산 누락 없음(과거+오늘)
+      unassignedN===0,    // 인원 미배정 없음(오늘 이후)
+      ordSentN===0        // 발주 입고 확인 완료
+    ];
+    const opsTot=_opsItems.length, opsDone=_opsItems.filter(Boolean).length;
+    const opsPct=Math.round(opsDone/opsTot*100);
+    const opsHTML=pctBar(opsPct,opsDone,opsTot,'✍️ 운영팀 할 일 완료율')+[
       {v:todayN+'곳',l:'오늘 배치',a:false},
       {v:wkN+'곳',l:'이번 주 예정 현장',a:false},
       {v:unassignedN+'건',l:'인원 미배정',a:unassignedN>0},
