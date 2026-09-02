@@ -46,6 +46,12 @@
   .tabbadge{display:none;font-size:11px;background:var(--warn);color:#fff;border-radius:11px;padding:1px 8px;font-weight:800;vertical-align:middle}
   .tabbadge.on{display:inline-block;animation:badgepulse 1.6s ease-in-out infinite}
   .tabbadge.count{background:var(--limit);animation:none}
+  .weekgrp{border:1px solid var(--line);border-radius:10px;margin-top:12px;padding:9px 13px;background:var(--card)}
+  .weekgrp>summary{cursor:pointer;font-weight:700;font-size:13.5px;list-style:none;display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+  .weekgrp>summary::-webkit-details-marker{display:none}
+  .weekgrp>summary::before{content:'▸';color:var(--muted);transition:transform .15s;display:inline-block}
+  .weekgrp[open]>summary::before{transform:rotate(90deg)}
+  .weekgrp[open]>summary{margin-bottom:6px;padding-bottom:8px;border-bottom:1px solid var(--line)}
   @keyframes badgepulse{0%,100%{opacity:1}50%{opacity:.55}}
   .pg{display:none}
   .subtabs{display:flex;gap:6px;margin:22px 0 8px;flex-wrap:wrap}
@@ -509,6 +515,7 @@
   <div class="subtabs">
     <button class="subtab" data-subtab="재무달력" onclick="showSub('재무달력')">📅 일정 달력</button>
     <button class="subtab" data-subtab="미수금" onclick="showSub('미수금')">💰 미수금 <span id="recvBadge" class="tabbadge"></span></button>
+    <button class="subtab" data-subtab="결제요청" onclick="showSub('결제요청')">💳 결제요청 <span id="payReqFinBadge" class="tabbadge"></span></button>
     <button class="subtab" data-subtab="인건비" onclick="showSub('인건비')">🧮 인건비·이체 <span id="payBadge" class="tabbadge"></span></button>
     <button class="subtab" data-subtab="세금계산서" onclick="showSub('세금계산서')">🧾 세금계산서 <span id="taxBadge" class="tabbadge"></span></button>
     <button class="subtab" data-subtab="지출" onclick="showSub('지출')">💸 지출</button>
@@ -565,6 +572,15 @@
     <tbody id="paidRows"></tbody></table></div>
   </div>
   </div><!-- /미수금 -->
+
+  <!-- 💳 결제 요청 처리 (재무팀) -->
+  <div class="subpg" data-subpg="결제요청">
+    <div class="card" style="margin-top:22px">
+      <h2>💳 결제 요청 처리 <span style="font-weight:500;color:var(--muted);font-size:12px">경영관리팀이 보낸 결제 요청</span> <span id="payReqFinSummary" style="font-weight:500;font-size:12.5px;margin-left:auto"></span></h2>
+      <div id="payReqListFin"></div>
+      <div style="font-size:12px;color:var(--muted);margin-top:8px">💡 결제를 마치면 <b>✅ 결제완료</b>를 누르세요. 경영관리팀 화면에도 완료로 표시됩니다.</div>
+    </div>
+  </div><!-- /결제요청 -->
 
   <div class="subpg" data-subpg="인건비">
   <!-- ===== 인건비 입력 (재무팀) ===== -->
@@ -685,6 +701,7 @@
     <button class="subtab" data-subtab="개요일정" onclick="showSub('개요일정')">📅 일정 달력</button>
     <button class="subtab" data-subtab="개요재무" onclick="showSub('개요재무')">💰 재무 요약</button>
     <button class="subtab" data-subtab="개요업무" onclick="showSub('개요업무')">✅ 업무 요약 <span id="dashTaskBadge" class="tabbadge"></span></button>
+    <button class="subtab" data-subtab="개요결제" onclick="showSub('개요결제')">💳 결제요청 <span id="payReqMgBadge" class="tabbadge"></span></button>
     <button class="subtab" data-subtab="개요요청" onclick="showSub('개요요청')">📨 요청함 <span id="msgBadge" class="tabbadge"></span></button>
   </div>
 
@@ -725,6 +742,23 @@
       </div>
     </div>
   </div><!-- /개요재무 -->
+
+  <!-- 💳 결제 요청 (경영관리팀 → 재무팀) -->
+  <div class="subpg" data-subpg="개요결제">
+    <div class="card entry" style="margin-top:14px">
+      <h2>💳 재무팀에 결제 요청 <span style="font-weight:500;color:var(--muted);font-size:12px">경영관리팀 → 재무팀</span> <span id="payReqMgSummary" style="font-weight:500;font-size:12.5px;margin-left:auto"></span></h2>
+      <div class="form-grid" style="margin-top:6px">
+        <div class="fld"><label>결제 항목 *</label><input id="pr_item" placeholder="예: 사무실 월세 / 장비 구입"></div>
+        <div class="fld"><label>금액 *</label><input type="number" id="pr_amount" placeholder="원"></div>
+        <div class="fld"><label>받는 곳 (선택)</label><input id="pr_vendor" placeholder="예: ○○부동산"></div>
+        <div class="fld"><label>희망 날짜 (선택)</label><input type="date" id="pr_date"></div>
+        <div class="fld wide"><label>메모 (선택)</label><input id="pr_memo" placeholder="예: 이달 말까지 / 계좌번호 등"></div>
+      </div>
+      <div style="margin:10px 0;text-align:right"><button class="primary" onclick="addPayReq()">＋ 결제 요청 보내기</button></div>
+      <div id="payReqListMg"></div>
+      <div style="font-size:12px;color:var(--muted);margin-top:8px">💡 재무팀이 결제하면 <b>✅ 결제완료</b>로 여기에도 표시돼요.</div>
+    </div>
+  </div><!-- /개요결제 -->
 
   <!-- ② 📅 일정 달력 -->
   <div class="subpg" data-subpg="개요일정">
@@ -1558,6 +1592,67 @@ function renderPurchases(){
   if(sum) sum.textContent = list.length ? `받아야 할 것 ${pending.length}건${done.length?` · 받음 ${done.length}건`:''}` : '';
 }
 
+/* ── 결제 요청 (경영관리팀 → 재무팀) ── */
+function addPayReq(){
+  const item=document.getElementById('pr_item').value.trim();
+  const amount=num('pr_amount');
+  if(!item){ alert('결제 항목을 입력하세요.'); document.getElementById('pr_item').focus(); return; }
+  if(amount<=0){ alert('결제 금액을 입력하세요.'); document.getElementById('pr_amount').focus(); return; }
+  const d=getData(); d.payReqs=d.payReqs||[];
+  d.payReqs.push({date:document.getElementById('pr_date').value||'', item, amount,
+    vendor:document.getElementById('pr_vendor').value.trim(), memo:document.getElementById('pr_memo').value.trim(),
+    status:'요청', reqDate:realToday(), doneDate:''});
+  setData(d); render();
+  ['pr_item','pr_amount','pr_vendor','pr_memo','pr_date'].forEach(id=>document.getElementById(id).value='');
+  document.getElementById('pr_item').focus();
+  alert('재무팀에 결제 요청을 보냈습니다.');
+}
+function payReqDone(i){ const d=getData(); const p=(d.payReqs||[])[i]; if(!p) return; if(!confirm('이 건을 결제완료로 처리할까요?')) return; p.status='완료'; p.doneDate=realToday(); setData(d); render(); }
+function payReqReopen(i){ const d=getData(); const p=(d.payReqs||[])[i]; if(!p) return; p.status='요청'; p.doneDate=''; setData(d); render(); }
+function delPayReq(i){ const d=getData(); if(!confirm('이 결제 요청을 삭제할까요?')) return; d.payReqs.splice(i,1); setData(d); render(); }
+function renderPayReqs(){
+  const esc=t=>String(t||'').replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;');
+  const md=ds=>ds?`${+ds.slice(5,7)}/${+ds.slice(8,10)}`:'';
+  const d=getData();
+  const list=(d.payReqs||[]).map((p,i)=>({p,i}));
+  const pending=list.filter(x=>x.p.status!=='완료'), done=list.filter(x=>x.p.status==='완료');
+  const sorted=pending.concat(done);   // 요청중 먼저
+  const pendTotal=pending.reduce((a,x)=>a+(+x.p.amount||0),0);
+  const meta=p=>[p.vendor?esc(p.vendor):'', p.memo?esc(p.memo):''].filter(Boolean).join(' · ');
+  // 경영관리팀 쪽 (보낸 요청 + 상태)
+  const mgEl=document.getElementById('payReqListMg');
+  if(mgEl){
+    mgEl.innerHTML = sorted.length ? sorted.map(({p,i})=>{
+      const tag = p.status==='완료'
+        ? `<span style="color:var(--good);font-weight:700;font-size:12px;white-space:nowrap">✅ 결제완료 ${md(p.doneDate)}</span>`
+        : `<span style="color:var(--warn);font-weight:700;font-size:12px;white-space:nowrap">⏳ 요청중</span>`;
+      const mt=meta(p);
+      return `<div class="pay-line" style="${p.status==='완료'?'opacity:.6':''}">
+        <span class="who"><b>${esc(p.item)}</b> <b style="color:var(--warn)">${KRW(p.amount)}</b>${mt||p.date?` <span style="color:var(--muted);font-size:12px">· ${mt}${p.date?`${mt?' · ':''}📅 ${md(p.date)}`:''}</span>`:''}</span>
+        <span style="display:flex;gap:8px;align-items:center">${tag}
+          <button class="del" onclick="delPayReq(${i})" title="삭제">✕</button></span></div>`;
+    }).join('') : `<div style="color:var(--muted);font-size:13px">보낸 결제 요청이 없습니다. 위에서 재무팀에 요청하세요.</div>`;
+  }
+  // 재무팀 쪽 (처리)
+  const finEl=document.getElementById('payReqListFin');
+  if(finEl){
+    finEl.innerHTML = sorted.length ? sorted.map(({p,i})=>{
+      const btn = p.status==='완료'
+        ? `<button onclick="payReqReopen(${i})" style="font-size:12px;padding:5px 11px;border-radius:8px;border:1px solid var(--muted);color:var(--muted);background:var(--card);white-space:nowrap">↩ 되돌리기</button>`
+        : `<button onclick="payReqDone(${i})" style="font-size:12px;padding:5px 11px;border-radius:8px;border:1px solid var(--good);color:var(--good);background:var(--card);font-weight:700;white-space:nowrap">✅ 결제완료</button>`;
+      const mt=meta(p);
+      return `<div class="pay-line" style="${p.status==='완료'?'opacity:.6':''}">
+        <span class="who">${p.status==='완료'?'✅ ':''}<b>${esc(p.item)}</b> <b style="color:var(--warn)">${KRW(p.amount)}</b>
+          <span style="color:var(--muted);font-size:12px">${mt?('· '+mt+' '):''}· 요청 ${md(p.reqDate)}</span></span>
+        <span style="display:flex;gap:6px;align-items:center">${btn}</span></div>`;
+    }).join('') : `<div style="color:var(--muted);font-size:13px">들어온 결제 요청이 없습니다.</div>`;
+  }
+  const mgSum=document.getElementById('payReqMgSummary');
+  if(mgSum) mgSum.textContent = list.length ? `요청중 ${pending.length}건 · 완료 ${done.length}건` : '';
+  const finSum=document.getElementById('payReqFinSummary');
+  if(finSum) finSum.textContent = pending.length ? `처리 대기 ${pending.length}건 · ${KRW(pendTotal)}` : (list.length?'모두 처리 완료 ✅':'');
+}
+
 /* ── 미결산 현장(예약됐는데 결산 안 한 것, 오늘까지) ── */
 function unsettledList(d){
   d=d||getData();
@@ -1629,9 +1724,8 @@ function render(){
   document.getElementById("payMiss").innerHTML = allMiss>0
     ? `<span class="pill p-late">🔴 미입력 ${allMiss}명</span>`
     : `<span class="pill p-good">✅ 모두 입력됨</span>`;
-  const payRows=S.map((s,i)=>({s,i})).filter(x=>crewList(x.s).length)
-    .sort((a,b)=>(laborMissing(b.s)-laborMissing(a.s))||b.s.date.localeCompare(a.s.date));
-  document.getElementById("payArea").innerHTML = payRows.length? payRows.map(({s,i})=>
+  const payRows=S.map((s,i)=>({s,i})).filter(x=>crewList(x.s).length);
+  const payblockHTML = ({s,i}) =>
     `<div class="payblock ${laborMissing(s)?'miss':''}">
       <div class="payhead">${s.date.slice(5)} · <span class="pill ${coPill(s.co)}">${coName(s.co)}</span> ${s.site}
         <span style="color:var(--muted);font-size:11px;font-weight:500">인건비 합계 ${KRW(laborOf(s))}</span></div>
@@ -1656,7 +1750,31 @@ function render(){
               ? `<span class="sentchk ${p.sent?'done':''}" onclick="toggleSent(${i},${j})">${p.sent?'✅ 이체완료':'⬜ 이체확인'}</span>`
               : '<span class="sentchk na">월급</span>')}</div>`;
       }).join("")}</div>
-    </div>`).join("") : `<div style="color:var(--muted);font-size:13px">배치인원이 있는 결산이 없습니다.</div>`;
+    </div>`;
+  if(!payRows.length){
+    document.getElementById("payArea").innerHTML = `<div style="color:var(--muted);font-size:13px">배치인원이 있는 결산이 없습니다.</div>`;
+  } else {
+    const _wk = ds => { const mon=weekStart(ds,0), sun=new Date(mon); sun.setDate(mon.getDate()+6);
+      const pz=n=>String(n).padStart(2,'0');
+      return {key:mon.getFullYear()+'-'+pz(mon.getMonth()+1)+'-'+pz(mon.getDate()), label:(mon.getMonth()+1)+'/'+mon.getDate()+' ~ '+(sun.getMonth()+1)+'/'+sun.getDate()}; };
+    const groups={};
+    payRows.forEach(x=>{ const w=_wk(x.s.date); (groups[w.key]=groups[w.key]||{label:w.label,items:[]}).items.push(x); });
+    const thisWk=_wk(realToday()).key;
+    const keysSorted=Object.keys(groups).sort().reverse();
+    const topKey=keysSorted[0];   // 가장 최근 주는 항상 펼침
+    document.getElementById("payArea").innerHTML = keysSorted.map(k=>{
+      const g=groups[k];
+      g.items.sort((a,b)=>(laborMissing(b.s)-laborMissing(a.s))||b.s.date.localeCompare(a.s.date));
+      let miss=0, unsent=0, labSum=0;
+      g.items.forEach(({s})=>{ crewList(s).forEach(p=>{ if(isMissing(p)) miss++; else if(+p.pay>0 && !p.sent) unsent++; }); labSum+=laborOf(s); });
+      const open=(k===topKey||k===thisWk||miss>0||unsent>0)?' open':'';
+      const flags=`${miss>0?`<span class="pill p-late">미입력 ${miss}명</span>`:''}${unsent>0?`<span class="pill" style="background:var(--daman);color:#fff">이체대기 ${unsent}명</span>`:''}${(miss===0&&unsent===0)?`<span class="pill p-good">완료</span>`:''}`;
+      return `<details class="weekgrp"${open}>
+        <summary>📅 ${g.label} <span style="color:var(--muted);font-size:12px;font-weight:500">· ${g.items.length}건 · 인건비 ${KRW(labSum)}</span> ${flags}</summary>
+        <div>${g.items.map(payblockHTML).join('')}</div>
+      </details>`;
+    }).join('');
+  }
 
   // ❗ 재무팀 배지 (미이체 일당 + 오늘 납부 고정지출)
   let allUnpaid=0;
@@ -1667,9 +1785,13 @@ function render(){
   const _orders=d.orders||[];
   const ordReqN=_orders.filter(o=>o.status==='요청').length;      // 재무팀이 주문해야
   const ordSentN=_orders.filter(o=>o.status==='주문완료').length; // 운영팀이 입고 확인해야
-  setBadge('finBadge', allUnpaid+fxDueToday.length+ordReqN);
+  const payReqN=(d.payReqs||[]).filter(p=>p.status!=='완료').length; // 재무팀이 결제해야
+  setBadge('finBadge', allUnpaid+fxDueToday.length+ordReqN+payReqN);
   setBadge('payBadge', allUnpaid);
   setBadge('fxBadge', fxDueToday.length);
+  setBadge('payReqFinBadge', payReqN);   // 재무팀 결제요청 하위탭 = 처리 대기(빨간 알림)
+  // 💳 경영관리팀 결제요청 하위탭 = 요청중 건수(파란 개수)
+  (function(){ const b=document.getElementById('payReqMgBadge'); if(b){ b.textContent=payReqN>0?payReqN:''; b.className='tabbadge count'+(payReqN>0?' on':''); } })();
   setBadge('finOrdBadge', ordReqN);
   // 💰 미수금 하위탭 = 미수금 건수(개수 표시 · 파란 배지, 알람 아님)
   (function(){ const b=document.getElementById('recvBadge'); const n=recv.length; if(b){ b.textContent=n>0?n:''; b.className='tabbadge count'+(n>0?' on':''); } })();
@@ -1732,6 +1854,7 @@ function render(){
   renderSales();
   renderDev();
   renderPurchases();
+  renderPayReqs();
 
   // KPI
   document.getElementById("kpis").innerHTML=[
