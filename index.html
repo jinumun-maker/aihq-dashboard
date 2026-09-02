@@ -1879,9 +1879,11 @@ function render(){
 
   // 🧾 세금계산서 (과세 & 매출>0 & 미발행/발행예정)
   const taxTargets=S.map((s,i)=>({s,i})).filter(x=>isTaxable(x.s)&&calcRow(x.s).rev>0&&taxStatus(x.s)!=="발행"&&taxStatus(x.s)!=="해당없음");
-  const monthVat=monthList.reduce((a,s)=>a+vatOf(s),0);
+  const targetVat=taxTargets.reduce((a,x)=>a+vatOf(x.s),0);   // 미발행(발행 대상) 부가세 합계
+  const monthVat=monthList.reduce((a,s)=>a+vatOf(s),0);       // 이번 달 매출 부가세(결산 있을 때만 표시)
   document.getElementById("taxSummary").innerHTML=
-    `<span style="color:${taxTargets.length?'var(--warn)':'var(--good)'}">미발행 ${taxTargets.length}건</span> · 이번 달 예상 부가세 ${KRW(monthVat)}`;
+    `<span style="color:${taxTargets.length?'var(--warn)':'var(--good)'}">미발행 ${taxTargets.length}건</span> · 발행 대상 부가세 ${KRW(targetVat)}`
+    + (monthVat>0 ? ` · <span style="color:var(--muted)">이번 달 매출 부가세 ${KRW(monthVat)}</span>` : '');
   document.getElementById("taxArea").innerHTML = taxTargets.length? taxTargets.map(({s,i})=>taxRow(s,i,'target')).join("")
     : `<div style="color:var(--muted);font-size:13px">발행할 세금계산서가 없습니다. (과세·매출 발생 건이 여기 표시됩니다)</div>`;
   renderTaxDoneList();   // ✅ 발행 완료 목록(검색·되돌리기)
