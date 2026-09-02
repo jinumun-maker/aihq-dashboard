@@ -602,7 +602,15 @@
   <!-- ===== 세금계산서 발행 (우리가 발행 = 매출) ===== -->
   <div class="card" style="margin-top:22px">
     <h2>🧾 세금계산서 발행 <span style="font-weight:500;color:var(--muted);font-size:12px">우리가 발행 (매출)</span> <span id="taxSummary" style="font-weight:500;font-size:12.5px;margin-left:auto"></span></h2>
+    <div style="font-size:12px;color:var(--muted);margin-bottom:6px">📌 발행해야 할 건 (미발행·발행예정)</div>
     <div id="taxArea"></div>
+    <div style="margin-top:16px;border-top:1px solid var(--line);padding-top:12px">
+      <div style="display:flex;align-items:center;flex-wrap:wrap;gap:6px;font-size:12.5px;font-weight:700;margin-bottom:8px">✅ 발행 완료
+        <span style="font-weight:500;color:var(--muted);font-size:11.5px">운영팀이 실수로 '발행'으로 결산했으면 여기서 되돌리기</span>
+        <span id="taxDoneSummary" style="font-weight:500;color:var(--muted);font-size:11.5px;margin-left:auto"></span></div>
+      <input id="taxDoneSearch" oninput="TAX_DONE_Q=this.value; renderTaxDoneList()" placeholder="🔎 현장명으로 찾기 (예: 초전엠코)" style="width:100%;box-sizing:border-box;padding:8px 11px;border:1px solid var(--line);border-radius:8px;background:var(--card);color:var(--ink);font-size:13px;margin-bottom:8px">
+      <div id="taxDoneArea" style="max-height:320px;overflow-y:auto"></div>
+    </div>
   </div>
   <!-- ===== 받을 계산서 (매입 = 거래처에서 받아야 할 것) ===== -->
   <div class="card entry" style="margin-top:22px">
@@ -1482,6 +1490,31 @@ const vatOf = s => !isTaxable(s) ? 0 : (vatInclusive(s) ? (grossOf(s)-supplyOf(s
 const taxStatus = s => s.tax||"미발행";
 function toggleTax(i){ const d=getData(); const s=d.settlements[i];
   s.tax = taxStatus(s)==="발행" ? "미발행" : "발행"; setData(d); render(); }
+function revertTax(i){ const d=getData(); const s=d.settlements[i]; if(!s) return;   // 잘못 발행된 것 정정
+  if(!confirm(`${s.site} (${s.date||''})\n세금계산서 '발행'을 취소하고 '미발행'으로 되돌릴까요?`)) return;
+  s.tax="미발행"; setData(d); render(); }
+let TAX_DONE_Q='';
+function renderTaxDoneList(){   // 발행 완료 목록: 기본 최근 20건, 검색 시 전체에서 현장명 필터
+  const el=document.getElementById('taxDoneArea'); if(!el) return;
+  const d=getData(); const S=d.settlements||[];
+  const md=ds=>ds?`${+ds.slice(5,7)}/${+ds.slice(8,10)}`:'';
+  let done=S.map((s,i)=>({s,i})).filter(x=>isTaxable(x.s)&&calcRow(x.s).rev>0&&taxStatus(x.s)==="발행")
+    .sort((a,b)=>(b.s.date||'').localeCompare(a.s.date||''));
+  const total=done.length;
+  const q=(TAX_DONE_Q||'').trim().toLowerCase();
+  if(q) done=done.filter(x=>String(x.s.site||'').toLowerCase().includes(q));
+  const matched=done.length;
+  const shown=q?done:done.slice(0,20);   // 검색 없으면 최근 20건만
+  el.innerHTML = shown.length? shown.map(({s,i})=>{
+    const rev=calcRow(s).rev, vat=vatOf(s);
+    return `<div class="pay-line">
+      <span class="who">${s.date?`<span style="color:var(--muted);font-size:11px">📅 ${md(s.date)}</span> `:''}${s.site} <span style="color:var(--muted);font-size:11px">· 공급가 ${KRW(rev)} + VAT ${KRW(vat)}</span></span>
+      <span class="amt">${KRW(rev+vat)}</span>
+      <button onclick="revertTax(${i})" style="font-size:12px;padding:5px 10px;border-radius:8px;border:1px solid var(--warn);color:var(--warn);background:var(--card);font-weight:700;white-space:nowrap" title="발행을 취소하고 미발행으로 되돌립니다">↩ 미발행으로</button></div>`;
+  }).join("") : `<div style="color:var(--muted);font-size:12.5px">${q?'검색 결과가 없습니다.':'발행 완료된 건이 없습니다.'}</div>`;
+  const sum=document.getElementById('taxDoneSummary');
+  if(sum) sum.textContent = total ? (q?`검색 ${matched}건 / 총 ${total}건` : (total>20?`총 ${total}건 · 최근 20건 표시 (검색으로 찾기)`:`${total}건`)) : '';
+}
 
 function calcLive(){
   const gross=num('f_quote')+num('f_extra');
@@ -1817,13 +1850,15 @@ function render(){
   const monthVat=monthList.reduce((a,s)=>a+vatOf(s),0);
   document.getElementById("taxSummary").innerHTML=
     `<span style="color:${taxTargets.length?'var(--warn)':'var(--good)'}">미발행 ${taxTargets.length}건</span> · 이번 달 예상 부가세 ${KRW(monthVat)}`;
+  const _taxMD = ds => ds?`${+ds.slice(5,7)}/${+ds.slice(8,10)}`:'';
   document.getElementById("taxArea").innerHTML = taxTargets.length? taxTargets.map(({s,i})=>{
     const rev=calcRow(s).rev, vat=vatOf(s);
     return `<div class="pay-line">
-      <span class="who">${s.site} <span style="color:var(--muted);font-size:11px">· 공급가 ${KRW(rev)} + VAT ${KRW(vat)}</span></span>
+      <span class="who">${s.date?`<span style="color:var(--muted);font-size:11px">📅 ${_taxMD(s.date)}</span> `:''}${s.site} <span style="color:var(--muted);font-size:11px">· 공급가 ${KRW(rev)} + VAT ${KRW(vat)}</span></span>
       <span class="amt">${KRW(rev+vat)}</span>
       <button class="sendbtn ${taxStatus(s)==='발행예정'?'':''}" onclick="toggleTax(${i})">🧾 ${taxStatus(s)} → 발행</button></div>`;
   }).join("") : `<div style="color:var(--muted);font-size:13px">발행할 세금계산서가 없습니다. (과세·매출 발생 건이 여기 표시됩니다)</div>`;
+  renderTaxDoneList();   // ✅ 발행 완료 목록(검색·되돌리기)
 
   // 단가표(고정 인원 일당)
   document.getElementById("rateArea").innerHTML=(d.rates||[]).map((r,i)=>
