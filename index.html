@@ -442,7 +442,7 @@
       <div class="fld"><label>기타 경비 (원)</label><input type="number" id="f_etc" placeholder="0" oninput="calcLive()"></div>
       <div class="fld"><label>입금상태</label><select id="f_paid"><option>미수금</option><option>입금완료</option></select></div>
       <div class="fld"><label>현장 상태</label><select id="f_status"><option>진행중</option><option>완료</option><option>예약</option></select></div>
-      <div class="fld"><label>과세구분</label><select id="f_vat"><option value="과세">과세(부가세 별도)</option><option value="면세">면세</option></select></div>
+      <div class="fld"><label>과세구분</label><select id="f_vat" onchange="calcLive()"><option value="과세">과세(부가세 별도)</option><option value="과세(포함)">과세(부가세 포함)</option><option value="면세">면세</option></select></div>
       <div class="fld"><label>세금계산서</label><select id="f_tax"><option>미발행</option><option>발행</option><option>발행예정</option></select></div>
       <div class="fld wide"><label>비고</label><input id="f_note" placeholder="선택"></div>
     </div>
@@ -510,7 +510,7 @@
     <button class="subtab" data-subtab="재무달력" onclick="showSub('재무달력')">📅 일정 달력</button>
     <button class="subtab" data-subtab="미수금" onclick="showSub('미수금')">💰 미수금 <span id="recvBadge" class="tabbadge"></span></button>
     <button class="subtab" data-subtab="인건비" onclick="showSub('인건비')">🧮 인건비·이체 <span id="payBadge" class="tabbadge"></span></button>
-    <button class="subtab" data-subtab="세금계산서" onclick="showSub('세금계산서')">🧾 세금계산서</button>
+    <button class="subtab" data-subtab="세금계산서" onclick="showSub('세금계산서')">🧾 세금계산서 <span id="taxBadge" class="tabbadge"></span></button>
     <button class="subtab" data-subtab="지출" onclick="showSub('지출')">💸 지출</button>
     <button class="subtab" data-subtab="고정지출" onclick="showSub('고정지출')">💳 고정지출 <span id="fxBadge" class="tabbadge"></span></button>
     <button class="subtab" data-subtab="재무발주" onclick="showSub('재무발주')">📦 발주 <span id="finOrdBadge" class="tabbadge"></span></button>
@@ -589,10 +589,23 @@
   </div><!-- /인건비 -->
 
   <div class="subpg" data-subpg="세금계산서">
-  <!-- ===== 세금계산서 발행 ===== -->
+  <!-- ===== 세금계산서 발행 (우리가 발행 = 매출) ===== -->
   <div class="card" style="margin-top:22px">
-    <h2>🧾 세금계산서 발행 <span id="taxSummary" style="font-weight:500;font-size:12.5px;margin-left:auto"></span></h2>
+    <h2>🧾 세금계산서 발행 <span style="font-weight:500;color:var(--muted);font-size:12px">우리가 발행 (매출)</span> <span id="taxSummary" style="font-weight:500;font-size:12.5px;margin-left:auto"></span></h2>
     <div id="taxArea"></div>
+  </div>
+  <!-- ===== 받을 계산서 (매입 = 거래처에서 받아야 할 것) ===== -->
+  <div class="card entry" style="margin-top:22px">
+    <h2>📥 받을 계산서 <span style="font-weight:500;color:var(--muted);font-size:12px">우리가 받아야 할 계산서(매입) 체크</span> <span id="purcSummary" style="font-weight:500;font-size:12.5px;margin-left:auto"></span></h2>
+    <div class="form-grid" style="margin-top:6px">
+      <div class="fld"><label>날짜</label><input type="date" id="pc_date"></div>
+      <div class="fld"><label>거래처 (어디서)</label><input id="pc_vendor" placeholder="예: ○○자재상"></div>
+      <div class="fld"><label>항목 (무엇)</label><input id="pc_item" placeholder="예: 자재·소모품·기름"></div>
+      <div class="fld"><label>금액 (선택)</label><input type="number" id="pc_amount" placeholder="원"></div>
+    </div>
+    <div style="margin:10px 0;text-align:right"><button class="primary" onclick="addPurchase()">＋ 추가</button></div>
+    <div id="purcArea"></div>
+    <div style="font-size:12px;color:var(--muted);margin-top:8px">💡 거래처에서 세금계산서를 받아야 하는 매입 건을 적어두고, 받으면 <b>✅ 받음</b>으로 체크하세요. (부가세 매입공제용)</div>
   </div>
   </div><!-- /세금계산서 -->
 
@@ -1323,8 +1336,13 @@ const laborOf = s => crewList(s).reduce((a,p)=>a+(+p.pay||0),0);
 const laborMissing = s => crewList(s).some(isMissing);
 const missingCount = list => list.reduce((a,s)=>a+crewList(s).filter(isMissing).length,0);
 
+/* 부가세 구분: 과세(별도)=견적이 공급가액 · 과세(포함)=견적에 VAT 포함 · 면세 */
+const grossOf = s => (+s.quote||0)+(+s.extra||0);                                  // 입력한 견적+추가 합
+const vatInclusive = s => (s.vat||"")==="과세(포함)";                               // 부가세 포함 여부
+const supplyOf = s => vatInclusive(s) ? Math.round(grossOf(s)/1.1) : grossOf(s);   // 공급가액(매출 기준)
+
 function calcRow(s){
-  const rev=(+s.quote||0)+(+s.extra||0);
+  const rev=supplyOf(s);   // 매출=공급가액 (부가세포함이면 VAT 제외한 금액)
   const exp=(+s.fuel||0)+(+s.meal||0)+(+s.supply||0)+(+s.etc||0);
   const lab=laborOf(s);
   return {rev,exp,lab,profit:rev-exp-lab};
@@ -1432,13 +1450,17 @@ function toggleSent(i,j){ const d=getData(); const s=d.settlements[i];
 
 /* 부가세 / 세금계산서 */
 const isTaxable = s => (s.vat||"과세")!=="면세";
-const vatOf = s => isTaxable(s) ? Math.round(calcRow(s).rev*0.1) : 0;
+const vatOf = s => !isTaxable(s) ? 0 : (vatInclusive(s) ? (grossOf(s)-supplyOf(s)) : Math.round(supplyOf(s)*0.1));
 const taxStatus = s => s.tax||"미발행";
 function toggleTax(i){ const d=getData(); const s=d.settlements[i];
   s.tax = taxStatus(s)==="발행" ? "미발행" : "발행"; setData(d); render(); }
 
 function calcLive(){
-  const rev=num('f_quote')+num('f_extra');
+  const gross=num('f_quote')+num('f_extra');
+  const vatMode=(document.getElementById('f_vat')||{}).value||'과세';
+  const inclusive = vatMode==='과세(포함)';
+  const rev = inclusive ? Math.round(gross/1.1) : gross;   // 매출=공급가액
+  const vatNote = inclusive && gross>0 ? ` <span style="color:var(--daman)">(부가세 ${KRW(gross-rev)} 포함 → 공급가 ${KRW(rev)})</span>` : '';
   const exp=num('f_fuel')+num('f_meal')+num('f_supply')+num('f_etc');
   const d=getData();
   const fEl=document.getElementById('f_crew');
@@ -1451,7 +1473,7 @@ function calcLive(){
   if(pending>0) note+=` <span style="color:var(--warn)">(고정 ${pending}명 일당 재무팀 입력)</span>`;
   if(albaN>0)   note+=` <span style="color:var(--daman)">(알바 ${albaN}명 시급 재무팀 입력)</span>`;
   document.getElementById('liveCalc').innerHTML =
-    `매출 <b>${KRW(rev)}</b> − 경비 ${KRW(exp)}${labTxt} = <b>${KRW(rev-exp-lab)}</b>${note}`;
+    `매출 <b>${KRW(rev)}</b>${vatNote} − 경비 ${KRW(exp)}${labTxt} = <b>${KRW(rev-exp-lab)}</b>${note}`;
 }
 
 function addSettlement(){
@@ -1485,6 +1507,7 @@ function addSettlement(){
       document.getElementById('f_quote').focus(); return;
     }
   }
+  if(!confirm(editing?"이 내용으로 결산을 수정하시겠습니까?":"이 내용으로 결산을 저장하시겠습니까?")) return;
   d.settlements=d.settlements||[];
   if(editing){ d.settlements[EDIT_SETTLE]=rec; EDIT_SETTLE=null; }
   else { d.settlements.push(rec); }
@@ -1499,6 +1522,41 @@ function addSettlement(){
   document.getElementById('f_site').focus();
 }
 function delSettlement(i){ const d=getData(); d.settlements.splice(i,1); setData(d); render(); }
+
+/* ── 받을 계산서(매입) — 거래처에서 받아야 할 세금계산서 체크 ── */
+function addPurchase(){
+  const vendor=document.getElementById('pc_vendor').value.trim();
+  const item=document.getElementById('pc_item').value.trim();
+  if(!vendor && !item){ alert('거래처나 항목 중 하나는 입력하세요.'); document.getElementById('pc_vendor').focus(); return; }
+  const d=getData(); d.purchases=d.purchases||[];
+  d.purchases.push({date:document.getElementById('pc_date').value||realToday(), vendor, item, amount:num('pc_amount'), got:false});
+  setData(d); render();
+  ['pc_vendor','pc_item','pc_amount'].forEach(id=>document.getElementById(id).value='');
+  document.getElementById('pc_vendor').focus();
+}
+function togglePurchaseGot(i){ const d=getData(); const p=(d.purchases||[])[i]; if(!p) return; p.got=!p.got; setData(d); render(); }
+function delPurchase(i){ const d=getData(); if(!confirm('이 받을 계산서 항목을 삭제할까요?')) return; d.purchases.splice(i,1); setData(d); render(); }
+function renderPurchases(){
+  const el=document.getElementById('purcArea'); if(!el) return;
+  const esc=t=>String(t||'').replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;');
+  const d=getData();
+  const list=(d.purchases||[]).map((p,i)=>({p,i}));
+  const pending=list.filter(x=>!x.p.got), done=list.filter(x=>x.p.got);
+  const sorted=pending.concat(done);   // 안 받은 것(미수취) 먼저
+  el.innerHTML = sorted.length ? sorted.map(({p,i})=>{
+    const md = p.date ? `${+p.date.slice(5,7)}/${+p.date.slice(8,10)}` : '';
+    const meta = [p.item?esc(p.item):'', md?('📅 '+md):'', p.amount?KRW(p.amount):''].filter(Boolean).join(' · ');
+    const btn = p.got
+      ? `<button onclick="togglePurchaseGot(${i})" style="font-size:12px;padding:5px 11px;border-radius:8px;border:1px solid var(--good);color:var(--good);background:var(--card);font-weight:700;white-space:nowrap">✅ 받음</button>`
+      : `<button onclick="togglePurchaseGot(${i})" style="font-size:12px;padding:5px 11px;border-radius:8px;border:1px solid var(--warn);color:var(--warn);background:var(--card);font-weight:700;white-space:nowrap">⬜ 받아야함</button>`;
+    return `<div class="pay-line" style="${p.got?'opacity:.55':''}">
+      <span class="who"><b>${esc(p.vendor)||'(거래처)'}</b>${meta?` <span style="color:var(--muted);font-size:12px">· ${meta}</span>`:''}</span>
+      <span style="display:flex;gap:6px;align-items:center">${btn}
+        <button class="del" onclick="delPurchase(${i})" title="삭제">✕</button></span></div>`;
+  }).join('') : `<div style="color:var(--muted);font-size:13px">받을 계산서가 없습니다. 위에서 추가하세요.</div>`;
+  const sum=document.getElementById('purcSummary');
+  if(sum) sum.textContent = list.length ? `받아야 할 것 ${pending.length}건${done.length?` · 받음 ${done.length}건`:''}` : '';
+}
 
 /* ── 미결산 현장(예약됐는데 결산 안 한 것, 오늘까지) ── */
 function unsettledList(d){
@@ -1615,6 +1673,8 @@ function render(){
   setBadge('finOrdBadge', ordReqN);
   // 💰 미수금 하위탭 = 미수금 건수(개수 표시 · 파란 배지, 알람 아님)
   (function(){ const b=document.getElementById('recvBadge'); const n=recv.length; if(b){ b.textContent=n>0?n:''; b.className='tabbadge count'+(n>0?' on':''); } })();
+  // 🧾 세금계산서 하위탭 = 받을 계산서(매입) 미수취 건수(파란 개수 배지)
+  (function(){ const b=document.getElementById('taxBadge'); const n=(d.purchases||[]).filter(p=>!p.got).length; if(b){ b.textContent=n>0?n:''; b.className='tabbadge count'+(n>0?' on':''); } })();
 
   // ❗ 운영팀 배지 (오늘 예약된 배치가 있는데 아직 일일결산 안 한 건)
   const _tdy=realToday();
@@ -1671,6 +1731,7 @@ function render(){
   renderUnsettled();
   renderSales();
   renderDev();
+  renderPurchases();
 
   // KPI
   document.getElementById("kpis").innerHTML=[
