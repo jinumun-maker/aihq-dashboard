@@ -1562,8 +1562,8 @@ function render(){
   const mMiss=missingCount(monthList), allMiss=missingCount(S);
 
   let recv=[];
-  (d.receivables||[]).forEach((r,idx)=>recv.push({kind:'recv',idx,name:r.name,co:r.co||'limit',amt:(+r.amt||0),contact:r.contact||'',payer:r.payer||'',bank:r.bank||'',days:(r.date?daysBetween(r.date,d.asOf):null)}));
-  S.forEach((s,idx)=>{ if(s.paid==="미수금") recv.push({kind:'settle',idx,name:s.site,co:s.co,amt:calcRow(s).rev,contact:s.contact||'',payer:s.payer||'',bank:s.bank||'',days:daysBetween(s.date,d.asOf)}); });
+  (d.receivables||[]).forEach((r,idx)=>recv.push({kind:'recv',idx,name:r.name,co:r.co||'limit',amt:(+r.amt||0),contact:r.contact||'',payer:r.payer||'',bank:r.bank||'',date:r.date||'',days:(r.date?daysBetween(r.date,d.asOf):null)}));
+  S.forEach((s,idx)=>{ if(s.paid==="미수금") recv.push({kind:'settle',idx,name:s.site,co:s.co,amt:calcRow(s).rev,contact:s.contact||'',payer:s.payer||'',bank:s.bank||'',date:s.date||'',days:daysBetween(s.date,d.asOf)}); });
   recv.sort((a,b)=>((b.days==null?-1:b.days))-((a.days==null?-1:a.days)));
   const recvTotal=recv.reduce((a,r)=>a+r.amt,0);
 
@@ -1700,7 +1700,8 @@ function render(){
       ? `<b>${r.payer}</b>${bankTag(r.bank)} <button class="del" style="color:var(--muted)" onclick="editPayer('${r.kind}',${r.idx})" title="입금자명 수정">✏️</button>`
       : `${r.bank?bankTag(r.bank)+' ':''}<button class="del" style="color:var(--limit)" onclick="editPayer('${r.kind}',${r.idx})">＋ 입금자</button>`;
     const act = `<button class="del" style="color:var(--good);font-weight:700;border:1px solid var(--good);border-radius:7px;padding:4px 9px" onclick="markPaid('${r.kind}',${r.idx})" title="입금완료 처리">✓ 입금완료</button>`;
-    return `<tr><td>${r.name}</td><td><span class="pill ${coPill(r.co)}">${coName(r.co)}</span></td>
+    const dLabel = r.date ? `${+r.date.slice(5,7)}/${+r.date.slice(8,10)}` : '';
+    return `<tr><td>${r.name}${dLabel?`<br><span style="color:var(--muted);font-size:11px">📅 ${dLabel}</span>`:''}</td><td><span class="pill ${coPill(r.co)}">${coName(r.co)}</span></td>
       <td style="font-size:12.5px">${ccell}</td>
       <td style="font-size:12.5px">${pcell}</td>
       <td class="num">${KRW(r.amt)}</td><td class="num">${dcell}</td><td style="white-space:nowrap">${act}</td></tr>`;
