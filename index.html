@@ -1708,6 +1708,12 @@ function delVehicle(i){
   if(!confirm(v+' 차량을 목록에서 뺄까요? (기존 정비 기록은 남습니다)')) return;
   d.vehicles.splice(i,1); setData(d); render();
 }
+function carDueCount(d){   // 차량 점검 임박(2주내)·지남 건수 (항목별 최신 기록 기준)
+  d=d||getData(); const today=realToday(); const logs=d.carLogs||[];
+  const latest={}; logs.forEach(lg=>{ const k=(lg.car||'')+'|'+(lg.type||''); if(!latest[k]||(lg.date||'')>(latest[k].date||'')) latest[k]=lg; });
+  let n=0; Object.keys(latest).forEach(k=>{ const lg=latest[k]; if(!lg.next) return; const dd=Math.round((new Date(lg.next)-new Date(today))/86400000); if(dd<=14) n++; });
+  return n;
+}
 function renderCars(){
   const d=getData(); const vehicles=d.vehicles||[]; const logs=d.carLogs||[];
   const today=realToday();
@@ -1975,11 +1981,12 @@ function render(){
   const todaySettle=(d.settlements||[]).filter(s=>s.date===_tdy).length;
   const opsUnlogged=Math.max(0, todaySched - todaySettle);   // 오늘분(완료율 계산용)
   const unsettledN=unsettledList(d).length;                   // 전체 미결산(오늘까지, 과거 누락 포함)
+  const carDueN=carDueCount(d);                 // 차량 점검 임박·지남
   setBadge('settleBadge', unsettledN);
   setBadge('ordBadge', ordSentN);               // 운영팀 발주 하위탭 = 입고 확인 대기
-  setBadge('opsBadge', unsettledN+ordSentN);    // 운영팀 탭 = 미결산 + 발주 입고 대기
-  // ✅ 대시보드 업무요약 하위탭 = 재무(미이체·고정지출·발주·결제요청·미발행) + 운영(미결산·발주입고) 할 일 총합
-  setBadge('dashTaskBadge', (allUnpaid+fxDueToday.length+ordReqN+payReqN+unbilledN)+(unsettledN+ordSentN));
+  setBadge('opsBadge', unsettledN+ordSentN+carDueN);    // 운영팀 탭 = 미결산 + 발주 입고 대기 + 차량 점검
+  // ✅ 대시보드 업무요약 하위탭 = 재무(미이체·고정지출·발주·결제요청·미발행) + 운영(미결산·발주입고·차량점검) 할 일 총합
+  setBadge('dashTaskBadge', (allUnpaid+fxDueToday.length+ordReqN+payReqN+unbilledN)+(unsettledN+ordSentN+carDueN));
 
   // 💸 당일 이체 확인
   const sendTargets=[];
