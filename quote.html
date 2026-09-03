@@ -1,0 +1,1004 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+</head>
+<body>
+<title>현장 견적서</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+KR:wght@400;500;600;700&family=IBM+Plex+Mono:wght@500;600&display=swap">
+<style>
+:root{
+  --accent-a:#0B6E5F; --accent-a-soft:#E1EFEB;
+  --accent-b:#9C5511; --accent-b-soft:#F5E9DB;
+  --accent-ink:#FFFFFF;
+  --paper:#F1F3EF; --surface:#FFFFFF; --surface-2:#F8F9F6;
+  --ink:#101519; --ink-2:#3D4750; --muted:#6C7681;
+  --line:#D8DCD6; --line-2:#EAEDE8;
+  --danger:#B3402E;
+  --shadow:0 1px 2px rgba(16,21,25,.05), 0 10px 28px rgba(16,21,25,.07);
+  --accent:var(--accent-a); --accent-soft:var(--accent-a-soft);
+  --r:14px;
+}
+:root[data-co="daman"]{ --accent:var(--accent-b); --accent-soft:var(--accent-b-soft); }
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]){
+    --accent-a:#31B098; --accent-a-soft:#123029;
+    --accent-b:#D68C3D; --accent-b-soft:#33230F;
+    --accent-ink:#0D1114;
+    --paper:#0D1114; --surface:#161B20; --surface-2:#1B2127;
+    --ink:#E9EDEA; --ink-2:#BAC3C4; --muted:#8B959D;
+    --line:#2A333A; --line-2:#232B31;
+    --danger:#E0745F;
+    --shadow:0 1px 2px rgba(0,0,0,.4), 0 10px 28px rgba(0,0,0,.35);
+  }
+}
+:root[data-theme="dark"]{
+  --accent-a:#31B098; --accent-a-soft:#123029;
+  --accent-b:#D68C3D; --accent-b-soft:#33230F;
+  --accent-ink:#0D1114;
+  --paper:#0D1114; --surface:#161B20; --surface-2:#1B2127;
+  --ink:#E9EDEA; --ink-2:#BAC3C4; --muted:#8B959D;
+  --line:#2A333A; --line-2:#232B31;
+  --danger:#E0745F;
+  --shadow:0 1px 2px rgba(0,0,0,.4), 0 10px 28px rgba(0,0,0,.35);
+}
+
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+body{
+  background:var(--paper); color:var(--ink);
+  font-family:"IBM Plex Sans KR",-apple-system,BlinkMacSystemFont,"Apple SD Gothic Neo","Malgun Gothic",system-ui,sans-serif;
+  font-size:15px; line-height:1.5; -webkit-text-size-adjust:100%;
+}
+.mono{font-family:"IBM Plex Mono","IBM Plex Sans KR",ui-monospace,monospace;font-variant-numeric:tabular-nums}
+button{font:inherit;color:inherit;cursor:pointer}
+input,select,textarea{font:inherit;color:inherit}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px;border-radius:6px}
+@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+
+#app{max-width:560px;margin:0 auto;min-height:100dvh;display:flex;flex-direction:column;background:var(--paper)}
+
+.topbar{
+  position:sticky;top:0;z-index:20;display:flex;gap:8px;align-items:center;
+  padding:10px 12px;background:var(--surface);border-bottom:1px solid var(--line);
+}
+.seg{display:flex;flex:1;gap:4px;background:var(--surface-2);border:1px solid var(--line);border-radius:11px;padding:3px}
+.seg button{
+  flex:1;border:0;background:transparent;border-radius:8px;padding:7px 4px;
+  display:flex;flex-direction:column;align-items:center;gap:1px;line-height:1.15;
+  font-weight:600;font-size:14px;color:var(--muted);transition:background .15s,color .15s;
+}
+.seg button small{font-size:10px;font-weight:500;letter-spacing:.06em;opacity:.85}
+.seg button[aria-selected="true"]{background:var(--accent);color:var(--accent-ink);box-shadow:var(--shadow)}
+.iconbtn{
+  border:1px solid var(--line);background:var(--surface);border-radius:10px;
+  width:42px;height:42px;display:grid;place-items:center;font-size:16px;color:var(--ink-2);flex:none;
+}
+.iconbtn:hover{border-color:var(--accent);color:var(--accent)}
+
+main{flex:1;display:flex;flex-direction:column;gap:12px;padding:12px 12px 0}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:14px;box-shadow:var(--shadow)}
+.card>h2{
+  margin:0 0 12px;font-size:11px;font-weight:600;letter-spacing:.14em;color:var(--muted);
+  display:flex;align-items:center;gap:8px;
+}
+.card>h2::before{content:"";width:3px;height:13px;background:var(--accent);border-radius:2px;flex:none}
+.card>h2 .grow{flex:1}
+.linkbtn{border:0;background:transparent;color:var(--accent);font-size:12px;font-weight:600;letter-spacing:0;padding:4px 2px}
+
+label.f{display:flex;flex-direction:column;gap:5px;margin-bottom:10px}
+label.f:last-child{margin-bottom:0}
+label.f>span{font-size:12px;color:var(--muted);font-weight:500}
+input[type=text],input[type=tel],input[type=number],textarea,select{
+  width:100%;background:var(--surface-2);border:1px solid var(--line);border-radius:10px;
+  padding:11px 12px;min-height:44px;
+}
+input::placeholder,textarea::placeholder{color:var(--muted);opacity:.65}
+textarea{min-height:70px;resize:vertical}
+input:focus,textarea:focus,select:focus{border-color:var(--accent);background:var(--surface);outline:none;box-shadow:0 0 0 3px var(--accent-soft)}
+
+.chips{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:12px}
+.chip{
+  border:1px dashed var(--line);background:var(--surface-2);border-radius:99px;
+  padding:7px 12px;font-size:13px;color:var(--ink-2);min-height:36px;
+}
+.chip:hover,.chip:active{border-style:solid;border-color:var(--accent);color:var(--accent);background:var(--accent-soft)}
+.chip::before{content:"+ ";color:var(--accent);font-weight:600}
+
+#rows{display:flex;flex-direction:column;gap:10px}
+.row{
+  display:grid;grid-template-columns:1fr 38px;gap:7px;align-items:center;
+  padding:11px;border:1px solid var(--line-2);border-radius:11px;background:var(--surface-2);
+}
+.row .nums{grid-column:1/-1;display:grid;grid-template-columns:66px 64px 1fr;gap:6px;align-items:center}
+.row .nums input,.row .nums select{padding:9px 8px;min-height:42px;background:var(--surface)}
+.row .amt{
+  grid-column:1/-1;text-align:right;font-size:15px;font-weight:600;color:var(--ink);
+  border-top:1px dashed var(--line-2);margin-top:1px;padding-top:8px;
+}
+.row .amt em{font-style:normal;color:var(--muted);font-size:10px;font-weight:600;letter-spacing:.14em;margin-right:8px}
+.del{border:0;background:transparent;color:var(--muted);font-size:19px;height:44px;border-radius:9px}
+.del:hover{color:var(--danger);background:var(--surface)}
+.empty{text-align:center;color:var(--muted);font-size:13px;padding:20px 8px;border:1px dashed var(--line);border-radius:11px;line-height:1.6}
+
+.pills{display:flex;gap:6px;flex-wrap:wrap}
+.pill{
+  border:1px solid var(--line);background:var(--surface-2);border-radius:9px;
+  padding:9px 10px;font-size:13px;font-weight:500;color:var(--ink-2);min-height:42px;flex:1;
+}
+.pill[aria-pressed="true"]{background:var(--accent);border-color:var(--accent);color:var(--accent-ink);font-weight:600}
+.hint{font-size:11.5px;color:var(--muted);margin-top:8px;line-height:1.5}
+.hint b{color:var(--ink-2);font-weight:600}
+
+.warn{
+  display:flex;gap:9px;align-items:flex-start;background:var(--accent-soft);
+  border:1px solid var(--accent);border-radius:11px;padding:11px 13px;font-size:12.5px;line-height:1.5;
+}
+.warn button{border:0;background:transparent;color:var(--accent);font-weight:700;text-decoration:underline;padding:0;font-size:12.5px}
+
+.spacer{height:16px}
+.bottombar{
+  position:sticky;bottom:0;z-index:20;display:flex;gap:10px;align-items:center;
+  padding:11px 12px calc(11px + env(safe-area-inset-bottom));
+  background:var(--surface);border-top:1px solid var(--line);box-shadow:0 -6px 20px rgba(16,21,25,.06);
+}
+.totalbox{flex:1;min-width:0;display:flex;flex-direction:column;gap:0}
+.totalbox span{font-size:10px;letter-spacing:.16em;color:var(--muted);font-weight:600}
+.totalbox strong{font-size:23px;font-weight:600;letter-spacing:-.01em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.btn-primary{
+  border:0;background:var(--accent);color:var(--accent-ink);border-radius:11px;
+  padding:14px 18px;font-weight:600;font-size:15px;min-height:52px;flex:none;box-shadow:var(--shadow);
+}
+.btn-primary:disabled{opacity:.35;box-shadow:none;cursor:not-allowed}
+.btn-ghost{border:1px solid var(--line);background:var(--surface);border-radius:11px;padding:13px 16px;font-weight:600;font-size:14px;min-height:50px}
+.btn-ghost:hover{border-color:var(--accent);color:var(--accent)}
+
+/* sheets */
+.sheet{
+  position:fixed;inset:0;z-index:50;background:var(--paper);
+  display:flex;flex-direction:column;overflow-y:auto;
+}
+.sheet-head{
+  position:sticky;top:0;z-index:2;display:flex;align-items:center;gap:10px;
+  padding:12px;background:var(--surface);border-bottom:1px solid var(--line);
+}
+.sheet-head h3{margin:0;flex:1;font-size:15px;font-weight:600}
+.sheet-body{max-width:560px;width:100%;margin:0 auto;padding:12px;display:flex;flex-direction:column;gap:12px}
+.sheet-foot{
+  position:sticky;bottom:0;display:flex;gap:8px;padding:11px 12px calc(11px + env(safe-area-inset-bottom));
+  background:var(--surface);border-top:1px solid var(--line);max-width:560px;width:100%;margin:0 auto;
+}
+.sheet-foot>*{flex:1}
+
+#preview{width:100%;height:auto;display:block;border-radius:10px;border:1px solid var(--line);background:#fff}
+.savehint{font-size:12px;color:var(--muted);text-align:center;line-height:1.6;padding:2px 4px}
+
+.histrow{
+  display:flex;align-items:center;gap:10px;width:100%;text-align:left;
+  border:1px solid var(--line-2);background:var(--surface-2);border-radius:11px;padding:11px 12px;min-height:56px;
+}
+.histrow:hover{border-color:var(--accent)}
+.histrow .h-main{flex:1;min-width:0}
+.histrow .h-main b{display:block;font-size:14px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.histrow .h-main small{color:var(--muted);font-size:11px}
+.histrow .h-amt{font-weight:600;font-size:14px;white-space:nowrap}
+.tag{font-size:10px;font-weight:700;letter-spacing:.08em;padding:3px 7px;border-radius:5px;background:var(--accent-soft);color:var(--accent);flex:none}
+.toast{
+  position:fixed;left:50%;bottom:88px;transform:translateX(-50%);z-index:99;
+  background:var(--ink);color:var(--paper);padding:11px 18px;border-radius:99px;font-size:13.5px;
+  font-weight:500;box-shadow:var(--shadow);max-width:88vw;text-align:center;
+}
+</style>
+
+<div id="app">
+  <header class="topbar">
+    <div class="seg" role="tablist" aria-label="회사 선택">
+      <button role="tab" id="tab-limit" data-co="limit" aria-selected="true">리미트<small>청소</small></button>
+      <button role="tab" id="tab-daman" data-co="daman" aria-selected="false">다만산업<small>폴리싱</small></button>
+    </div>
+    <button class="iconbtn" id="btnHistory" title="지난 견적" aria-label="지난 견적">🕘</button>
+    <button class="iconbtn" id="btnSettings" title="회사 정보 설정" aria-label="회사 정보 설정">⚙</button>
+  </header>
+
+  <main>
+    <div id="setupWarn" hidden></div>
+
+    <section class="card">
+      <h2><span class="grow">받는 곳</span></h2>
+      <label class="f"><span>고객·업체명 <b style="color:var(--danger)">*</b></span>
+        <input type="text" id="cust" placeholder="예) 초전 힐스테이트 관리사무소" autocomplete="off"></label>
+      <label class="f"><span>담당자</span>
+        <input type="text" id="person" placeholder="예) 김철수 소장님" autocomplete="off"></label>
+      <label class="f"><span>현장명 · 주소</span>
+        <input type="text" id="site" placeholder="예) 진주시 초전동 ○○상가 2층" autocomplete="off"></label>
+    </section>
+
+    <section class="card">
+      <h2><span class="grow">견적 항목</span><button class="linkbtn" id="btnAddRow">직접 추가 +</button></h2>
+      <div class="chips" id="chips"></div>
+      <div id="rows"></div>
+    </section>
+
+    <section class="card">
+      <h2><span class="grow">부가세</span></h2>
+      <div class="pills" id="vatPills">
+        <button class="pill" data-vat="plus">별도 10%</button>
+        <button class="pill" data-vat="incl">포함</button>
+        <button class="pill" data-vat="none">없음</button>
+      </div>
+      <p class="hint" id="vatHint"></p>
+    </section>
+
+    <section class="card">
+      <h2><span class="grow">조건</span></h2>
+      <label class="f"><span>견적 유효기간</span>
+        <select id="valid">
+          <option value="7">발행일로부터 7일</option>
+          <option value="14" selected>발행일로부터 14일</option>
+          <option value="30">발행일로부터 30일</option>
+          <option value="0">기재 안 함</option>
+        </select></label>
+      <label class="f"><span>결제 조건</span>
+        <input type="text" id="pay" placeholder="예) 작업 완료 후 7일 이내 현금 결제" autocomplete="off"></label>
+      <label class="f"><span>특기사항 (고객에게 남길 말)</span>
+        <textarea id="memo" placeholder="예) 현장 실측 후 면적 변동 시 재견적&#10;예) 폐기물 처리비 별도"></textarea></label>
+    </section>
+
+    <div class="spacer"></div>
+  </main>
+
+  <footer class="bottombar">
+    <div class="totalbox">
+      <span id="totalLabel">합계 금액</span>
+      <strong class="mono" id="grand">0원</strong>
+    </div>
+    <button class="btn-primary" id="btnMake" disabled>견적서 만들기</button>
+  </footer>
+</div>
+
+<div class="sheet" id="resultSheet" hidden>
+  <div class="sheet-head">
+    <h3 id="resultTitle">견적서</h3>
+    <button class="iconbtn" id="btnCloseResult" aria-label="닫기">✕</button>
+  </div>
+  <div class="sheet-body">
+    <img id="preview" alt="생성된 견적서">
+    <p class="savehint" id="saveHint">이미지를 <b>길게 누르면</b> 폰 사진첩에 바로 저장돼요.</p>
+  </div>
+  <div class="sheet-foot">
+    <button class="btn-ghost" id="btnShare" hidden>카톡·문자로 보내기</button>
+    <button class="btn-primary" id="btnSave" style="flex:1">폰에 저장</button>
+  </div>
+</div>
+
+<div class="sheet" id="settingsSheet" hidden>
+  <div class="sheet-head">
+    <h3>회사 정보 <span class="tag" id="setCo">리미트</span></h3>
+    <button class="iconbtn" id="btnCloseSettings" aria-label="닫기">✕</button>
+  </div>
+  <div class="sheet-body">
+    <div class="card">
+      <h2><span class="grow">견적서에 찍히는 정보</span></h2>
+      <label class="f"><span>상호</span><input type="text" id="sName" autocomplete="off"></label>
+      <label class="f"><span>대표자</span><input type="text" id="sCeo" autocomplete="off"></label>
+      <label class="f"><span>사업자등록번호</span><input type="text" id="sBiz" placeholder="000-00-00000" inputmode="numeric" autocomplete="off"></label>
+      <label class="f"><span>주소</span><input type="text" id="sAddr" placeholder="경남 진주시 ..." autocomplete="off"></label>
+      <label class="f"><span>전화번호</span><input type="tel" id="sTel" placeholder="010-0000-0000" autocomplete="off"></label>
+      <label class="f"><span>입금 계좌</span><input type="text" id="sBank" placeholder="○○은행 000-00-000000 문진우" autocomplete="off"></label>
+    </div>
+    <p class="hint">여기 넣은 정보는 <b>이 기기와 이 견적서 툴에 저장</b>돼요. 한 번만 넣으면 다음부터 자동으로 들어갑니다. 회사를 바꾸면 그 회사 정보가 나옵니다.</p>
+  </div>
+  <div class="sheet-foot">
+    <button class="btn-primary" id="btnSaveSettings">저장</button>
+  </div>
+</div>
+
+<div class="sheet" id="historySheet" hidden>
+  <div class="sheet-head">
+    <h3>지난 견적</h3>
+    <button class="iconbtn" id="btnCloseHistory" aria-label="닫기">✕</button>
+  </div>
+  <div class="sheet-body" id="histBody"></div>
+</div>
+
+<script>
+(function(){
+"use strict";
+
+/* ─────────── 기준 데이터 ─────────── */
+var CO = {
+  limit:{ label:"리미트", sub:"청소" },
+  daman:{ label:"다만산업", sub:"폴리싱" }
+};
+var PRESETS = {
+  limit:[["입주청소","평"],["준공청소","㎡"],["정기청소","회"],["화장실 대청소","개소"],
+         ["유리·창틀 청소","식"],["바닥 왁스작업","㎡"],["후드·덕트 청소","식"],["폐기물 처리","식"]],
+  daman:[["바닥 폴리싱","㎡"],["석재 연마·광택","㎡"],["에폭시 코팅","㎡"],["크리스탈 코팅","㎡"],
+         ["논슬립 시공","㎡"],["바닥 보수","개소"],["줄눈 시공","m"],["장비·자재비","식"]]
+};
+var UNITS = ["㎡","평","회","개소","식","m","대","일","명"];
+var VAT_HINT = {
+  plus:"공급가액에 <b>10%를 더해서</b> 청구합니다. 일반과세자(리미트) 기본값이에요.",
+  incl:"적은 금액에 <b>부가세가 이미 들어있는</b> 걸로 계산합니다.",
+  none:"합계에 부가세를 <b>더하지 않습니다.</b> 간이과세자(다만산업) 기본값이에요.<br>견적서 특기사항에 <b>“공급가액 ○○원이며, 현금영수증·계산서 요청하실 경우 부가세 10% 별도”</b> 문구가 자동으로 들어갑니다."
+};
+var LS_CFG="jj-quote-cfg-v1", LS_HIST="jj-quote-hist-v1";
+
+/* ─────────── 상태 ─────────── */
+var co="limit";
+var cfg=defaultCfg();
+var items=[];
+var hist=[];
+var lastBlob=null, lastName="견적서.png";
+var db=null;
+
+function defaultCfg(){
+  return {
+    limit:{name:"리미트",ceo:"문진우",bizNo:"",addr:"",tel:"",bank:"",vat:"plus"},
+    daman:{name:"다만산업",ceo:"문진우",bizNo:"",addr:"",tel:"",bank:"",vat:"none"},
+    prices:{limit:{},daman:{}}
+  };
+}
+function merge(base,inc){
+  if(!inc||typeof inc!=="object") return base;
+  ["limit","daman"].forEach(function(k){
+    if(inc[k]&&typeof inc[k]==="object") Object.keys(base[k]).forEach(function(f){
+      if(typeof inc[k][f]==="string") base[k][f]=inc[k][f];
+    });
+  });
+  if(inc.prices&&typeof inc.prices==="object"){
+    ["limit","daman"].forEach(function(k){
+      if(inc.prices[k]&&typeof inc.prices[k]==="object") base.prices[k]=inc.prices[k];
+    });
+  }
+  return base;
+}
+
+/* ─────────── 저장소 (db 우선, 없으면 이 기기에만) ─────────── */
+function lsGet(k,fb){ try{ var v=localStorage.getItem(k); return v?JSON.parse(v):fb; }catch(e){ return fb; } }
+function lsSet(k,v){ try{ localStorage.setItem(k,JSON.stringify(v)); }catch(e){} }
+
+async function loadAll(){
+  cfg = merge(defaultCfg(), lsGet(LS_CFG,null));
+  hist = lsGet(LS_HIST,[]) || [];
+  try{
+    if(window.claude && typeof window.claude.use==="function"){
+      db = await window.claude.use("db");
+    }
+  }catch(e){ db=null; }
+  if(db){
+    try{
+      var s = await db.doc("config/app").get();
+      if(s.exists) cfg = merge(defaultCfg(), s.data());
+    }catch(e){}
+    try{
+      var q = await db.collection("quotes").orderBy("at","desc").limit(40).get();
+      var rows = q.docs.map(function(d){ var o=d.data()||{}; o.id=d.id; return o; });
+      if(rows.length) hist = rows;
+    }catch(e){}
+  }
+}
+async function saveCfg(){
+  lsSet(LS_CFG,cfg);
+  if(db){ try{ await db.doc("config/app").set(cfg); }catch(e){} }
+}
+async function pushHist(rec){
+  hist.unshift(rec);
+  hist = hist.slice(0,40);
+  lsSet(LS_HIST,hist);
+  if(db){ try{ await db.collection("quotes").doc(rec.id).set(rec); }catch(e){} }
+}
+
+/* ─────────── 계산 ─────────── */
+function num(v){ var n=parseFloat(v); return isFinite(n)?n:0; }
+function lineAmt(it){ return Math.round(num(it.qty)*num(it.price)); }
+function calc(){
+  var sum=0; items.forEach(function(it){ sum+=lineAmt(it); });
+  var mode=cfg[co].vat, supply=sum, vat=0, total=sum;
+  if(mode==="plus"){ vat=Math.round(sum*0.1); total=sum+vat; }
+  else if(mode==="incl"){ supply=Math.round(sum/1.1); vat=sum-supply; total=sum; }
+  return {sum:sum,supply:supply,vat:vat,total:total,mode:mode};
+}
+function won(n){ return Math.round(n).toLocaleString("ko-KR")+"원"; }
+function comma(n){ return Math.round(n).toLocaleString("ko-KR"); }
+
+function hangulAmount(n){
+  n=Math.round(n);
+  if(n<=0) return "영";
+  var D=["","일","이","삼","사","오","육","칠","팔","구"];
+  var S=["","십","백","천"], B=["","만","억","조","경"];
+  var groups=[], x=n;
+  while(x>0){ groups.push(x%10000); x=Math.floor(x/10000); }
+  var out="";
+  for(var g=groups.length-1;g>=0;g--){
+    var v=groups[g]; if(v===0) continue;
+    var ds=String(v).split("").reverse(), part="";
+    for(var i=ds.length-1;i>=0;i--){
+      var d=+ds[i]; if(d===0) continue;
+      part += ((d===1&&i>0)?"":D[d]) + S[i];
+    }
+    out += part + B[g];
+  }
+  return out;
+}
+
+/* ─────────── 화면 그리기 ─────────── */
+var $=function(id){ return document.getElementById(id); };
+
+function setCompany(next){
+  co=next;
+  document.documentElement.dataset.co=co;
+  $("tab-limit").setAttribute("aria-selected", co==="limit"?"true":"false");
+  $("tab-daman").setAttribute("aria-selected", co==="daman"?"true":"false");
+  $("setCo").textContent=CO[co].label;
+  renderChips(); renderVat(); renderSetupWarn(); renderTotals();
+}
+
+function renderChips(){
+  var box=$("chips"); box.innerHTML="";
+  PRESETS[co].forEach(function(p){
+    var b=document.createElement("button");
+    b.type="button"; b.className="chip"; b.textContent=p[0];
+    b.addEventListener("click",function(){ addRow(p[0],p[1]); });
+    box.appendChild(b);
+  });
+}
+
+function renderVat(){
+  var m=cfg[co].vat;
+  Array.prototype.forEach.call(document.querySelectorAll("#vatPills .pill"),function(b){
+    b.setAttribute("aria-pressed", b.dataset.vat===m ? "true":"false");
+  });
+  $("vatHint").innerHTML=VAT_HINT[m];
+}
+
+function renderSetupWarn(){
+  var c=cfg[co], box=$("setupWarn");
+  var missing = !c.tel || !c.bizNo;
+  box.hidden=!missing;
+  if(missing){
+    box.innerHTML='<div class="warn"><span>⚠</span><div><b>'+CO[co].label+
+      '</b>의 사업자번호·전화번호가 아직 비어 있어요. 견적서에 안 찍힙니다. '+
+      '<button type="button" id="warnLink">지금 넣기</button></div></div>';
+    $("warnLink").addEventListener("click",openSettings);
+  }
+}
+
+function addRow(name,unit){
+  var remembered = cfg.prices[co][name];
+  items.push({name:name||"", unit:unit||"식", qty:1, price:remembered?remembered:""});
+  renderRows(); renderTotals();
+  var last=$("rows").lastElementChild;
+  if(last){
+    var target = (name && remembered) ? last.querySelector(".i-qty") : (name ? last.querySelector(".i-price") : last.querySelector(".i-name"));
+    if(target){ target.focus(); if(target.select) target.select(); }
+  }
+}
+
+function renderRows(){
+  var box=$("rows"); box.innerHTML="";
+  if(!items.length){
+    var e=document.createElement("div");
+    e.className="empty";
+    e.innerHTML="위 버튼을 눌러 항목을 담으세요.<br>없는 항목은 <b>직접 추가 +</b>";
+    box.appendChild(e); return;
+  }
+  items.forEach(function(it,idx){
+    var row=document.createElement("div"); row.className="row";
+
+    var name=document.createElement("input");
+    name.type="text"; name.className="i-name"; name.value=it.name;
+    name.placeholder="항목 이름"; name.autocomplete="off";
+    name.addEventListener("input",function(){ it.name=name.value; });
+
+    var del=document.createElement("button");
+    del.type="button"; del.className="del"; del.setAttribute("aria-label","항목 삭제"); del.textContent="✕";
+    del.addEventListener("click",function(){ items.splice(idx,1); renderRows(); renderTotals(); });
+
+    var nums=document.createElement("div"); nums.className="nums";
+
+    var qty=document.createElement("input");
+    qty.type="number"; qty.className="i-qty mono"; qty.value=it.qty;
+    qty.min="0"; qty.step="any"; qty.inputMode="decimal"; qty.setAttribute("aria-label","수량");
+    qty.addEventListener("input",function(){ it.qty=qty.value; updateAmt(); renderTotals(); });
+
+    var unit=document.createElement("select");
+    unit.setAttribute("aria-label","단위");
+    UNITS.forEach(function(u){
+      var o=document.createElement("option"); o.value=u; o.textContent=u;
+      if(u===it.unit) o.selected=true; unit.appendChild(o);
+    });
+    if(UNITS.indexOf(it.unit)<0){
+      var o2=document.createElement("option"); o2.value=it.unit; o2.textContent=it.unit; o2.selected=true;
+      unit.insertBefore(o2,unit.firstChild);
+    }
+    unit.addEventListener("change",function(){ it.unit=unit.value; });
+
+    var price=document.createElement("input");
+    price.type="number"; price.className="i-price mono"; price.value=it.price;
+    price.min="0"; price.step="100"; price.inputMode="numeric";
+    price.placeholder="단가"; price.setAttribute("aria-label","단가");
+    price.addEventListener("input",function(){ it.price=price.value; updateAmt(); renderTotals(); });
+
+    nums.appendChild(qty); nums.appendChild(unit); nums.appendChild(price);
+
+    var amt=document.createElement("div"); amt.className="amt mono";
+    function updateAmt(){ amt.innerHTML='<em>금액</em>'+won(lineAmt(it)); }
+    updateAmt();
+
+    row.appendChild(name); row.appendChild(del); row.appendChild(nums); row.appendChild(amt);
+    box.appendChild(row);
+  });
+}
+
+function renderTotals(){
+  var t=calc();
+  $("grand").textContent=won(t.total);
+  $("totalLabel").textContent = t.mode==="plus" ? "합계 금액 (부가세 포함)"
+                              : t.mode==="incl" ? "합계 금액 (부가세 포함)"
+                              : "합계 금액";
+  var ok = items.length>0 && $("cust").value.trim().length>0;
+  $("btnMake").disabled=!ok;
+}
+
+/* ─────────── 견적서 이미지 ─────────── */
+var FS='"IBM Plex Sans KR","Apple SD Gothic Neo","Malgun Gothic",sans-serif';
+var FM='"IBM Plex Mono","IBM Plex Sans KR","Apple SD Gothic Neo","Malgun Gothic",monospace';
+
+async function ensureFonts(){
+  if(!document.fonts) return;
+  try{
+    await Promise.all([
+      document.fonts.load('700 40px "IBM Plex Sans KR"',"견적서"),
+      document.fonts.load('600 16px "IBM Plex Sans KR"',"견적서"),
+      document.fonts.load('400 14px "IBM Plex Sans KR"',"견적서"),
+      document.fonts.load('600 16px "IBM Plex Mono"',"0123456789"),
+      document.fonts.load('500 14px "IBM Plex Mono"',"0123456789")
+    ]);
+    await document.fonts.ready;
+  }catch(e){}
+}
+
+function T(ctx,s,x,y,o){
+  o=o||{};
+  ctx.font=(o.w||400)+" "+(o.s||14)+"px "+(o.f||FS);
+  ctx.fillStyle=o.c||"#12181D";
+  ctx.textAlign=o.a||"left";
+  ctx.textBaseline="alphabetic";
+  try{ ctx.letterSpacing=(o.ls||0)+"px"; }catch(e){}
+  ctx.fillText(s,x,y);
+  try{ ctx.letterSpacing="0px"; }catch(e){}
+}
+function L(ctx,x1,y1,x2,y2,c,w){
+  ctx.strokeStyle=c; ctx.lineWidth=w||1;
+  ctx.beginPath(); ctx.moveTo(x1,y1); ctx.lineTo(x2,y2); ctx.stroke();
+}
+function R(ctx,x,y,w,h,fill,stroke,rad){
+  rad=rad||0;
+  ctx.beginPath();
+  if(rad&&ctx.roundRect) ctx.roundRect(x,y,w,h,rad); else ctx.rect(x,y,w,h);
+  if(fill){ ctx.fillStyle=fill; ctx.fill(); }
+  if(stroke){ ctx.strokeStyle=stroke; ctx.lineWidth=1; ctx.stroke(); }
+}
+function fit(ctx,s,maxW){
+  s=String(s);
+  if(ctx.measureText(s).width<=maxW) return s;
+  var r=s;
+  while(r.length>1 && ctx.measureText(r+"…").width>maxW) r=r.slice(0,-1);
+  return r+"…";
+}
+function wrap(ctx,text,maxW){
+  var out=[];
+  String(text).split("\n").forEach(function(para){
+    if(!para){ out.push(""); return; }
+    var cur="";
+    for(var i=0;i<para.length;i++){
+      var test=cur+para[i];
+      if(ctx.measureText(test).width>maxW && cur){ out.push(cur); cur=para[i]; }
+      else cur=test;
+    }
+    out.push(cur);
+  });
+  return out;
+}
+
+function quoteNo(){
+  var d=new Date();
+  var ymd=String(d.getFullYear()).slice(2)+pad(d.getMonth()+1)+pad(d.getDate());
+  var today=hist.filter(function(h){ return h.no && h.no.indexOf("Q-"+ymd)===0; }).length;
+  return "Q-"+ymd+"-"+pad(today+1);
+}
+function pad(n){ return n<10?("0"+n):String(n); }
+function todayStr(){
+  var d=new Date();
+  return d.getFullYear()+"년 "+(d.getMonth()+1)+"월 "+d.getDate()+"일";
+}
+
+async function makeImage(){
+  await ensureFonts();
+  var c=cfg[co], t=calc();
+  var ACC = co==="limit" ? "#0B6E5F" : "#9C5511";
+  var SOFT= co==="limit" ? "#E1EFEB" : "#F5E9DB";
+  var INK="#12181D", INK2="#414B54", MUT="#7A838B", LN="#D4D9D3", LN2="#E9ECE7", SF="#F7F8F5";
+
+  var S=2, W=820, PAD=46, CW=W-PAD*2, MAXH=4200;
+  var tmp=document.createElement("canvas");
+  tmp.width=W*S; tmp.height=MAXH*S;
+  var x=tmp.getContext("2d");
+  x.scale(S,S);
+  x.fillStyle="#FFFFFF"; x.fillRect(0,0,W,MAXH);
+
+  /* 상단 색 띠 */
+  x.fillStyle=ACC; x.fillRect(0,0,W,9);
+
+  var y=58;
+  T(x,c.name||CO[co].label,PAD,y,{s:15,w:700,c:ACC,ls:1.4});
+  T(x,co==="limit"?"청소 · 준공/입주청소":"바닥 폴리싱 · 코팅 · 바닥공사",W-PAD,y,{s:12,w:500,c:MUT,a:"right"});
+
+  /* 제목 */
+  y=124;
+  T(x,"견 적 서",W/2,y,{s:40,w:700,c:INK,a:"center",ls:6});
+  L(x,W/2-104,y+16,W/2+104,y+16,INK,2);
+  L(x,W/2-104,y+21,W/2+104,y+21,INK,1);
+
+  /* 메타 */
+  y=182;
+  T(x,"견적일자  "+todayStr(),PAD,y,{s:12.5,w:500,c:INK2});
+  var qn=quoteNo();
+  T(x,"견적번호  "+qn,W-PAD,y,{s:12.5,w:500,c:INK2,a:"right",f:FM});
+
+  /* 수신 / 공급자 — 내용에 맞춰 높이 계산 */
+  y=206;
+  var lw=Math.round(CW*0.455), rx=PAD+lw+22, rw=W-PAD-rx;
+  var custV=($("cust").value.trim())||"고객";
+  var pers=$("person").value.trim();
+  var st=$("site").value.trim();
+  x.font='400 13px '+FS;
+  var siteLines = st ? wrap(x,"현장  "+st,lw-36).slice(0,3) : [];
+  var lines=[];
+  if(c.ceo) lines.push(["대표자",c.ceo]);
+  if(c.bizNo) lines.push(["등록번호",c.bizNo]);
+  if(c.tel) lines.push(["전화",c.tel]);
+  if(c.addr) lines.push(["주소",c.addr]);
+  var leftH  = 30+28+(pers?22:0)+siteLines.length*20+22;
+  var rightH = 30+24+lines.length*19+24;
+  var boxH = Math.max(leftH, rightH, 132);
+
+  R(x,PAD,y,lw,boxH,"#FFFFFF",LN,10);
+  R(x,rx,y,rw,boxH,SF,LN,10);
+
+  var ly=y+30;
+  T(x,"수  신",PAD+16,ly,{s:10.5,w:700,c:ACC,ls:1.8});
+  ly+=30;
+  x.font='600 19px '+FS;
+  var custFit=fit(x,custV,lw-56);
+  T(x,custFit,PAD+16,ly,{s:19,w:600,c:INK});
+  T(x,"귀하",PAD+16+x.measureText(custFit).width+8,ly,{s:12,w:500,c:MUT});
+  ly+=28;
+  if(pers){ x.font='400 13px '+FS; T(x,"담당  "+fit(x,pers,lw-46),PAD+16,ly,{s:13,w:400,c:INK2}); ly+=22; }
+  siteLines.forEach(function(s){ T(x,s,PAD+16,ly,{s:13,w:400,c:INK2}); ly+=20; });
+
+  var ry=y+30;
+  T(x,"공 급 자",rx+16,ry,{s:10.5,w:700,c:ACC,ls:1.8});
+  ry+=28;
+  x.font='700 17px '+FS;
+  T(x,fit(x,c.name||CO[co].label,rw-100),rx+16,ry,{s:17,w:700,c:INK});
+  ry+=24;
+  x.font='400 12px '+FS;
+  lines.forEach(function(p){
+    T(x,p[0],rx+16,ry,{s:11,w:500,c:MUT});
+    x.font='400 12px '+FS;
+    T(x,fit(x,p[1],rw-104),rx+72,ry,{s:12,w:400,c:INK2});
+    ry+=19;
+  });
+  /* 도장 자리 */
+  var sx=rx+rw-52, sy=y+boxH-52;
+  x.save();
+  x.setLineDash([3,3]); x.strokeStyle=LN; x.lineWidth=1;
+  x.beginPath(); x.arc(sx,sy,29,0,Math.PI*2); x.stroke();
+  x.restore();
+  T(x,"(인)",sx,sy+5,{s:11,w:500,c:MUT,a:"center"});
+
+  /* 표 */
+  y = 206+boxH+34;
+  var cNo=PAD, cName=PAD+46, cQty=PAD+404, cUnit=PAD+484, cPrice=PAD+548, cAmt=PAD+CW;
+  var headH=40, rowH=42;
+  R(x,PAD,y,CW,headH,ACC,null,0);
+  var hy=y+26;
+  T(x,"No",cNo+14,hy,{s:11.5,w:600,c:"#fff"});
+  T(x,"품    목",cName+8,hy,{s:11.5,w:600,c:"#fff"});
+  T(x,"수량",cQty+58,hy,{s:11.5,w:600,c:"#fff",a:"right"});
+  T(x,"단위",cUnit+30,hy,{s:11.5,w:600,c:"#fff",a:"center"});
+  T(x,"단가",cPrice+80,hy,{s:11.5,w:600,c:"#fff",a:"right"});
+  T(x,"금액",cAmt-12,hy,{s:11.5,w:600,c:"#fff",a:"right"});
+  y+=headH;
+
+  items.forEach(function(it,i){
+    if(i%2===1) R(x,PAD,y,CW,rowH,SF,null,0);
+    var by=y+27;
+    T(x,String(i+1),cNo+14,by,{s:12,w:500,c:MUT,f:FM});
+    x.font='500 13.5px '+FS;
+    T(x,fit(x,it.name||"-",cQty-cName-24),cName+8,by,{s:13.5,w:500,c:INK});
+    T(x,num(it.qty)?String(num(it.qty)):"-",cQty+58,by,{s:13,w:500,c:INK2,a:"right",f:FM});
+    T(x,it.unit||"",cUnit+30,by,{s:12,w:400,c:MUT,a:"center"});
+    T(x,num(it.price)?comma(it.price):"-",cPrice+80,by,{s:13,w:500,c:INK2,a:"right",f:FM});
+    T(x,comma(lineAmt(it)),cAmt-12,by,{s:13.5,w:600,c:INK,a:"right",f:FM});
+    L(x,PAD,y+rowH,PAD+CW,y+rowH,LN2,1);
+    y+=rowH;
+  });
+  L(x,PAD,y,PAD+CW,y,LN,1);
+
+  /* 합계 */
+  y+=18;
+  var tx1=PAD+CW-300, tx2=PAD+CW;
+  function tline(label,val,strong){
+    if(strong){
+      R(x,tx1-14,y-4,tx2-tx1+14,44,SOFT,null,8);
+      T(x,label,tx1,y+26,{s:13,w:700,c:ACC});
+      T(x,comma(val)+"원",tx2-14,y+26,{s:19,w:700,c:ACC,a:"right",f:FM});
+      y+=52;
+    }else{
+      T(x,label,tx1,y+18,{s:12.5,w:500,c:INK2});
+      T(x,comma(val)+"원",tx2-14,y+18,{s:13.5,w:500,c:INK,a:"right",f:FM});
+      y+=28;
+    }
+  }
+  if(t.mode==="plus"){ tline("공급가액",t.supply); tline("부가세 (10%)",t.vat); }
+  else if(t.mode==="incl"){ tline("공급가액",t.supply); tline("부가세 (포함)",t.vat); }
+  tline("합계금액",t.total,true);
+
+  /* 일금 ~ 원정 */
+  y+=6;
+  R(x,PAD,y,CW,50,"#FFFFFF",LN,10);
+  T(x,"일금",PAD+18,y+31,{s:12,w:600,c:MUT});
+  x.font='600 17px '+FS;
+  T(x,hangulAmount(t.total)+"원정",PAD+58,y+31,{s:17,w:600,c:INK});
+  T(x,"( ₩"+comma(t.total)+" )",PAD+CW-18,y+31,{s:13,w:600,c:INK2,a:"right",f:FM});
+  y+=50+26;
+
+  /* 특기사항 */
+  var notes=[];
+  var vd=$("valid").value;
+  if(vd!=="0") notes.push(["견적 유효기간","발행일로부터 "+vd+"일"]);
+  var pv=$("pay").value.trim();
+  if(pv) notes.push(["결제 조건",pv]);
+  if(c.bank) notes.push(["입금 계좌",c.bank]);
+  if(t.mode==="plus") notes.push(["부가세","공급가액의 10% 별도 — 위 합계금액에 포함"]);
+  if(t.mode==="incl") notes.push(["부가세","합계금액에 포함된 금액입니다"]);
+  if(t.mode==="none") notes.push(["부가세","공급가액 "+comma(t.sum)+"원이며, 현금영수증·계산서 요청하실 경우 부가세 10% 별도입니다."]);
+  var mv=$("memo").value.trim();
+
+  T(x,"특 기 사 항",PAD,y,{s:10.5,w:700,c:ACC,ls:1.8});
+  y+=12;
+  L(x,PAD,y,PAD+CW,y,LN,1);
+  y+=22;
+  x.font='400 12.5px '+FS;
+  notes.forEach(function(p){
+    T(x,"· "+p[0],PAD+2,y,{s:12,w:600,c:INK2});
+    x.font='400 12.5px '+FS;
+    var vl=wrap(x,p[1],CW-130);
+    if(!vl.length) vl=[""];
+    vl.forEach(function(s){
+      T(x,s,PAD+118,y,{s:12.5,w:400,c:INK});
+      y+=21;
+    });
+    y+=1;
+  });
+  if(mv){
+    x.font='400 12.5px '+FS;
+    var ml=wrap(x,mv,CW-20);
+    ml.forEach(function(s,i){
+      T(x,(i===0?"· ":"  ")+s,PAD+2,y,{s:12.5,w:400,c:INK});
+      y+=21;
+    });
+  }
+
+  /* 푸터 */
+  y+=20;
+  L(x,PAD,y,PAD+CW,y,LN2,1);
+  y+=24;
+  x.font='400 11.5px '+FS;
+  var disc="본 견적서는 현장 확인을 바탕으로 한 개략 견적이며, 실측 결과 및 현장 여건에 따라 조정될 수 있습니다.";
+  wrap(x,disc,CW).forEach(function(s){ T(x,s,PAD,y,{s:11.5,w:400,c:MUT}); y+=18; });
+  y+=6;
+  if(c.tel) T(x,"문의  "+c.tel,PAD,y+2,{s:13,w:600,c:ACC});
+  T(x,"검토해 주셔서 감사합니다.",PAD+CW,y+2,{s:12,w:500,c:MUT,a:"right"});
+  y+=40;
+
+  /* 잘라내기 */
+  var H=Math.min(Math.ceil(y),MAXH);
+  var out=document.createElement("canvas");
+  out.width=W*S; out.height=H*S;
+  var oc=out.getContext("2d");
+  oc.fillStyle="#FFFFFF"; oc.fillRect(0,0,out.width,out.height);
+  oc.drawImage(tmp,0,0,W*S,H*S,0,0,W*S,H*S);
+  return {canvas:out, no:qn, total:t.total};
+}
+
+/* ─────────── 만들기 ─────────── */
+function toast(msg){
+  var el=document.createElement("div");
+  el.className="toast"; el.textContent=msg;
+  document.body.appendChild(el);
+  setTimeout(function(){ el.remove(); },2600);
+}
+
+async function onMake(){
+  var btn=$("btnMake");
+  btn.disabled=true; btn.textContent="만드는 중…";
+  try{
+    var r=await makeImage();
+    var dataUrl=r.canvas.toDataURL("image/png");
+    $("preview").src=dataUrl;
+    var custName=$("cust").value.trim()||"고객";
+    var d=new Date();
+    var stamp=d.getFullYear()+pad(d.getMonth()+1)+pad(d.getDate());
+    lastName="견적서_"+custName.replace(/[\\/:*?"<>|]/g,"").slice(0,20)+"_"+stamp+".png";
+    $("resultTitle").textContent=CO[co].label+" 견적서 · "+won(r.total);
+    lastBlob=await new Promise(function(res){ r.canvas.toBlob(res,"image/png"); });
+
+    // 단가 기억
+    items.forEach(function(it){
+      if(it.name && num(it.price)>0) cfg.prices[co][it.name]=String(num(it.price));
+    });
+    saveCfg();
+
+    pushHist({
+      id:String(Date.now()),
+      at:new Date().toISOString(),
+      no:r.no, co:co,
+      cust:custName, person:$("person").value.trim(), site:$("site").value.trim(),
+      items:items.map(function(it){ return {name:it.name,unit:it.unit,qty:String(it.qty),price:String(it.price)}; }),
+      vat:cfg[co].vat, valid:$("valid").value, pay:$("pay").value.trim(), memo:$("memo").value.trim(),
+      total:r.total
+    });
+
+    openSheet("resultSheet");
+    setupShare();
+  }catch(e){
+    toast("견적서를 만들지 못했어요. 다시 눌러 보세요.");
+  }
+  btn.textContent="견적서 만들기";
+  renderTotals();
+}
+
+function setupShare(){
+  var b=$("btnShare");
+  var can=false;
+  try{
+    if(lastBlob && navigator.canShare){
+      var f=new File([lastBlob],lastName,{type:"image/png"});
+      can=navigator.canShare({files:[f]});
+    }
+  }catch(e){ can=false; }
+  b.hidden=!can;
+}
+
+async function onShare(){
+  if(!lastBlob) return;
+  try{
+    var f=new File([lastBlob],lastName,{type:"image/png"});
+    await navigator.share({files:[f],title:"견적서"});
+  }catch(e){
+    if(e && e.name!=="AbortError") toast("공유를 열지 못했어요. 이미지를 길게 눌러 저장해 주세요.");
+  }
+}
+
+async function onSave(){
+  if(!lastBlob){ return; }
+  // 1) Artifact 환경이면 downloads capability 사용
+  var dl=null;
+  try{
+    if(window.claude && typeof window.claude.use==="function") dl=await window.claude.use("downloads");
+  }catch(e){ dl=null; }
+  if(dl){
+    try{ await dl.save({filename:lastName,data:lastBlob}); toast("저장했어요."); return; }
+    catch(e){ var code=e&&e.code; if(code==="declined") return; }
+  }
+  // 2) 일반 웹(대시보드): a[download]로 실제 저장
+  try{
+    var url=URL.createObjectURL(lastBlob);
+    var a=document.createElement("a"); a.href=url; a.download=lastName;
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(function(){ try{URL.revokeObjectURL(url);}catch(_){} }, 1500);
+    toast("저장했어요. (안 되면 이미지를 길게 눌러 저장)");
+  }catch(e){ toast("이미지를 길게 눌러 사진첩에 저장해 주세요."); }
+}
+
+/* ─────────── 시트 ─────────── */
+function openSheet(id){ $(id).hidden=false; document.body.style.overflow="hidden"; }
+function closeSheet(id){ $(id).hidden=true; document.body.style.overflow=""; }
+
+function openSettings(){
+  var c=cfg[co];
+  $("setCo").textContent=CO[co].label;
+  $("sName").value=c.name; $("sCeo").value=c.ceo; $("sBiz").value=c.bizNo;
+  $("sAddr").value=c.addr; $("sTel").value=c.tel; $("sBank").value=c.bank;
+  openSheet("settingsSheet");
+}
+function saveSettings(){
+  var c=cfg[co];
+  c.name=$("sName").value.trim(); c.ceo=$("sCeo").value.trim(); c.bizNo=$("sBiz").value.trim();
+  c.addr=$("sAddr").value.trim(); c.tel=$("sTel").value.trim(); c.bank=$("sBank").value.trim();
+  saveCfg(); renderSetupWarn(); closeSheet("settingsSheet"); toast("저장했어요.");
+}
+
+function openHistory(){
+  var body=$("histBody"); body.innerHTML="";
+  if(!hist.length){
+    var e=document.createElement("div");
+    e.className="empty"; e.textContent="아직 만든 견적서가 없어요.";
+    body.appendChild(e);
+  }else{
+    hist.forEach(function(h){
+      var b=document.createElement("button");
+      b.type="button"; b.className="histrow";
+      var when=new Date(h.at);
+      var w=isNaN(when)?"":(when.getMonth()+1)+"/"+when.getDate();
+      b.innerHTML='<span class="tag">'+(CO[h.co]?CO[h.co].label:"")+'</span>'+
+        '<span class="h-main"><b></b><small></small></span>'+
+        '<span class="h-amt mono">'+won(h.total||0)+'</span>';
+      b.querySelector("b").textContent=h.cust||"(이름 없음)";
+      b.querySelector("small").textContent=w+" · "+(h.no||"")+(h.site?" · "+h.site:"");
+      b.addEventListener("click",function(){ loadQuote(h); });
+      body.appendChild(b);
+    });
+  }
+  openSheet("historySheet");
+}
+
+function loadQuote(h){
+  if(h.co && CO[h.co]) setCompany(h.co);
+  $("cust").value=h.cust||""; $("person").value=h.person||""; $("site").value=h.site||"";
+  $("valid").value=h.valid||"14"; $("pay").value=h.pay||""; $("memo").value=h.memo||"";
+  items=(h.items||[]).map(function(it){ return {name:it.name,unit:it.unit,qty:it.qty,price:it.price}; });
+  if(h.vat){ cfg[co].vat=h.vat; renderVat(); }
+  renderRows(); renderTotals();
+  closeSheet("historySheet");
+  toast("불러왔어요. 고쳐서 새로 만드세요.");
+}
+
+/* ─────────── 시작 ─────────── */
+function bind(){
+  $("tab-limit").addEventListener("click",function(){ setCompany("limit"); });
+  $("tab-daman").addEventListener("click",function(){ setCompany("daman"); });
+  $("btnAddRow").addEventListener("click",function(){ addRow("","식"); });
+  $("cust").addEventListener("input",renderTotals);
+  Array.prototype.forEach.call(document.querySelectorAll("#vatPills .pill"),function(b){
+    b.addEventListener("click",function(){ cfg[co].vat=b.dataset.vat; renderVat(); renderTotals(); saveCfg(); });
+  });
+  $("btnMake").addEventListener("click",onMake);
+  $("btnSettings").addEventListener("click",openSettings);
+  $("btnSaveSettings").addEventListener("click",saveSettings);
+  $("btnCloseSettings").addEventListener("click",function(){ closeSheet("settingsSheet"); });
+  $("btnHistory").addEventListener("click",openHistory);
+  $("btnCloseHistory").addEventListener("click",function(){ closeSheet("historySheet"); });
+  $("btnCloseResult").addEventListener("click",function(){ closeSheet("resultSheet"); });
+  $("btnSave").addEventListener("click",onSave);
+  $("btnShare").addEventListener("click",onShare);
+  document.addEventListener("keydown",function(e){
+    if(e.key==="Escape"){ ["resultSheet","settingsSheet","historySheet"].forEach(function(id){
+      if(!$(id).hidden) closeSheet(id);
+    }); }
+  });
+}
+
+async function boot(){
+  bind();
+  setCompany("limit");
+  renderRows();
+  renderTotals();
+  await loadAll();
+  setCompany(co);
+  renderRows();
+  renderTotals();
+}
+boot();
+
+})();
+</script>
+</body>
+</html>
