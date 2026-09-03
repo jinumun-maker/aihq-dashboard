@@ -1449,6 +1449,12 @@ function agg(list){
     {rev:0,exp:0,lab:0,profit:0});
 }
 function daysBetween(a,b){ return Math.max(0, Math.round((new Date(b)-new Date(a))/86400000)); }
+/* 월별 그룹 나누기: items를 날짜(getDate)의 YYYY-MM로 묶어 최신월 먼저 반환 */
+function _monthGroups(items, getDate){
+  const g={}; (items||[]).forEach(it=>{ const dt=getDate(it)||''; const k=dt?String(dt).slice(0,7):'미상'; (g[k]=g[k]||[]).push(it); });
+  return Object.keys(g).sort((a,b)=>{ if(a==='미상')return 1; if(b==='미상')return -1; return a<b?1:-1; })
+    .map(k=>({key:k, label:(k==='미상'?'날짜 미상':(k.slice(0,4)+'.'+(+k.slice(5,7)))), items:g[k]}));
+}
 
 /* 단가표(고정 인원 일당) */
 function rateEntry(d,name){ return (d.rates||[]).find(x=>x.name===name)||null; }
@@ -1581,17 +1587,22 @@ function taxRow(s,i,section){
     <span class="amt">${KRW(rev+vat)}</span>
     <span style="display:flex;gap:5px;flex-wrap:wrap;justify-content:flex-end">${acts}</span></div>`;
 }
-function _taxListRender(elId,sumId,matchFn,section,q){   // 발행완료·대상아님 공통 렌더(검색+최근20)
+function _taxListRender(elId,sumId,matchFn,section,q){   // 발행완료·대상아님 공통 렌더(월별 그룹 + 검색)
   const el=document.getElementById(elId); if(!el) return 0;
   const d=getData(); const S=d.settlements||[];
   let list=S.map((s,i)=>({s,i})).filter(x=>matchFn(x.s)).sort((a,b)=>(b.s.date||'').localeCompare(a.s.date||''));
   const total=list.length; const qq=(q||'').trim().toLowerCase();
   if(qq) list=list.filter(x=>String(x.s.site||'').toLowerCase().includes(qq));
-  const matched=list.length; const shown=qq?list:list.slice(0,20);
-  el.innerHTML = shown.length? shown.map(({s,i})=>taxRow(s,i,section)).join("")
+  const matched=list.length;
+  el.innerHTML = list.length
+    ? _monthGroups(list, x=>x.s.date).map(g=>{
+        const sum=g.items.reduce((a,x)=>a+(calcRow(x.s).rev+vatOf(x.s)),0);
+        return `<div style="background:var(--bg);font-weight:800;font-size:12px;color:var(--limit);padding:6px 10px;border-radius:6px;margin:8px 0 4px">📅 ${g.label} <span style="color:var(--muted);font-weight:600">· ${g.items.length}건 · ${KRW(sum)}</span></div>`
+          + g.items.map(({s,i})=>taxRow(s,i,section)).join('');
+      }).join('')
     : `<div style="color:var(--muted);font-size:12.5px">${qq?'검색 결과가 없습니다.':(section==='na'?'계산서 대상 아님으로 처리한 건이 없습니다.':'발행 완료된 건이 없습니다.')}</div>`;
   const sum=document.getElementById(sumId);
-  if(sum) sum.textContent = total ? (qq?`검색 ${matched}건 / 총 ${total}건` : (total>20?`총 ${total}건 · 최근 20건 표시`:`${total}건`)) : '';
+  if(sum) sum.textContent = total ? (qq?`검색 ${matched}건 / 총 ${total}건` : `총 ${total}건 · 월별`) : '';
   return total;
 }
 let TAX_DONE_Q='';
@@ -1905,7 +1916,7 @@ function render(){
   let recv=[];
   (d.receivables||[]).forEach((r,idx)=>recv.push({kind:'recv',idx,name:r.name,co:r.co||'limit',amt:(+r.amt||0),contact:r.contact||'',payer:r.payer||'',bank:r.bank||'',date:r.date||'',days:(r.date?daysBetween(r.date,d.asOf):null)}));
   S.forEach((s,idx)=>{ if(s.paid==="미수금") recv.push({kind:'settle',idx,name:s.site,co:s.co,amt:calcRow(s).rev,contact:s.contact||'',payer:s.payer||'',bank:s.bank||'',date:s.date||'',days:daysBetween(s.date,d.asOf)}); });
-  recv.sort((a,b)=>((b.days==null?-1:b.days))-((a.days==null?-1:a.days)));
+  recv.sort((a,b)=>(b.date||'').localeCompare(a.date||''));   // 월별 그룹용: 최신 날짜 먼저
   const recvTotal=recv.reduce((a,r)=>a+r.amt,0);
 
   // 인건비 입력 (재무팀)
@@ -2064,7 +2075,7 @@ function render(){
 
   renderBar(m); renderDonut(cur);
 
-  document.getElementById("recvRows").innerHTML = recv.length? recv.map(r=>{
+  const recvRowFn = r=>{
     const late=r.days!=null && r.days>30;
     const dcell = r.days==null ? '<span style="color:var(--muted)">-</span>' : (late?`<span class="pill p-late">${r.days}일</span>`:r.days+'일');
     const ccell = r.contact
@@ -2079,7 +2090,14 @@ function render(){
       <td style="font-size:12.5px">${ccell}</td>
       <td style="font-size:12.5px">${pcell}</td>
       <td class="num">${KRW(r.amt)}</td><td class="num">${dcell}</td><td style="white-space:nowrap">${act}</td></tr>`;
-  }).join("") : `<tr><td colspan="7" style="color:var(--muted)">미수금 없음</td></tr>`;
+  };
+  document.getElementById("recvRows").innerHTML = recv.length
+    ? _monthGroups(recv, r=>r.date).map(g=>{
+        const sum=g.items.reduce((a,r)=>a+(+r.amt||0),0);
+        return `<tr><td colspan="7" style="background:var(--bg);font-weight:800;font-size:12px;color:var(--limit);padding:7px 10px;border-top:2px solid var(--line)">📅 ${g.label} <span style="color:var(--muted);font-weight:600">· ${g.items.length}건 · ${KRW(sum)}</span></td></tr>`
+          + g.items.map(recvRowFn).join('');
+      }).join('')
+    : `<tr><td colspan="7" style="color:var(--muted)">미수금 없음</td></tr>`;
   document.getElementById("recvTotal").textContent=KRW(recvTotal);
 
   // 📊 입금 현황 (현장 수 vs 입금완료 수 대조 — 누락 확인)
@@ -2111,11 +2129,17 @@ function render(){
       : (totalN>0? `<b style="color:var(--good)">✅ 현장 ${totalN}건 전부 입금완료 — 누락 없음</b>` : `<span style="color:var(--muted)">해당 기간 현장이 없습니다.</span>`);
     const paidRowsEl=document.getElementById('paidRows');
     if(paidRowsEl){
-      paidRowsEl.innerHTML = paidList.length? paidList.map(s=>`<tr>
+      const paidRowFn = s=>`<tr>
         <td>${(s.date||'').slice(5)}</td><td>${s.site||'-'}</td>
         <td><span class="pill ${coPill(s.co)}">${coName(s.co)}</span></td>
         <td class="num">${KRW(calcRow(s).rev)}</td>
-        <td>${s.payer?escHtml(s.payer):'<span style="color:var(--muted)">-</span>'}${bankTag(s.bank)}</td></tr>`).join('')
+        <td>${s.payer?escHtml(s.payer):'<span style="color:var(--muted)">-</span>'}${bankTag(s.bank)}</td></tr>`;
+      paidRowsEl.innerHTML = paidList.length
+        ? _monthGroups(paidList, s=>s.date).map(g=>{
+            const sum=g.items.reduce((a,s)=>a+calcRow(s).rev,0);
+            return `<tr><td colspan="5" style="background:var(--bg);font-weight:800;font-size:12px;color:var(--good);padding:7px 10px;border-top:2px solid var(--line)">📅 ${g.label} <span style="color:var(--muted);font-weight:600">· ${g.items.length}건 · ${KRW(sum)}</span></td></tr>`
+              + g.items.map(paidRowFn).join('');
+          }).join('')
         : `<tr><td colspan="5" style="color:var(--muted)">입금완료 현장이 없습니다.</td></tr>`;
       const pcl=document.getElementById('paidCountLabel'); if(pcl) pcl.textContent=`· ${paidList.length}건`;
     }
