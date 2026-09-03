@@ -338,6 +338,7 @@
     <button class="subtab" data-subtab="배치" onclick="showSub('배치')">🗓️ 주간 근무배치</button>
     <button class="subtab" data-subtab="결산" onclick="showSub('결산')">🧾 일일결산 <span id="settleBadge" class="tabbadge"></span></button>
     <button class="subtab" data-subtab="고객정보" onclick="showSub('고객정보')">👥 고객정보</button>
+    <button class="subtab" data-subtab="차량관리" onclick="showSub('차량관리')">🚗 차량관리 <span id="carBadge" class="tabbadge"></span></button>
     <button class="subtab" data-subtab="발주" onclick="showSub('발주')">📦 발주 <span id="ordBadge" class="tabbadge"></span></button>
     <button class="subtab" data-subtab="운영요청" onclick="showSub('운영요청')">📨 요청함 <span id="opsMsgBadge" class="tabbadge"></span></button>
   </div>
@@ -428,6 +429,7 @@
     <div class="form-grid">
       <div class="fld"><label>날짜</label><input type="date" id="f_date"></div>
       <div class="fld"><label>회사</label><select id="f_co"><option value="limit">리미트(청소)</option><option value="daman">다만산업</option></select></div>
+      <div class="fld"><label>👤 담당자 <span style="font-weight:500;color:var(--muted);font-size:11px">누구 현장</span></label><select id="f_manager"><option value="">(선택)</option><option>진우</option><option>소이</option><option>공통</option></select></div>
       <div class="fld wide"><label>현장명</label><input id="f_site" placeholder="예: △△물류창고"></div>
       <div class="fld"><label>견적금액 (원)</label><input type="number" id="f_quote" placeholder="0" oninput="calcLive()"></div>
       <div class="fld"><label>추가금 (원)</label><input type="number" id="f_extra" placeholder="0" oninput="calcLive()"></div>
@@ -437,6 +439,7 @@
       <div class="fld"><label>💳 입금자명 <span style="color:var(--warn);font-weight:700">*필수</span></label><input id="f_payer" placeholder="입금자 이름"></div>
       <div class="fld"><label>🏦 입금 계좌 <span style="color:var(--warn);font-weight:700">*필수</span></label><select id="f_bank"><option value="">선택하세요</option><option>하나(계산서 발행)</option><option>국민</option><option>농협</option><option>현금</option><option>카드</option></select></div>
       <div class="fld"><label>⛽ 주유 (원)</label><input type="number" id="f_fuel" placeholder="0" oninput="calcLive()"></div>
+      <div class="fld"><label>⛽ 주유 차량 <span style="font-weight:500;color:var(--muted);font-size:11px">어느 차</span></label><select id="f_fuelCar"><option value="">(선택)</option></select></div>
       <div class="fld"><label>🍚 식대 (원)</label><input type="number" id="f_meal" placeholder="0" oninput="calcLive()"></div>
       <div class="fld"><label>🧴 소모품 (원)</label><input type="number" id="f_supply" placeholder="0" oninput="calcLive()"></div>
       <div class="fld"><label>기타 경비 (원)</label><input type="number" id="f_etc" placeholder="0" oninput="calcLive()"></div>
@@ -466,6 +469,31 @@
       <tbody id="custRows"></tbody></table></div>
   </div>
   </div><!-- /고객정보 -->
+
+  <div class="subpg" data-subpg="차량관리">
+  <div class="card entry" style="margin-top:22px">
+    <h2>🚗 차량 관리 <span style="font-weight:500;color:var(--muted);font-size:12px">엔진오일·점검·정기검사·보험 등 기록</span> <span id="carSummary" style="font-weight:500;font-size:12.5px;margin-left:auto"></span></h2>
+    <div class="form-grid" style="margin-top:6px">
+      <div class="fld"><label>차량</label><select id="cl_car"></select></div>
+      <div class="fld"><label>항목</label><select id="cl_type"><option>엔진오일 교체</option><option>차량 점검</option><option>타이어</option><option>소모품(와이퍼·필터 등)</option><option>정기검사</option><option>보험</option><option>수리</option><option>기타</option></select></div>
+      <div class="fld"><label>시행일</label><input type="date" id="cl_date"></div>
+      <div class="fld"><label>다음 예정일 (선택)</label><input type="date" id="cl_next"></div>
+      <div class="fld"><label>비용 (선택)</label><input type="number" id="cl_cost" placeholder="원"></div>
+      <div class="fld wide"><label>메모 (선택)</label><input id="cl_note" placeholder="예: 5,000km 주행 / 정비소명 / 다음 교체 km"></div>
+    </div>
+    <div style="margin:10px 0;text-align:right"><button class="primary" onclick="addCarLog()">＋ 기록 추가</button></div>
+    <div style="font-size:12px;color:var(--muted)">💡 '다음 예정일'을 넣으면 임박(2주 내)·지남이 위에 알림돼요. 주유비는 차량별로 자동 집계됩니다(일일결산의 주유 차량 기준).</div>
+  </div>
+  <div id="carArea"></div>
+  <div class="card" style="margin-top:18px">
+    <h2>🚙 차량 목록 <span style="font-weight:500;color:var(--muted);font-size:12px">추가·삭제</span></h2>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+      <input id="cl_newcar" placeholder="새 차량 이름 (예: 포터2)" style="flex:1;min-width:160px;padding:9px 11px;border:1px solid var(--line);border-radius:8px;background:var(--bg);color:var(--ink);font-family:inherit;font-size:13px">
+      <button class="primary" onclick="addVehicle()">＋ 차량 추가</button>
+    </div>
+    <div id="carList" style="margin-top:12px"></div>
+  </div>
+  </div><!-- /차량관리 -->
 
   <div class="subpg" data-subpg="발주">
   <div class="card" style="margin-top:22px">
@@ -718,6 +746,12 @@
   <div class="subpg" data-subpg="개요재무">
     <!-- KPI -->
     <div class="grid kpis" id="kpis" style="margin-top:14px"></div>
+
+    <!-- 담당자별 실적 (소이/진우 구분) -->
+    <div class="card" style="margin-top:22px">
+      <h2>👤 담당자별 실적 <span style="font-weight:500;color:var(--muted);font-size:12px">이번 달 · 현장수 · 매출 · 순익</span></h2>
+      <div class="sumrow" id="mgrPerf"></div>
+    </div>
 
     <!-- 오늘/이번달 결산 요약 -->
     <div class="grid cols2b" style="margin-top:22px">
@@ -1298,6 +1332,8 @@ function _seed(data){    // 메시지·지원사업 시드/마이그레이션 (�
     {area:'초전동', name:'○○신축아파트', biz:'청소', point:'곧 입주 예정(추정)', contact:'관리사무소', status:'후보', next:'입주시기 확인'},
     {area:'상대동', name:'△△카페', biz:'폴리싱', point:'바닥 노후', contact:'방문/전화', status:'후보', next:'견적 제안'}
   ];
+  if(!Array.isArray(data.vehicles)) data.vehicles=['G80','카니발','스타렉스(검정)','스타리아(흰색)','봉고탑차'];
+  if(!Array.isArray(data.carLogs)) data.carLogs=[];   // 차량 정비/점검 기록 [{car,type,date,next,note,cost}]
   if(!data.devReview) data.devReview={ month:'2026-08', summary:'뼈대(일일결산 단일입력→자동집계, 재무 인건비·미수금)는 탄탄합니다. 지금 가장 큰 시간낭비는 <b>구글캘린더 수동 최신화</b>와 <b>팀 리마인더 수동</b> — 이 둘을 자동화하면 손이 확 줄어요. (중복 입력은 거의 없음 👍)', decisions:[ {text:'구글캘린더 자동 최신화 (매일 자동, 캘린더=원본으로 덮어씀)', done:false}, {text:'카톡 방장봇 리마인더 (5시 운영팀·6시 재무팀)', done:false} ] };
   data.asOf = realToday();   // 기준일 = 항상 실제 오늘 (예전 고정 날짜가 클라우드에 굳는 문제 방지)
   // ── 배치 인원 보호(crewMap): 캘린더 최신화가 절대 못 건드리는 durable 저장소 + 결산으로 복구 ──
@@ -1602,8 +1638,9 @@ function addSettlement(){
     date: document.getElementById('f_date').value || d.asOf,
     co:   document.getElementById('f_co').value,
     site, quote:num('f_quote'), extra:num('f_extra'),
+    manager: document.getElementById('f_manager').value,   // 담당자(진우/소이/공통)
     crew: crew,   // 명단 선택 → 시급=시간×시급 자동 · 일당=단가표 자동 · 월급=0
-    fuel:num('f_fuel'), meal:num('f_meal'), supply:num('f_supply'), etc:num('f_etc'),
+    fuel:num('f_fuel'), fuelCar: document.getElementById('f_fuelCar').value, meal:num('f_meal'), supply:num('f_supply'), etc:num('f_etc'),
     paid: document.getElementById('f_paid').value,
     status: document.getElementById('f_status').value,
     vat: document.getElementById('f_vat').value,
@@ -1624,7 +1661,7 @@ function addSettlement(){
   else { d.settlements.push(rec); }
   d.demo=false;
   setData(d); render();
-  ['f_site','f_quote','f_extra','f_crew','f_contact','f_payer','f_bank','f_fuel','f_meal','f_supply','f_etc','f_note']
+  ['f_site','f_quote','f_extra','f_crew','f_contact','f_payer','f_bank','f_fuel','f_fuelCar','f_manager','f_meal','f_supply','f_etc','f_note']
     .forEach(id=>document.getElementById(id).value="");
   window.ALBA_SEL=[]; renderAlbaSlots();
   updateSettleBtn();
@@ -1647,6 +1684,74 @@ function addPurchase(){
 }
 function togglePurchaseGot(i){ const d=getData(); const p=(d.purchases||[])[i]; if(!p) return; p.got=!p.got; setData(d); render(); }
 function delPurchase(i){ const d=getData(); if(!confirm('이 받을 계산서 항목을 삭제할까요?')) return; d.purchases.splice(i,1); setData(d); render(); }
+
+/* ── 차량 관리 ── */
+function addCarLog(){
+  const car=document.getElementById('cl_car').value;
+  if(!car){ alert('차량을 선택하세요.'); return; }
+  const type=document.getElementById('cl_type').value;
+  const d=getData(); d.carLogs=d.carLogs||[];
+  d.carLogs.push({car:car, type:type, date:document.getElementById('cl_date').value||realToday(), next:document.getElementById('cl_next').value||'', cost:num('cl_cost'), note:document.getElementById('cl_note').value.trim()});
+  setData(d); render();
+  ['cl_next','cl_cost','cl_note'].forEach(id=>document.getElementById(id).value='');
+  alert(car+' · '+type+' 기록을 추가했어요.');
+}
+function delCarLog(i){ const d=getData(); if(!confirm('이 정비 기록을 삭제할까요?')) return; d.carLogs.splice(i,1); setData(d); render(); }
+function addVehicle(){
+  const n=document.getElementById('cl_newcar').value.trim(); if(!n){ alert('차량 이름을 입력하세요.'); return; }
+  const d=getData(); d.vehicles=d.vehicles||[];
+  if(d.vehicles.indexOf(n)>=0){ alert('이미 있는 차량입니다.'); return; }
+  d.vehicles.push(n); setData(d); render(); document.getElementById('cl_newcar').value='';
+}
+function delVehicle(i){
+  const d=getData(); const v=(d.vehicles||[])[i]; if(v==null) return;
+  if(!confirm(v+' 차량을 목록에서 뺄까요? (기존 정비 기록은 남습니다)')) return;
+  d.vehicles.splice(i,1); setData(d); render();
+}
+function renderCars(){
+  const d=getData(); const vehicles=d.vehicles||[]; const logs=d.carLogs||[];
+  const today=realToday();
+  const esc=t=>String(t||'').replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;');
+  // 차량 드롭다운 채우기(정비 폼 cl_car + 일일결산 주유차량 f_fuelCar) — 선택값 보존
+  ['cl_car','f_fuelCar'].forEach(id=>{ const sel=document.getElementById(id); if(!sel) return; const cur=sel.value;
+    const ph=(id==='f_fuelCar')?'<option value="">(선택)</option>':'';
+    sel.innerHTML=ph+vehicles.map(v=>`<option${cur===v?' selected':''}>${esc(v)}</option>`).join('');
+    if(id==='cl_car' && !cur && vehicles.length) sel.value=vehicles[0];
+  });
+  // 차량별 주유비(이번달·누적) — 일일결산 fuelCar 기준
+  const ym=(d.asOf||today).slice(0,7);
+  const fAll={}, fMon={};
+  (d.settlements||[]).forEach(s=>{ if(s.fuelCar && +s.fuel>0){ fAll[s.fuelCar]=(fAll[s.fuelCar]||0)+(+s.fuel||0); if((s.date||'').slice(0,7)===ym) fMon[s.fuelCar]=(fMon[s.fuelCar]||0)+(+s.fuel||0); } });
+  let alertN=0;
+  const carArea=document.getElementById('carArea');
+  if(carArea){
+    carArea.innerHTML = vehicles.length? vehicles.map(v=>{
+      const vlogs=logs.map((lg,idx)=>({lg,idx})).filter(x=>x.lg.car===v).sort((a,b)=>(b.lg.date||'').localeCompare(a.lg.date||''));
+      let dueHTML='';
+      const latestByType={};   // 같은 항목은 최신 기록의 '다음 예정일'만 알림(오래된 완료건 제외)
+      vlogs.forEach(x=>{ const t=x.lg.type; if(!latestByType[t] || (x.lg.date||'')>(latestByType[t].date||'')) latestByType[t]=x.lg; });
+      Object.keys(latestByType).forEach(t=>{ const lg=latestByType[t]; if(!lg.next) return;
+        const dd=Math.round((new Date(lg.next)-new Date(today))/86400000);   // 음수=지남
+        if(dd<=14){ alertN++; const late=dd<0;
+          dueHTML+=`<span class="pill ${late?'p-late':''}" style="${late?'':'background:var(--daman);color:#fff'};margin:0 5px 5px 0;display:inline-block">${esc(t)} ${late?('⚠️ '+Math.abs(dd)+'일 지남'):('D-'+dd)}</span>`; } });
+      const recent=vlogs.slice(0,4).map(x=>{ const lg=x.lg; return `<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;font-size:12.5px;padding:5px 0;border-top:1px solid var(--line)">
+          <span style="color:var(--muted);min-width:42px">${lg.date?lg.date.slice(5):''}</span><b>${esc(lg.type)}</b>
+          ${lg.cost?`<span style="color:var(--good)">${KRW(lg.cost)}</span>`:''}
+          ${lg.next?`<span style="color:var(--daman);font-size:11px">다음 ${esc(lg.next)}</span>`:''}
+          ${lg.note?`<span style="color:var(--muted);font-size:11px">· ${esc(lg.note)}</span>`:''}
+          <button class="del" style="margin-left:auto" onclick="delCarLog(${x.idx})" title="삭제">✕</button></div>`; }).join('');
+      return `<div class="card" style="margin-top:14px">
+        <h2 style="font-size:15px">🚗 ${esc(v)} <span style="font-weight:500;color:var(--muted);font-size:11.5px;margin-left:6px">주유 이번달 ${KRW(fMon[v]||0)} · 누적 ${KRW(fAll[v]||0)}</span></h2>
+        ${dueHTML?`<div style="margin:6px 0 2px">${dueHTML}</div>`:'<div style="font-size:12px;color:var(--muted);margin:4px 0">예정된 점검 없음</div>'}
+        ${recent||'<div style="font-size:12px;color:var(--muted)">정비 기록이 없습니다.</div>'}
+      </div>`;
+    }).join('') : '<div class="card" style="margin-top:14px;color:var(--muted);font-size:13px">등록된 차량이 없습니다. 아래에서 추가하세요.</div>';
+  }
+  const carListEl=document.getElementById('carList');
+  if(carListEl) carListEl.innerHTML = vehicles.length? vehicles.map((v,i)=>`<span style="display:inline-flex;align-items:center;gap:6px;border:1px solid var(--line);border-radius:8px;padding:5px 10px;margin:0 6px 6px 0;font-size:13px">${esc(v)} <button class="del" onclick="delVehicle(${i})" title="삭제">✕</button></span>`).join('') : '<span style="color:var(--muted);font-size:13px">차량 없음</span>';
+  const cs=document.getElementById('carSummary'); if(cs) cs.textContent = alertN>0?`⚠️ 점검 임박·지남 ${alertN}건`:'점검 일정 여유 ✅';
+  const b=document.getElementById('carBadge'); if(b){ b.textContent=alertN>0?('❗'+alertN):''; b.className='tabbadge'+(alertN>0?' on':''); }
+}
 function renderPurchases(){
   const el=document.getElementById('purcArea'); if(!el) return;
   const esc=t=>String(t||'').replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;');
@@ -1805,7 +1910,7 @@ function render(){
     .sort((a,b)=>(laborMissing(b.s)-laborMissing(a.s))||b.s.date.localeCompare(a.s.date));  // 미입력 먼저 → 최신순
   const payblockHTML = ({s,i}) =>
     `<div class="payblock ${laborMissing(s)?'miss':''}">
-      <div class="payhead">${s.date.slice(5)} · <span class="pill ${coPill(s.co)}">${coName(s.co)}</span> ${s.site}
+      <div class="payhead">${s.date.slice(5)} · <span class="pill ${coPill(s.co)}">${coName(s.co)}</span> ${s.site}${s.manager?` <span style="color:var(--limit);font-size:11px;font-weight:700">👤${s.manager}</span>`:''}
         <span style="color:var(--muted);font-size:11px;font-weight:500">인건비 합계 ${KRW(laborOf(s))}</span></div>
       <div class="paygrid">${crewList(s).map((p,j)=>{
         const isHr = (p.mode==='시급') || (p.rate!=null);
@@ -1920,6 +2025,7 @@ function render(){
   renderDev();
   renderPurchases();
   renderPayReqs();
+  renderCars();
 
   // KPI
   document.getElementById("kpis").innerHTML=[
@@ -1929,6 +2035,18 @@ function render(){
     {l:"오늘 미지급 일당", v:KRW(unsentAmt), d:(unsent.length?`${unsent.length}명 이체 필요`:`모두 이체완료`), cls:unsent.length?'down':'up'}
   ].map(k=>`<div class="card kpi"><div class="label">${k.l}</div><div class="val">${k.v}</div>
     <div class="delta ${k.cls}">${k.d}</div></div>`).join("");
+
+  // 👤 담당자별 실적(이번 달) — 소이/진우 등 현장수·매출·순익
+  { const mp=document.getElementById('mgrPerf');
+    if(mp){ const agg2={};
+      monthList.forEach(s=>{ const mgr=(s.manager&&s.manager.trim())?s.manager.trim():'미지정'; const r=calcRow(s);
+        const o=agg2[mgr]||(agg2[mgr]={n:0,rev:0,profit:0}); o.n++; o.rev+=r.rev; o.profit+=r.profit; });
+      const order=['진우','소이','공통','미지정'];
+      const keys=Object.keys(agg2).sort((a,b)=>{ const ia=order.indexOf(a), ib=order.indexOf(b); return (ia<0?9:ia)-(ib<0?9:ib); });
+      mp.innerHTML = keys.length? keys.map(k=>{ const o=agg2[k];
+        return `<div class="sumtile"><div class="v">${o.n}곳 · ${KRW(o.rev)}</div><div class="l">👤 ${k} <span style="color:var(--muted)">· 순익 ${KRW(o.profit)}</span></div></div>`;
+      }).join('') : '<div style="color:var(--muted);font-size:13px">이번 달 결산이 없습니다. (일일결산에 담당자를 선택하면 여기 집계됩니다)</div>';
+    } }
 
   document.getElementById("todayDate").textContent="· "+d.asOf;
   const tiles=a=>[
@@ -2647,6 +2765,8 @@ function editSettledJob(i){
   document.getElementById('f_quote').value=s.quote||'';
   document.getElementById('f_extra').value=s.extra||'';
   document.getElementById('f_fuel').value=s.fuel||'';
+  document.getElementById('f_manager').value=s.manager||'';
+  document.getElementById('f_fuelCar').value=s.fuelCar||'';
   document.getElementById('f_meal').value=s.meal||'';
   document.getElementById('f_supply').value=s.supply||'';
   document.getElementById('f_etc').value=s.etc||'';
@@ -2665,7 +2785,7 @@ function editSettledJob(i){
 }
 function cancelSettleEdit(){
   EDIT_SETTLE=null;
-  ['f_site','f_quote','f_extra','f_crew','f_contact','f_payer','f_bank','f_fuel','f_meal','f_supply','f_etc','f_note']
+  ['f_site','f_quote','f_extra','f_crew','f_contact','f_payer','f_bank','f_fuel','f_fuelCar','f_manager','f_meal','f_supply','f_etc','f_note']
     .forEach(id=>document.getElementById(id).value="");
   window.ALBA_SEL=[]; renderAlbaSlots();
   updateSettleBtn();
