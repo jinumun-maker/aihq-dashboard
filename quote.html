@@ -304,6 +304,30 @@ input:focus,textarea:focus,select:focus{border-color:var(--accent);background:va
   <div class="sheet-body" id="histBody"></div>
 </div>
 
+<!-- Firebase: 대시보드와 같은 사이트라 로그인 세션 공유 → 회사정보 기기 간 자동 동기화 -->
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+<script>
+window.QFB={db:null,user:null,_cbs:[]};
+try{
+  if(typeof firebase!=='undefined'){
+    firebase.initializeApp({
+      apiKey:"AIzaSyCmmkA4N1W_HKUgjf3lKX9GUDj5ktdUmNE",
+      authDomain:"aihq-limit.firebaseapp.com",
+      projectId:"aihq-limit",
+      storageBucket:"aihq-limit.firebasestorage.app",
+      messagingSenderId:"457257650688",
+      appId:"1:457257650688:web:4dc3222de055e6ff0466e5"
+    });
+    var _qa=firebase.auth(); QFB.db=firebase.firestore();
+    try{ _qa.setPersistence(firebase.auth.Auth.Persistence.LOCAL).catch(function(){}); }catch(e){}
+    _qa.onAuthStateChanged(function(u){ QFB.user=u||null; if(u){ var cbs=QFB._cbs.slice(); QFB._cbs=[]; cbs.forEach(function(cb){ try{cb(u);}catch(e){} }); } });
+  }
+}catch(e){}
+QFB.whenAuthed=function(cb){ if(QFB.user) cb(QFB.user); else QFB._cbs.push(cb); };
+</script>
+
 <script>
 (function(){
 "use strict";
@@ -380,10 +404,23 @@ async function loadAll(){
       if(rows.length) hist = rows;
     }catch(e){}
   }
+  // ★ 대시보드 로그인 세션으로 회사정보 동기화 (같은 사이트 → PC·폰 모든 기기 공유)
+  if(window.QFB){ QFB.whenAuthed(function(){
+    try{ QFB.db.doc('app/state').get().then(function(s){
+      var qc = (s.exists && s.data()) ? s.data().quoteCfg : null;
+      if(qc){ cfg = merge(defaultCfg(), qc); lsSet(LS_CFG,cfg);
+        if(typeof setCompany==='function') setCompany(co);
+        if(typeof renderRows==='function') renderRows();
+        if(typeof renderTotals==='function') renderTotals();
+      }
+    }).catch(function(){}); }catch(e){}
+  }); }
 }
 async function saveCfg(){
   lsSet(LS_CFG,cfg);
   if(db){ try{ await db.doc("config/app").set(cfg); }catch(e){} }
+  // ★ 로그인돼 있으면 대시보드 공용 저장소에도 저장 → 다른 기기에 자동 반영
+  if(window.QFB && QFB.user && QFB.db){ try{ QFB.db.doc('app/state').set({quoteCfg:cfg},{merge:true}).catch(function(){}); }catch(e){} }
 }
 async function pushHist(rec){
   hist.unshift(rec);
