@@ -316,8 +316,8 @@
     <button class="tab" data-tab="분석" onclick="showPage('분석')">🔎 분석팀</button>
     <button class="tab" data-tab="재무팀" onclick="showPage('재무팀')">💰 재무팀 <span id="finBadge" class="tabbadge"></span></button>
     <button class="tab" data-tab="운영팀" onclick="showPage('운영팀')">✍️ 운영팀(일일결산) <span id="opsBadge" class="tabbadge"></span></button>
-    <button class="tab" data-tab="인사" onclick="showPage('인사')">👷 인사팀</button>
-    <button class="tab" data-tab="마케팅팀" onclick="showPage('마케팅팀')">📣 마케팅팀</button>
+    <button class="tab" data-tab="인사" onclick="showPage('인사')">👷 인사팀 <span id="hrBadge" class="tabbadge"></span></button>
+    <button class="tab" data-tab="마케팅팀" onclick="showPage('마케팅팀')">📣 마케팅팀 <span id="mktBadge" class="tabbadge"></span></button>
     <button class="tab" data-tab="기업지원" onclick="showPage('기업지원')">🏛️ 기업지원사업팀 <span id="bizMsgBadge" class="tabbadge"></span></button>
     <button class="tab" data-tab="영업팀" onclick="showPage('영업팀')">📈 영업팀</button>
     <button class="tab" data-tab="개발팀" onclick="showPage('개발팀')">🛠️ 개발팀 <span id="devBadge" class="tabbadge"></span></button>
@@ -477,8 +477,8 @@
     <div class="form-grid" style="margin-top:6px">
       <div class="fld"><label>차량</label><select id="cl_car"></select></div>
       <div class="fld"><label>항목</label><select id="cl_type"><option>엔진오일 교체</option><option>차량 점검</option><option>타이어</option><option>소모품(와이퍼·필터 등)</option><option>정기검사</option><option>보험</option><option>수리</option><option>기타</option></select></div>
-      <div class="fld"><label>시행일</label><input type="date" id="cl_date"></div>
-      <div class="fld"><label>다음 예정일 (선택)</label><input type="date" id="cl_next"></div>
+      <div class="fld"><label>시행일</label><input type="date" id="cl_date" onchange="carAutoNext()"></div>
+      <div class="fld"><label>다음 예정일 <span style="color:var(--muted);font-weight:400;font-size:11px">(비우면 3개월 뒤 자동)</span></label><input type="date" id="cl_next"></div>
       <div class="fld"><label>비용 (선택)</label><input type="number" id="cl_cost" placeholder="원"></div>
       <div class="fld wide"><label>메모 (선택)</label><input id="cl_note" placeholder="예: 5,000km 주행 / 정비소명 / 다음 교체 km"></div>
     </div>
@@ -1730,12 +1730,26 @@ function togglePurchaseGot(i){ const d=getData(); const p=(d.purchases||[])[i]; 
 function delPurchase(i){ const d=getData(); if(!confirm('이 받을 계산서 항목을 삭제할까요?')) return; d.purchases.splice(i,1); setData(d); render(); }
 
 /* ── 차량 관리 ── */
+function addMonthsISO(iso,n){   // 날짜(YYYY-MM-DD)에 n개월 더하기 (말일 보정: 1/31+1개월→2/28)
+  if(!iso) return '';
+  const dt=new Date(iso+'T00:00:00'); if(isNaN(dt.getTime())) return '';
+  const day=dt.getDate(); dt.setMonth(dt.getMonth()+n); if(dt.getDate()<day) dt.setDate(0);
+  const p=x=>String(x).padStart(2,'0');
+  return dt.getFullYear()+'-'+p(dt.getMonth()+1)+'-'+p(dt.getDate());
+}
+function carAutoNext(){   // 시행일 넣으면 '다음 예정일'을 3개월 뒤로 자동 채움 (비어 있을 때만)
+  const dEl=document.getElementById('cl_date'), nEl=document.getElementById('cl_next');
+  if(!dEl||!nEl) return; const base=dEl.value||realToday();
+  if(!nEl.value) nEl.value=addMonthsISO(base,3);
+}
 function addCarLog(){
   const car=document.getElementById('cl_car').value;
   if(!car){ alert('차량을 선택하세요.'); return; }
   const type=document.getElementById('cl_type').value;
   const d=getData(); d.carLogs=d.carLogs||[];
-  d.carLogs.push({car:car, type:type, date:document.getElementById('cl_date').value||realToday(), next:document.getElementById('cl_next').value||'', cost:num('cl_cost'), note:document.getElementById('cl_note').value.trim()});
+  const _cdate=document.getElementById('cl_date').value||realToday();
+  const _cnext=document.getElementById('cl_next').value||addMonthsISO(_cdate,3);   // 비우면 3개월 뒤 자동
+  d.carLogs.push({car:car, type:type, date:_cdate, next:_cnext, cost:num('cl_cost'), note:document.getElementById('cl_note').value.trim()});
   setData(d); render();
   ['cl_next','cl_cost','cl_note'].forEach(id=>document.getElementById(id).value='');
   alert(car+' · '+type+' 기록을 추가했어요.');
@@ -2433,6 +2447,13 @@ function render(){
     setBadge('mktMsgBadge', toPend('마케팅팀'));
     setBadge('hrMsgBadge', toPend('인사팀'));
     setBadge('bizMsgBadge', toPend('기업지원팀'));
+    // ── 상위(팀) 탭 배지 = 팀 할 일 + 그 팀에 온 요청함 미처리까지 합산 ──
+    const _finTasks=allUnpaid+fxDueToday.length+ordReqN+payReqN+unbilledN;
+    const _opsTasks=unsettledN+ordSentN+carDueN;
+    setBadge('finBadge', _finTasks+toPend('재무팀'));
+    setBadge('opsBadge', _opsTasks+toPend('운영팀'));
+    setBadge('hrBadge', toPend('인사팀'));     // 인사팀은 할 일 배지가 따로 없어 요청함만
+    setBadge('mktBadge', toPend('마케팅팀'));   // 마케팅팀도 요청함만
   }
 
   // 🏛️ 기업지원사업팀 (지원사업 관리)
