@@ -2750,7 +2750,7 @@ function addSchedule(){
   ['sf_site','sf_work','sf_crew','sf_contact','sf_quote'].forEach(id=>document.getElementById(id).value='');
   document.getElementById('sf_site').focus();
 }
-function delSchedule(i){ const d=getData(); d.schedule.splice(i,1); setData(d); render(); }
+function delSchedule(i){ const d=getData(); const s=(d.schedule||[])[i]; if(s&&d.crewMap) delete d.crewMap[s.date+'|'+s.site]; d.schedule.splice(i,1); setData(d); render(); }
 function editSchedCrew(i){
   const d=getData(); const s=(d.schedule||[])[i]; if(!s) return;
   const v=prompt((s.site?`📍 ${s.site} — `:'')+'배정 인원 (이름, 쉼표):', s.crew||'');
@@ -2761,11 +2761,12 @@ function editSchedCrew(i){
 // 달력에서 배치 현장 클릭 → 인원 확인 (폰에서도 확인 가능)
 function calJobInfo(i){
   const d=getData(); const s=(d.schedule||[])[i]; if(!s) return;
-  const act=prompt(`📍 ${s.site}\n📅 ${s.date}   👷 ${crewNames(s)||'(미배정)'}\n📞 ${s.contact||'-'}   💰 ${s.quote?KRW(s.quote):'-'}\n\n무엇을 할까요? 번호 입력:\n  1 = 날짜 이동\n  2 = 인원 수정`, '2');
+  const act=prompt(`📍 ${s.site}\n📅 ${s.date}   👷 ${crewNames(s)||'(미배정)'}\n📞 ${s.contact||'-'}   💰 ${s.quote?KRW(s.quote):'-'}\n\n무엇을 할까요? 번호 입력:\n  1 = 날짜 이동\n  2 = 인원 수정\n  3 = 이 일정 삭제 (취소된 현장 등)`, '2');
   if(act===null) return;
   const a=String(act).trim();
   if(a==='1') moveSchedPrompt(i);
   else if(a==='2') editSchedCrew(i);
+  else if(a==='3'){ if(confirm(`'${s.site}' (${s.date}) 일정을 삭제할까요?\n(취소됐거나 잘못 들어온 일정을 지웁니다)`)) delSchedule(i); }
 }
 // 달력에서 완료 현장 클릭 → 참여 인원 확인
 function calDoneInfo(i){
@@ -3254,7 +3255,7 @@ function buildMonthCal(y,m,d,opts){
     (sch[ds]||[]).forEach(({s,idx})=>{ const assigned=!!(s.crew&&String(s.crew).trim()); const cr=assigned?crewNames(s).split(/,\s*/)[0]:'';
       items+=assigned
         ? `<span class="ci sch clk" draggable="true" data-dt="sch" data-di="${idx}" onclick="calJobInfo(${idx})" title="클릭=인원확인 · 끌어서 날짜 이동">🧹 ${esc(s.site)}${cr?' ·'+esc(cr):''}</span>`
-        : `<span class="ci noassign clk" draggable="true" data-dt="sch" data-di="${idx}" onclick="editSchedCrew(${idx})" title="인원 미배정 — 클릭해 배치 · 끌어서 이동">⚠️ ${esc(s.site)} <span style="font-size:9px">미배정</span></span>`; });
+        : `<span class="ci noassign clk" draggable="true" data-dt="sch" data-di="${idx}" onclick="calJobInfo(${idx})" title="클릭=인원배치/이동/삭제 · 끌어서 이동">⚠️ ${esc(s.site)} <span style="font-size:9px">미배정</span></span>`; });
     (done[ds]||[]).forEach(({s,idx})=>{ if(schKeys.has(ds+'|'+s.site))return; const cr=(crewNames(s)||'').split(/,\s*/)[0];
       items+=`<span class="ci done clk" onclick="calDoneInfo(${idx})" title="완료 현장 — 클릭해 인원 확인">✅ ${esc(s.site)}${cr?' ·'+esc(cr):''}</span>`; });
     (ev[ds]||[]).forEach(({e,ei})=>{ items+=`<span class="ci ev" draggable="true" data-dt="ev" data-di="${ei}" title="${esc(e.title)} ${esc(e.note)} · 끌어서 날짜 이동">📌 ${e.time?esc(e.time)+' ':''}${esc(e.title)}</span>`; });
