@@ -1370,10 +1370,20 @@ function _seed(data){    // 메시지·지원사업 시드/마이그레이션 (�
   });
   // (3) schedule 각 항목에 crew 재부착(비어있으면 map에서) — 최신화로 지워져도 여기서 되살아남
   (data.schedule||[]).forEach(function(s){ if(!s) return; var k=s.date+'|'+s.site; if((!s.crew||!String(s.crew).trim()) && data.crewMap[k]) s.crew=data.crewMap[k]; });
+  // ── 삭제 표식(tombstone): 지운 일정은 최신화·재주입으로 되살아나도 매 로드마다 다시 제거 ──
+  if(!data.deleted || typeof data.deleted!=='object') data.deleted={};
+  _applyTombstones(data);
   return data;
 }
 function _schedKey(s){ return String(s&&s.site||'').replace(/[\s()（）·・,.\-]/g,'').toLowerCase(); }
 function _hasCrew(s){ return (Array.isArray(s.crew)&&s.crew.length>0) || (typeof s.crew==='string'&&s.crew.trim()!==''); }
+function _nkey(t){ return String(t||'').replace(/[\s()（）·・,.\-]/g,'').toLowerCase(); }   // 제목/현장 정규화(띄어쓰기·기호 무시)
+function _applyTombstones(d){   // 사용자가 삭제한 일정(취소 현장 등)은 어떤 경로(최신화·재주입)로 되살아나도 다시 숨김
+  if(!d || !d.deleted || typeof d.deleted!=='object') return;
+  const dk=d.deleted;
+  if(Array.isArray(d.schedule)) d.schedule=d.schedule.filter(s=>!(s && dk[s.date+'|'+_nkey(s.site)]));
+  if(Array.isArray(d.calendar)) d.calendar=d.calendar.filter(e=>!(e && dk[e.date+'|'+_nkey(e.title)]));
+}
 function _mergeSchedule(oldSched, incoming){
   // 캘린더 최신화 병합: 캘린더 일정(incoming)은 갱신하되, 사용자가 넣은 배치 인원·상태·과거·수동 항목은 보존
   const _today = (typeof realToday==='function' ? realToday() : new Date().toISOString().slice(0,10));
@@ -1408,6 +1418,7 @@ function _applyCalSync(d){   // 구글 캘린더 최신화: calSync 값이 바�
   if(!cur || !cur.calSync || d._calSync===cur.calSync) return false;
   if(Array.isArray(cur.calendar)) d.calendar=JSON.parse(JSON.stringify(cur.calendar)); // 방역 등은 교체
   if(Array.isArray(cur.schedule)) d.schedule=_mergeSchedule(d.schedule, cur.schedule); // 배치는 병합(보존)
+  _applyTombstones(d);   // 최신화로 다시 들어온 일정 중 사용자가 삭제한 건 제거
   d._calSync=cur.calSync;
   return true;
 }
@@ -2743,6 +2754,7 @@ function addSchedule(){
     contact:document.getElementById('sf_contact').value.trim(), quote:num('sf_quote'),
     status:document.getElementById('sf_status').value, manual:true};
   d.schedule.push(rec);
+  if(d.deleted) delete d.deleted[rec.date+'|'+_nkey(rec.site)];   // 다시 등록하면 삭제 표식 해제
   if(rec.crew && rec.crew.trim()){ d.crewMap=d.crewMap||{}; d.crewMap[rec.date+'|'+rec.site]=rec.crew.trim(); }  // 영구 저장
   setData(d);
   SCHED_WEEK=weekOffsetOf(rec.date);   // 저장한 배치가 있는 주로 이동
@@ -2750,7 +2762,14 @@ function addSchedule(){
   ['sf_site','sf_work','sf_crew','sf_contact','sf_quote'].forEach(id=>document.getElementById(id).value='');
   document.getElementById('sf_site').focus();
 }
-function delSchedule(i){ const d=getData(); const s=(d.schedule||[])[i]; if(s&&d.crewMap) delete d.crewMap[s.date+'|'+s.site]; d.schedule.splice(i,1); setData(d); render(); }
+function _killJob(date,name){   // 일정 완전 삭제: 배치·캘린더 양쪽에서 지우고 '삭제 표식'을 남겨 최신화에도 안 되살아나게
+  const d=getData(); const nk=_nkey(name);
+  d.deleted=d.deleted||{}; d.deleted[date+'|'+nk]=true;
+  if(Array.isArray(d.schedule)) d.schedule=d.schedule.filter(s=>{ if(s&&s.date===date&&_nkey(s.site)===nk){ if(d.crewMap) delete d.crewMap[s.date+'|'+s.site]; return false; } return true; });
+  if(Array.isArray(d.calendar)) d.calendar=d.calendar.filter(e=>!(e&&e.date===date&&_nkey(e.title)===nk));
+  setData(d); render();
+}
+function delSchedule(i){ const d=getData(); const s=(d.schedule||[])[i]; if(!s) return; _killJob(s.date, s.site); }
 function editSchedCrew(i){
   const d=getData(); const s=(d.schedule||[])[i]; if(!s) return;
   const v=prompt((s.site?`📍 ${s.site} — `:'')+'배정 인원 (이름, 쉼표):', s.crew||'');
@@ -2776,12 +2795,22 @@ function calDoneInfo(i){
 function addCalEvent(){
   const title=document.getElementById('cf_title').value.trim(); if(!title){ alert('일정 제목을 입력하세요.'); return; }
   const d=getData(); d.calendar=d.calendar||[];
-  d.calendar.push({date:document.getElementById('cf_date').value||realToday(), time:document.getElementById('cf_time').value.trim(), title, note:document.getElementById('cf_note').value.trim()});
+  const _cd=document.getElementById('cf_date').value||realToday();
+  if(d.deleted) delete d.deleted[_cd+'|'+_nkey(title)];   // 다시 등록하면 삭제 표식 해제
+  d.calendar.push({date:_cd, time:document.getElementById('cf_time').value.trim(), title, note:document.getElementById('cf_note').value.trim()});
   setData(d); render();
   ['cf_title','cf_time','cf_note'].forEach(id=>document.getElementById(id).value='');
   document.getElementById('cf_title').focus();
 }
-function delCalEvent(i){ const d=getData(); d.calendar.splice(i,1); setData(d); render(); }
+function delCalEvent(i){ const d=getData(); const e=(d.calendar||[])[i]; if(!e) return; _killJob(e.date, e.title); }
+function calEvInfo(i){   // 달력의 구글캘린더 일정(📌) 클릭 → 이동/삭제
+  const d=getData(); const e=(d.calendar||[])[i]; if(!e) return;
+  const act=prompt(`📌 ${e.title}\n📅 ${e.date}${e.time?'  '+e.time:''}\n\n무엇을 할까요? 번호 입력:\n  1 = 날짜 이동\n  2 = 이 일정 삭제 (취소된 일정 등)`, '2');
+  if(act===null) return;
+  const a=String(act).trim();
+  if(a==='1'){ const nd=prompt('옮길 날짜를 입력하세요 (예: 2026-09-15)', e.date); if(nd!==null){ const v=String(nd).trim(); if(/^\d{4}-\d{2}-\d{2}$/.test(v)){ e.date=v; setData(d); render(); } else alert('날짜 형식이 올바르지 않아요. 예: 2026-09-15'); } }
+  else if(a==='2'){ if(confirm(`'${e.title}' (${e.date}) 일정을 삭제할까요?\n(취소됐거나 잘못 들어온 일정을 지웁니다)`)) delCalEvent(i); }
+}
 function schedWeek(n){ SCHED_WEEK+=n; render(); }
 function schedToday(){ SCHED_WEEK=0; render(); }
 function fillFromSchedule(i){
@@ -3258,7 +3287,7 @@ function buildMonthCal(y,m,d,opts){
         : `<span class="ci noassign clk" draggable="true" data-dt="sch" data-di="${idx}" onclick="calJobInfo(${idx})" title="클릭=인원배치/이동/삭제 · 끌어서 이동">⚠️ ${esc(s.site)} <span style="font-size:9px">미배정</span></span>`; });
     (done[ds]||[]).forEach(({s,idx})=>{ if(schKeys.has(ds+'|'+s.site))return; const cr=(crewNames(s)||'').split(/,\s*/)[0];
       items+=`<span class="ci done clk" onclick="calDoneInfo(${idx})" title="완료 현장 — 클릭해 인원 확인">✅ ${esc(s.site)}${cr?' ·'+esc(cr):''}</span>`; });
-    (ev[ds]||[]).forEach(({e,ei})=>{ items+=`<span class="ci ev" draggable="true" data-dt="ev" data-di="${ei}" title="${esc(e.title)} ${esc(e.note)} · 끌어서 날짜 이동">📌 ${e.time?esc(e.time)+' ':''}${esc(e.title)}</span>`; });
+    (ev[ds]||[]).forEach(({e,ei})=>{ items+=`<span class="ci ev clk" draggable="true" data-dt="ev" data-di="${ei}" onclick="calEvInfo(${ei})" title="클릭=이동/삭제 · 끌어서 날짜 이동 (${esc(e.title)} ${esc(e.note)})">📌 ${e.time?esc(e.time)+' ':''}${esc(e.title)}</span>`; });
     (fxByDay[dayNum]||[]).forEach(f=>{ items+=`<span class="ci fx" title="${esc(f.name)} ${KRW(f.amount)}">💳 ${esc(f.name)}</span>`; });
     if(opts.revenue&&rev[ds])items+=`<span class="ci rev" title="이 날 매출 ${KRW(rev[ds])}">💰 ${KRWm(rev[ds])}</span>`;
     if(opts.grants){
