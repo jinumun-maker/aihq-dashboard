@@ -480,11 +480,13 @@
   <!-- ===== 저장된 결산 (누적·수정) ===== -->
   <div class="card" style="margin-top:22px">
     <h2>📋 저장된 결산 <span id="settleHistCount" style="font-weight:500;color:var(--muted);font-size:12px"></span>
-      <span style="display:block;font-weight:500;color:var(--muted);font-size:11.5px;margin-top:3px">최근 저장한 결산이 위에 · <b>✏️ 수정</b> 누르면 위 입력폼에 불러와 고칠 수 있어요</span></h2>
-    <input id="settleHistSearch" placeholder="🔍 현장·담당자·인원 검색" oninput="render()" style="width:100%;padding:9px 11px;border:1px solid var(--line);border-radius:8px;background:var(--bg);color:var(--ink);font-family:inherit;font-size:13px;margin-bottom:12px">
-    <div style="max-height:440px;overflow:auto"><table>
+      <span style="display:block;font-weight:500;color:var(--muted);font-size:11.5px;margin-top:3px">약 2주씩 페이지로 · <b>✏️ 수정</b> 누르면 위 입력폼에 불러와 고칠 수 있어요</span></h2>
+    <input id="settleHistSearch" placeholder="🔍 현장·담당자·인원 검색" oninput="settleSearch()" style="width:100%;padding:9px 11px;border:1px solid var(--line);border-radius:8px;background:var(--bg);color:var(--ink);font-family:inherit;font-size:13px;margin-bottom:10px">
+    <div id="settleHistLabel" style="font-size:12.5px;color:var(--muted);margin-bottom:6px"></div>
+    <div style="max-height:520px;overflow:auto"><table>
       <thead><tr><th>날짜</th><th>현장</th><th>담당</th><th>인원</th><th class="num">매출</th><th class="num">경비</th><th class="num">순익</th><th></th></tr></thead>
       <tbody id="settleHistRows"></tbody></table></div>
+    <div id="settleHistPager"></div>
   </div>
 
   </div><!-- /결산 -->
@@ -3147,9 +3149,13 @@ let PAY_RANGE='all';
 function setPayRange(r){ PAY_RANGE=r; render(); }
 let PAY_PAGE=1;
 function setPayPage(n){ PAY_PAGE=n; render(); const c=document.getElementById('payCard'); if(c) c.scrollIntoView({behavior:'smooth',block:'start'}); }
-function pagerHTML(cur,total){
+let SETTLE_PAGE=1;
+function setSettlePage(n){ SETTLE_PAGE=n; render(); const el=document.getElementById('settleHistRows'); if(el){ const card=el.closest('.card'); if(card) card.scrollIntoView({behavior:'smooth',block:'start'}); } }
+function settleSearch(){ SETTLE_PAGE=1; render(); }
+function pagerHTML(cur,total,setter){
   if(total<=1) return '';
-  const b=(n,label,active,disabled)=>`<button ${disabled?'disabled':`onclick="setPayPage(${n})"`} style="min-width:36px;padding:7px 12px;border-radius:8px;border:1px solid ${active?'var(--limit)':'var(--line)'};background:${active?'var(--limit)':'var(--card)'};color:${active?'#fff':'var(--ink)'};font-weight:${active?'800':'600'};font-size:13px;${disabled?'opacity:.35;cursor:default':'cursor:pointer'}">${label}</button>`;
+  setter=setter||'setPayPage';
+  const b=(n,label,active,disabled)=>`<button ${disabled?'disabled':`onclick="${setter}(${n})"`} style="min-width:36px;padding:7px 12px;border-radius:8px;border:1px solid ${active?'var(--limit)':'var(--line)'};background:${active?'var(--limit)':'var(--card)'};color:${active?'#fff':'var(--ink)'};font-weight:${active?'800':'600'};font-size:13px;${disabled?'opacity:.35;cursor:default':'cursor:pointer'}">${label}</button>`;
   const seq=[]; const win=2;
   for(let n=1;n<=total;n++){ if(n===1||n===total||(n>=cur-win&&n<=cur+win)) seq.push(n); else if(seq[seq.length-1]!=='…') seq.push('…'); }
   return `<div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;justify-content:center;margin-top:16px">`
@@ -3264,7 +3270,19 @@ function renderSettleHistory(){   // 운영팀 일일결산 아래: 저장된 �
   if(q) arr=arr.filter(function(x){ var s=x.s; return ((s.site||'')+' '+(s.manager||'')+' '+(crewNames(s)||'')).toLowerCase().indexOf(q)>=0; });
   arr.sort(function(a,b){ return (b.s.date||'').localeCompare(a.s.date||''); });
   var cnt=document.getElementById('settleHistCount'); if(cnt) cnt.textContent=' · 총 '+arr.length+'건';
-  el.innerHTML = arr.length ? arr.map(function(x){ var s=x.s, i=x.i, r=calcRow(s);
+  // 약 2주(14일)씩 페이지로 — 각 페이지 = 그 페이지 최신 결산일 기준 14일 이내
+  var DAY=86400000, pages=[], cur=null, anchor=0;
+  arr.forEach(function(x){
+    var dt=new Date((x.s.date||'1970-01-01')+'T00:00:00').getTime();
+    if(!cur || (anchor-dt)>14*DAY){ cur=[]; anchor=dt; pages.push(cur); }
+    cur.push(x);
+  });
+  var total=pages.length||1;
+  if(SETTLE_PAGE<1) SETTLE_PAGE=1; if(SETTLE_PAGE>total) SETTLE_PAGE=total;
+  var items = pages.length ? pages[SETTLE_PAGE-1] : [];
+  var lab=document.getElementById('settleHistLabel');
+  if(lab){ if(items.length){ var newest=(items[0].s.date||''), oldest=(items[items.length-1].s.date||''); lab.innerHTML='📅 '+(oldest?oldest.slice(5):'')+' ~ '+(newest?newest.slice(5):'')+' · 이 페이지 <b>'+items.length+'</b>건 · '+SETTLE_PAGE+'/'+total+'페이지'; } else lab.textContent=''; }
+  el.innerHTML = items.length ? items.map(function(x){ var s=x.s, i=x.i, r=calcRow(s);
     return '<tr>'
       +'<td style="white-space:nowrap">'+(s.date?s.date.slice(5):'-')+'</td>'
       +'<td>'+escHtml(s.site||'')+'</td>'
@@ -3277,6 +3295,7 @@ function renderSettleHistory(){   // 운영팀 일일결산 아래: 저장된 �
       +'<button class="del" onclick="delSettlement('+i+')" title="삭제">✕</button></td>'
     +'</tr>';
   }).join('') : '<tr><td colspan="8" style="color:var(--muted)">아직 저장된 결산이 없습니다. 위 입력폼에서 저장하면 여기에 쌓입니다.</td></tr>';
+  var pg=document.getElementById('settleHistPager'); if(pg) pg.innerHTML=pagerHTML(SETTLE_PAGE, total, 'setSettlePage');
 }
 function renderMsgInto(containerId, owner, showAll, countId){
   const el=document.getElementById(containerId); if(!el) return;
