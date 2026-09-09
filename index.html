@@ -477,6 +477,16 @@
     </div>
   </div>
 
+  <!-- ===== 저장된 결산 (누적·수정) ===== -->
+  <div class="card" style="margin-top:22px">
+    <h2>📋 저장된 결산 <span id="settleHistCount" style="font-weight:500;color:var(--muted);font-size:12px"></span>
+      <span style="display:block;font-weight:500;color:var(--muted);font-size:11.5px;margin-top:3px">최근 저장한 결산이 위에 · <b>✏️ 수정</b> 누르면 위 입력폼에 불러와 고칠 수 있어요</span></h2>
+    <input id="settleHistSearch" placeholder="🔍 현장·담당자·인원 검색" oninput="render()" style="width:100%;padding:9px 11px;border:1px solid var(--line);border-radius:8px;background:var(--bg);color:var(--ink);font-family:inherit;font-size:13px;margin-bottom:12px">
+    <div style="max-height:440px;overflow:auto"><table>
+      <thead><tr><th>날짜</th><th>현장</th><th>담당</th><th>인원</th><th class="num">매출</th><th class="num">경비</th><th class="num">순익</th><th></th></tr></thead>
+      <tbody id="settleHistRows"></tbody></table></div>
+  </div>
+
   </div><!-- /결산 -->
 
   <div class="subpg" data-subpg="고객정보">
@@ -1737,7 +1747,7 @@ function addSettlement(){
   if(editing){ alert('결산이 수정되었습니다.'); }
   document.getElementById('f_site').focus();
 }
-function delSettlement(i){ const d=getData(); d.settlements.splice(i,1); setData(d); render(); }
+function delSettlement(i){ const d=getData(); const s=(d.settlements||[])[i]; if(!s) return; if(!confirm('이 결산을 삭제할까요?\n\n'+(s.date||'')+'  '+(s.site||'')+'\n(매출·인건비·경비 집계에서 빠집니다)')) return; d.settlements.splice(i,1); setData(d); render(); }
 
 /* ── 받을 계산서(매입) — 거래처에서 받아야 할 세금계산서 체크 ── */
 function addPurchase(){
@@ -2454,6 +2464,7 @@ function render(){
 
   // 📋 팀별 업무정리 보드 렌더 + 미완료 개수 배지 (요청함 대체)
   renderAllBoards();
+  renderSettleHistory();
   {
     const _bo=t=>{ const a=(d.boards&&d.boards[t])||[]; return a.filter(c=>c.status!=='done').length; };
     setBadge('msgBadge', _bo('mng'));       // 경영관리팀 업무정리 서브탭
@@ -3245,6 +3256,28 @@ function renderBoard(viewTeam){
   }).join('');
 }
 function renderAllBoards(){ _fillBoardTargets(); Object.keys(BOARD_TEAMS).forEach(function(t){ renderBoard(t); }); }
+function renderSettleHistory(){   // 운영팀 일일결산 아래: 저장된 결산 누적·수정
+  var el=document.getElementById('settleHistRows'); if(!el) return;
+  var d=getData();
+  var q=((document.getElementById('settleHistSearch')||{}).value||'').trim().toLowerCase();
+  var arr=(d.settlements||[]).map(function(s,i){ return {s:s,i:i}; });
+  if(q) arr=arr.filter(function(x){ var s=x.s; return ((s.site||'')+' '+(s.manager||'')+' '+(crewNames(s)||'')).toLowerCase().indexOf(q)>=0; });
+  arr.sort(function(a,b){ return (b.s.date||'').localeCompare(a.s.date||''); });
+  var cnt=document.getElementById('settleHistCount'); if(cnt) cnt.textContent=' · 총 '+arr.length+'건';
+  el.innerHTML = arr.length ? arr.map(function(x){ var s=x.s, i=x.i, r=calcRow(s);
+    return '<tr>'
+      +'<td style="white-space:nowrap">'+(s.date?s.date.slice(5):'-')+'</td>'
+      +'<td>'+escHtml(s.site||'')+'</td>'
+      +'<td style="font-size:11.5px;color:var(--muted);white-space:nowrap">'+(s.manager?escHtml(s.manager):'-')+'</td>'
+      +'<td style="font-size:11.5px;color:var(--muted)">'+(crewNames(s)||'-')+(laborMissing(s)?' <span class="pill p-late">미</span>':'')+'</td>'
+      +'<td class="num">'+KRW(r.rev)+'</td>'
+      +'<td class="num">'+KRW(r.exp)+'</td>'
+      +'<td class="num" style="font-weight:700;color:'+(r.profit>=0?'var(--good)':'var(--warn)')+'">'+KRW(r.profit)+'</td>'
+      +'<td style="white-space:nowrap"><button class="del" onclick="editSettledJob('+i+')" title="이 결산 수정" style="color:var(--limit);border:1px solid var(--limit);border-radius:7px;padding:3px 8px;margin-right:4px">✏️ 수정</button>'
+      +'<button class="del" onclick="delSettlement('+i+')" title="삭제">✕</button></td>'
+    +'</tr>';
+  }).join('') : '<tr><td colspan="8" style="color:var(--muted)">아직 저장된 결산이 없습니다. 위 입력폼에서 저장하면 여기에 쌓입니다.</td></tr>';
+}
 function renderMsgInto(containerId, owner, showAll, countId){
   const el=document.getElementById(containerId); if(!el) return;
   const d=getData(); const msgs=d.messages||[];
