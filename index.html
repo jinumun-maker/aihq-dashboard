@@ -215,7 +215,7 @@
   .brdadd{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin:12px 0 16px}
   .brdadd input,.brdadd select{font-family:inherit;font-size:13px;padding:9px 11px;border:1px solid var(--line);border-radius:9px;background:var(--bg);color:var(--ink)}
   .brdadd .bt{flex:1;min-width:170px}
-  .brdadd .bm{width:110px}
+  .brdadd .bm{min-width:120px}
   .board{display:grid;grid-template-columns:repeat(5,1fr);gap:10px;align-items:start}
   @media(max-width:860px){ .board{display:flex;overflow-x:auto;gap:10px;scroll-snap-type:x mandatory;-webkit-overflow-scrolling:touch;padding-bottom:6px} .bcol{min-width:76vw;scroll-snap-align:start} }
   .bcol{background:var(--bg);border:1px solid var(--line);border-radius:12px;padding:10px;border-top:3px solid var(--line)}
@@ -231,7 +231,7 @@
   .bchip{font-size:10.5px;font-weight:700;padding:1px 7px;border-radius:8px;background:rgba(37,99,235,.13);color:var(--limit)}
   .bdue{font-size:10.5px;color:var(--muted)} .bdue.over{color:var(--warn);font-weight:700}
   .bbtns{display:flex;gap:4px;margin-top:8px;flex-wrap:wrap;align-items:center}
-  .bbtns select{font-family:inherit;font-size:11px;padding:3px 4px;border:1px solid var(--line);border-radius:6px;background:var(--card);color:var(--ink);max-width:96px}
+  .bbtns select{font-family:inherit;font-size:11px;padding:3px 4px;border:1px solid var(--line);border-radius:6px;background:var(--card);color:var(--ink);max-width:112px}
   .bbtns button{padding:3px 7px;font-size:11px;border-radius:6px;line-height:1}
   .bempty{color:var(--muted);font-size:11.5px;text-align:center;padding:12px 4px;border:1.5px dashed var(--line);border-radius:9px}
 </style>
@@ -372,7 +372,7 @@
       <h2>📋 운영팀 업무정리 <span style="font-weight:500;color:var(--muted);font-size:12px">할 일을 카드로 · 마감일·우선순위 · 모든 기기 공유</span></h2>
       <div class="brdadd">
         <input class="bt" id="ba_ops_text" placeholder="할 일·메모 입력 (예: △△현장 자재 준비)" onkeydown="if(event.key==='Enter')boardAdd('ops')">
-        <input class="bm" id="ba_ops_mgr" placeholder="담당자(선택)">
+        <select class="bm" id="ba_ops_target" title="대상 팀(보내기)"></select>
         <select id="ba_ops_prio"><option value="mid">🟡 보통</option><option value="high">🔴 높음</option><option value="low">⚪ 낮음</option></select>
         <input id="ba_ops_due" type="date" title="마감일(선택)">
         <button class="primary" onclick="boardAdd('ops')">＋ 추가</button>
@@ -580,7 +580,7 @@
       <h2>📋 재무팀 업무정리 <span style="font-weight:500;color:var(--muted);font-size:12px">할 일을 카드로 · 마감일·우선순위 · 모든 기기 공유</span></h2>
       <div class="brdadd">
         <input class="bt" id="ba_fin_text" placeholder="할 일·메모 입력 (예: ○○현장 세금계산서 발행)" onkeydown="if(event.key==='Enter')boardAdd('fin')">
-        <input class="bm" id="ba_fin_mgr" placeholder="담당자(선택)">
+        <select class="bm" id="ba_fin_target" title="대상 팀(보내기)"></select>
         <select id="ba_fin_prio"><option value="mid">🟡 보통</option><option value="high">🔴 높음</option><option value="low">⚪ 낮음</option></select>
         <input id="ba_fin_due" type="date" title="마감일(선택)">
         <button class="primary" onclick="boardAdd('fin')">＋ 추가</button>
@@ -876,7 +876,7 @@
       <h2>📋 경영관리팀 업무정리 <span style="font-weight:500;color:var(--muted);font-size:12px">대표님 지시·전사 할 일을 카드로 · 모든 기기 공유</span></h2>
       <div class="brdadd">
         <input class="bt" id="ba_mng_text" placeholder="할 일·지시 입력 (예: 재무팀 - 미지급 일당 먼저 처리)" onkeydown="if(event.key==='Enter')boardAdd('mng')">
-        <input class="bm" id="ba_mng_mgr" placeholder="담당/대상(선택)">
+        <select class="bm" id="ba_mng_target" title="대상 팀(보내기)"></select>
         <select id="ba_mng_prio"><option value="mid">🟡 보통</option><option value="high">🔴 높음</option><option value="low">⚪ 낮음</option></select>
         <input id="ba_mng_due" type="date" title="마감일(선택)">
         <button class="primary" onclick="boardAdd('mng')">＋ 추가</button>
@@ -893,7 +893,7 @@
     <h2>📋 인사팀 업무정리 <span style="font-weight:500;color:var(--muted);font-size:12px">할 일을 카드로 · 마감일·우선순위 · 모든 기기 공유</span> <span id="hrMsgBadge" class="tabbadge"></span></h2>
     <div class="brdadd">
       <input class="bt" id="ba_hr_text" placeholder="할 일·메모 입력 (예: 은규 안전교육 일정 잡기)" onkeydown="if(event.key==='Enter')boardAdd('hr')">
-      <input class="bm" id="ba_hr_mgr" placeholder="담당자(선택)">
+      <select class="bm" id="ba_hr_target" title="대상 팀(보내기)"></select>
       <select id="ba_hr_prio"><option value="mid">🟡 보통</option><option value="high">🔴 높음</option><option value="low">⚪ 낮음</option></select>
       <input id="ba_hr_due" type="date" title="마감일(선택)">
       <button class="primary" onclick="boardAdd('hr')">＋ 추가</button>
@@ -995,7 +995,7 @@
     <h2>📋 마케팅팀 업무정리 <span style="font-weight:500;color:var(--muted);font-size:12px">할 일을 카드로 · 마감일·우선순위 · 모든 기기 공유</span> <span id="mktMsgBadge" class="tabbadge"></span></h2>
     <div class="brdadd">
       <input class="bt" id="ba_mkt_text" placeholder="할 일·메모 입력 (예: 네이버 광고 소재 초안 만들기)" onkeydown="if(event.key==='Enter')boardAdd('mkt')">
-      <input class="bm" id="ba_mkt_mgr" placeholder="담당자(선택)">
+      <select class="bm" id="ba_mkt_target" title="대상 팀(보내기)"></select>
       <select id="ba_mkt_prio"><option value="mid">🟡 보통</option><option value="high">🔴 높음</option><option value="low">⚪ 낮음</option></select>
       <input id="ba_mkt_due" type="date" title="마감일(선택)">
       <button class="primary" onclick="boardAdd('mkt')">＋ 추가</button>
@@ -1120,7 +1120,7 @@
       <h2>📋 기업지원사업팀 업무정리 <span style="font-weight:500;color:var(--muted);font-size:12px">할 일을 카드로 · 마감일·우선순위 · 모든 기기 공유</span></h2>
       <div class="brdadd">
         <input class="bt" id="ba_biz_text" placeholder="할 일·메모 입력 (예: 초기창업패키지 서류 준비)" onkeydown="if(event.key==='Enter')boardAdd('biz')">
-        <input class="bm" id="ba_biz_mgr" placeholder="담당자(선택)">
+        <select class="bm" id="ba_biz_target" title="대상 팀(보내기)"></select>
         <select id="ba_biz_prio"><option value="mid">🟡 보통</option><option value="high">🔴 높음</option><option value="low">⚪ 낮음</option></select>
         <input id="ba_biz_due" type="date" title="마감일(선택)">
         <button class="primary" onclick="boardAdd('biz')">＋ 추가</button>
@@ -3193,22 +3193,31 @@ var BOARD_COLS=[{k:'todo',t:'📝 할 일'},{k:'doing',t:'🔄 진행 중'},{k:'
 var BOARD_PRIO={high:{t:'🔴 높음',o:0},mid:{t:'🟡 보통',o:1},low:{t:'⚪ 낮음',o:2}};
 function _besc(t){ return String(t==null?'':t).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
 function _boardArr(d,team){ d.boards=d.boards||{}; if(!Array.isArray(d.boards[team])) d.boards[team]=[]; return d.boards[team]; }
-window.boardAdd=function(team){
-  var el=document.getElementById('ba_'+team+'_text'); var t=((el&&el.value)||'').trim();
+function _teamOpts(sel){ return Object.keys(BOARD_TEAMS).map(function(k){ return '<option value="'+k+'"'+(k===sel?' selected':'')+'>'+(k===sel?'우리 팀':'→ '+BOARD_TEAMS[k])+'</option>'; }).join(''); }
+function _fillBoardTargets(){ Object.keys(BOARD_TEAMS).forEach(function(t){ var s=document.getElementById('ba_'+t+'_target'); if(s && s.childElementCount===0) s.innerHTML=_teamOpts(t); }); }
+window.boardAdd=function(fromTeam){
+  var el=document.getElementById('ba_'+fromTeam+'_text'); var t=((el&&el.value)||'').trim();
   if(!t){ if(el) el.focus(); return; }
-  var g=function(f){ var e=document.getElementById('ba_'+team+'_'+f); return e?e.value:''; };
-  var d=getData(); _boardArr(d,team).push({id:Date.now()+'_'+Math.random().toString(36).slice(2,6), text:t, mgr:(g('mgr')||'').trim(), prio:g('prio')||'mid', due:g('due')||'', status:'todo', ts:realToday(), doneTs:''});
+  var g=function(f){ var e=document.getElementById('ba_'+fromTeam+'_'+f); return e?e.value:''; };
+  var target=g('target')||fromTeam;
+  var d=getData(); _boardArr(d,target).push({id:Date.now()+'_'+Math.random().toString(36).slice(2,6), text:t, from:(target!==fromTeam?fromTeam:''), prio:g('prio')||'mid', due:g('due')||'', status:'todo', ts:realToday(), doneTs:''});
   setData(d);
-  ['text','mgr','due'].forEach(function(f){ var e=document.getElementById('ba_'+team+'_'+f); if(e) e.value=''; });
-  var pe=document.getElementById('ba_'+team+'_prio'); if(pe) pe.value='mid';
+  if(el) el.value=''; var due=document.getElementById('ba_'+fromTeam+'_due'); if(due) due.value='';
+  var pe=document.getElementById('ba_'+fromTeam+'_prio'); if(pe) pe.value='mid';
+  var tg=document.getElementById('ba_'+fromTeam+'_target'); if(tg) tg.value=fromTeam;
   render(); if(el) el.focus();
 };
 window.boardStatus=function(team,id,st){ var d=getData(); var c=_boardArr(d,team).filter(function(x){return x.id===id;})[0]; if(!c) return; c.status=st; c.doneTs=(st==='done'?realToday():''); setData(d); render(); };
 window.boardPrio=function(team,id,p){ var d=getData(); var c=_boardArr(d,team).filter(function(x){return x.id===id;})[0]; if(!c) return; c.prio=p; setData(d); render(); };
+window.boardTarget=function(owner,id,dest){   // 카드를 다른 팀 보드로 보내기
+  if(!dest||dest===owner) return;
+  var d=getData(); var arr=_boardArr(d,owner); var i=-1; arr.forEach(function(x,ix){ if(x.id===id) i=ix; });
+  if(i<0) return; var c=arr.splice(i,1)[0]; c.from=owner; _boardArr(d,dest).push(c);
+  setData(d); render();
+};
 window.boardEdit=function(team,id){
   var d=getData(); var c=_boardArr(d,team).filter(function(x){return x.id===id;})[0]; if(!c) return;
   var v=prompt('내용 수정:', c.text); if(v===null) return; v=v.trim(); if(!v) return; c.text=v;
-  var m=prompt('담당자(비우면 없음):', c.mgr||''); if(m!==null) c.mgr=m.trim();
   var du=prompt('마감일 YYYY-MM-DD (비우면 없음):', c.due||''); if(du!==null){ du=du.trim(); c.due=/^\d{4}-\d{2}-\d{2}$/.test(du)?du:''; }
   setData(d); render();
 };
@@ -3217,10 +3226,11 @@ function _boardCard(team,c){
   var over=c.due && c.status!=='done' && c.due<realToday();
   var st='<select onchange="boardStatus(\''+team+'\',\''+c.id+'\',this.value)" title="단계 이동">'+BOARD_COLS.map(function(col){return '<option value="'+col.k+'"'+(col.k===(c.status||'todo')?' selected':'')+'>'+col.t+'</option>';}).join('')+'</select>';
   var pr='<select onchange="boardPrio(\''+team+'\',\''+c.id+'\',this.value)" title="우선순위">'+Object.keys(BOARD_PRIO).map(function(k){return '<option value="'+k+'"'+(k===(c.prio||'mid')?' selected':'')+'>'+BOARD_PRIO[k].t+'</option>';}).join('')+'</select>';
+  var tg='<select onchange="boardTarget(\''+team+'\',\''+c.id+'\',this.value)" title="대상 팀(보내기)">'+_teamOpts(team)+'</select>';
   return '<div class="bcard p_'+(c.prio||'mid')+((c.status==='done')?' done':'')+'">'
     +'<div class="btext">'+_besc(c.text)+'</div>'
-    +'<div class="bmeta">'+(c.mgr?'<span class="bchip">👤 '+_besc(c.mgr)+'</span>':'')+(c.due?'<span class="bdue'+(over?' over':'')+'">⏰ '+_besc(c.due.slice(5))+(over?' 지남':'')+'</span>':'')+'</div>'
-    +'<div class="bbtns">'+st+pr+'<button onclick="boardEdit(\''+team+'\',\''+c.id+'\')" title="수정">✏️</button><button onclick="boardDel(\''+team+'\',\''+c.id+'\')" title="삭제">🗑</button></div>'
+    +'<div class="bmeta">'+((c.from&&BOARD_TEAMS[c.from])?'<span class="bchip">← '+_besc(BOARD_TEAMS[c.from])+'</span>':'')+(c.due?'<span class="bdue'+(over?' over':'')+'">⏰ '+_besc(c.due.slice(5))+(over?' 지남':'')+'</span>':'')+'</div>'
+    +'<div class="bbtns">'+st+pr+tg+'<button onclick="boardEdit(\''+team+'\',\''+c.id+'\')" title="수정">✏️</button><button onclick="boardDel(\''+team+'\',\''+c.id+'\')" title="삭제">🗑</button></div>'
   +'</div>';
 }
 function renderBoard(team){
@@ -3233,7 +3243,7 @@ function renderBoard(team){
     return '<div class="bcol c_'+col.k+'"><div class="bcolhd">'+col.t+'<span class="bc">'+items.length+'</span></div>'+body+'</div>';
   }).join('');
 }
-function renderAllBoards(){ Object.keys(BOARD_TEAMS).forEach(function(t){ renderBoard(t); }); }
+function renderAllBoards(){ _fillBoardTargets(); Object.keys(BOARD_TEAMS).forEach(function(t){ renderBoard(t); }); }
 function renderMsgInto(containerId, owner, showAll, countId){
   const el=document.getElementById(containerId); if(!el) return;
   const d=getData(); const msgs=d.messages||[];
