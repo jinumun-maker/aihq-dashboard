@@ -358,17 +358,16 @@
     <div class="sumrow" id="opsSummary"></div>
   </div>
   <div class="subtabs">
-    <button class="subtab" data-subtab="운영달력" onclick="showSub('운영달력')">📅 일정 달력</button>
+    <button class="subtab" data-subtab="운영달력" onclick="showSub('운영달력')">📅 일정 달력 <span id="opsMsgBadge" class="tabbadge"></span></button>
     <button class="subtab" data-subtab="배치" onclick="showSub('배치')">🗓️ 주간 근무배치</button>
     <button class="subtab" data-subtab="결산" onclick="showSub('결산')">🧾 일일결산 <span id="settleBadge" class="tabbadge"></span></button>
     <button class="subtab" data-subtab="고객정보" onclick="showSub('고객정보')">👥 고객정보</button>
     <button class="subtab" data-subtab="차량관리" onclick="showSub('차량관리')">🚗 차량관리 <span id="carBadge" class="tabbadge"></span></button>
     <button class="subtab" data-subtab="발주" onclick="showSub('발주')">📦 발주 <span id="ordBadge" class="tabbadge"></span></button>
-    <button class="subtab" data-subtab="운영요청" onclick="showSub('운영요청')">📋 업무정리 <span id="opsMsgBadge" class="tabbadge"></span></button>
     <button class="subtab" data-subtab="견적서" onclick="showSub('견적서')">🧾 견적서</button>
   </div>
 
-  <div class="subpg" data-subpg="운영요청">
+  <div class="subpg" data-subpg="운영달력">
     <div class="card" style="margin-top:22px">
       <h2>📋 운영팀 업무정리 <span style="font-weight:500;color:var(--muted);font-size:12px">할 일을 카드로 · 마감일·우선순위 · 모든 기기 공유</span></h2>
       <div class="brdadd">
@@ -381,9 +380,6 @@
       </div>
       <div class="board" id="brd_ops"></div>
     </div>
-  </div>
-
-  <div class="subpg" data-subpg="운영달력">
     <div class="card" style="margin-top:22px">
       <h2>📅 이번 달 현장 일정 <span style="font-weight:500;color:var(--muted);font-size:12px">배치·미팅 한눈에</span></h2>
       <div id="calGridOps"></div>
@@ -566,7 +562,7 @@
     <div class="sumrow" id="finSummary"></div>
   </div>
   <div class="subtabs">
-    <button class="subtab" data-subtab="재무달력" onclick="showSub('재무달력')">📅 일정 달력</button>
+    <button class="subtab" data-subtab="재무달력" onclick="showSub('재무달력')">📅 일정 달력 <span id="finMsgBadge" class="tabbadge"></span></button>
     <button class="subtab" data-subtab="미수금" onclick="showSub('미수금')">💰 미수금 <span id="recvBadge" class="tabbadge"></span></button>
     <button class="subtab" data-subtab="결제요청" onclick="showSub('결제요청')">💳 결제요청 <span id="payReqFinBadge" class="tabbadge"></span></button>
     <button class="subtab" data-subtab="인건비" onclick="showSub('인건비')">🧮 인건비·이체 <span id="payBadge" class="tabbadge"></span></button>
@@ -574,10 +570,9 @@
     <button class="subtab" data-subtab="지출" onclick="showSub('지출')">💸 지출</button>
     <button class="subtab" data-subtab="고정지출" onclick="showSub('고정지출')">💳 고정지출 <span id="fxBadge" class="tabbadge"></span></button>
     <button class="subtab" data-subtab="재무발주" onclick="showSub('재무발주')">📦 발주 <span id="finOrdBadge" class="tabbadge"></span></button>
-    <button class="subtab" data-subtab="재무요청" onclick="showSub('재무요청')">📋 업무정리 <span id="finMsgBadge" class="tabbadge"></span></button>
   </div>
 
-  <div class="subpg" data-subpg="재무요청">
+  <div class="subpg" data-subpg="재무달력">
     <div class="card" style="margin-top:22px">
       <h2>📋 재무팀 업무정리 <span style="font-weight:500;color:var(--muted);font-size:12px">할 일을 카드로 · 마감일·우선순위 · 모든 기기 공유</span></h2>
       <div class="brdadd">
@@ -590,9 +585,6 @@
       </div>
       <div class="board" id="brd_fin"></div>
     </div>
-  </div>
-
-  <div class="subpg" data-subpg="재무달력">
     <div class="card" style="margin-top:22px">
       <h2>📅 이번 달 자금 일정 <span style="font-weight:500;color:var(--muted);font-size:12px">고정지출 납부일·매출·미팅 한눈에</span></h2>
       <div id="calGridFin"></div>
@@ -765,11 +757,10 @@
 
   <div class="pg" data-pg="대시보드">
   <div class="subtabs">
-    <button class="subtab" data-subtab="개요일정" onclick="showSub('개요일정')">📅 일정 달력</button>
+    <button class="subtab" data-subtab="개요일정" onclick="showSub('개요일정')">📅 일정 달력 <span id="msgBadge" class="tabbadge"></span></button>
     <button class="subtab" data-subtab="개요재무" onclick="showSub('개요재무')">💰 재무 요약</button>
     <button class="subtab" data-subtab="개요업무" onclick="showSub('개요업무')">✅ 업무 요약 <span id="dashTaskBadge" class="tabbadge"></span></button>
     <button class="subtab" data-subtab="개요결제" onclick="showSub('개요결제')">💳 결제요청 <span id="payReqMgBadge" class="tabbadge"></span></button>
-    <button class="subtab" data-subtab="개요요청" onclick="showSub('개요요청')">📋 업무정리 <span id="msgBadge" class="tabbadge"></span></button>
   </div>
 
   <!-- ① 💰 재무 요약 -->
@@ -836,6 +827,18 @@
   <!-- ② 📅 일정 달력 -->
   <div class="subpg" data-subpg="개요일정">
     <div class="card" style="margin-top:14px">
+      <h2>📋 경영관리팀 업무정리 <span style="font-weight:500;color:var(--muted);font-size:12px">대표님 지시·전사 할 일을 카드로 · 모든 기기 공유</span></h2>
+      <div class="brdadd">
+        <input class="bt" id="ba_mng_text" placeholder="할 일·지시 입력 (예: 재무팀 - 미지급 일당 먼저 처리)" onkeydown="if(event.key==='Enter')boardAdd('mng')">
+        <select class="bm" id="ba_mng_target" title="대상 팀(보내기)"></select>
+        <input class="bm" id="ba_mng_mgr" placeholder="담당자(선택)">
+        <select id="ba_mng_prio"><option value="mid">🟡 보통</option><option value="high">🔴 높음</option><option value="low">⚪ 낮음</option></select>
+        <input id="ba_mng_due" type="date" title="마감일(선택)">
+        <button class="primary" onclick="boardAdd('mng')">＋ 추가</button>
+      </div>
+      <div class="board" id="brd_mng"></div>
+    </div>
+    <div class="card" style="margin-top:22px">
       <h2>📅 이번 달 일정 <span style="font-weight:500;color:var(--muted);font-size:12px">현장·미팅·고정지출 한눈에</span></h2>
       <div id="calGridDash"></div>
     </div>
@@ -873,21 +876,7 @@
     <div style="font-size:12px;color:var(--muted);margin-top:10px">💡 빨간 타일은 오늘 처리해야 할 일입니다. 자세한 작업은 💰 재무팀 · ✍️ 운영팀 탭에서 하세요.</div>
   </div><!-- /개요업무 -->
 
-  <!-- ④ 📨 요청함 (부서 → 대표) -->
-  <div class="subpg" data-subpg="개요요청">
-    <div class="card" style="margin-top:14px">
-      <h2>📋 경영관리팀 업무정리 <span style="font-weight:500;color:var(--muted);font-size:12px">대표님 지시·전사 할 일을 카드로 · 모든 기기 공유</span></h2>
-      <div class="brdadd">
-        <input class="bt" id="ba_mng_text" placeholder="할 일·지시 입력 (예: 재무팀 - 미지급 일당 먼저 처리)" onkeydown="if(event.key==='Enter')boardAdd('mng')">
-        <select class="bm" id="ba_mng_target" title="대상 팀(보내기)"></select>
-        <input class="bm" id="ba_mng_mgr" placeholder="담당자(선택)">
-        <select id="ba_mng_prio"><option value="mid">🟡 보통</option><option value="high">🔴 높음</option><option value="low">⚪ 낮음</option></select>
-        <input id="ba_mng_due" type="date" title="마감일(선택)">
-        <button class="primary" onclick="boardAdd('mng')">＋ 추가</button>
-      </div>
-      <div class="board" id="brd_mng"></div>
-    </div>
-  </div><!-- /개요요청 -->
+  <!-- 업무정리 보드는 일정 달력(개요일정) 상단으로 이동됨 -->
 
   </div><!-- /대시보드 -->
 
@@ -1056,10 +1045,21 @@
   <div class="subtabs">
     <button class="subtab" data-subtab="기업달력" onclick="showSub('기업달력')">📅 모집 캘린더</button>
     <button class="subtab" data-subtab="기업관리" onclick="showSub('기업관리')">📋 지원사업 관리</button>
-    <button class="subtab" data-subtab="기업요청" onclick="showSub('기업요청')">📋 업무정리</button>
   </div>
 
   <div class="subpg" data-subpg="기업달력">
+    <div class="card" style="margin-top:22px">
+      <h2>📋 기업지원사업팀 업무정리 <span style="font-weight:500;color:var(--muted);font-size:12px">할 일을 카드로 · 마감일·우선순위 · 모든 기기 공유</span></h2>
+      <div class="brdadd">
+        <input class="bt" id="ba_biz_text" placeholder="할 일·메모 입력 (예: 초기창업패키지 서류 준비)" onkeydown="if(event.key==='Enter')boardAdd('biz')">
+        <select class="bm" id="ba_biz_target" title="대상 팀(보내기)"></select>
+        <input class="bm" id="ba_biz_mgr" placeholder="담당자(선택)">
+        <select id="ba_biz_prio"><option value="mid">🟡 보통</option><option value="high">🔴 높음</option><option value="low">⚪ 낮음</option></select>
+        <input id="ba_biz_due" type="date" title="마감일(선택)">
+        <button class="primary" onclick="boardAdd('biz')">＋ 추가</button>
+      </div>
+      <div class="board" id="brd_biz"></div>
+    </div>
     <div class="card" style="margin-top:22px">
       <h2>📅 지원사업 모집 캘린더 <span style="font-weight:500;color:var(--muted);font-size:12px">🟢 모집시작 · 🟡 접수중 · ⏰ 마감</span></h2>
       <div id="grantCal"></div>
@@ -1121,20 +1121,7 @@
   </div>
   </div><!-- /기업관리 -->
 
-  <div class="subpg" data-subpg="기업요청">
-    <div class="card" style="margin-top:22px">
-      <h2>📋 기업지원사업팀 업무정리 <span style="font-weight:500;color:var(--muted);font-size:12px">할 일을 카드로 · 마감일·우선순위 · 모든 기기 공유</span></h2>
-      <div class="brdadd">
-        <input class="bt" id="ba_biz_text" placeholder="할 일·메모 입력 (예: 초기창업패키지 서류 준비)" onkeydown="if(event.key==='Enter')boardAdd('biz')">
-        <select class="bm" id="ba_biz_target" title="대상 팀(보내기)"></select>
-        <input class="bm" id="ba_biz_mgr" placeholder="담당자(선택)">
-        <select id="ba_biz_prio"><option value="mid">🟡 보통</option><option value="high">🔴 높음</option><option value="low">⚪ 낮음</option></select>
-        <input id="ba_biz_due" type="date" title="마감일(선택)">
-        <button class="primary" onclick="boardAdd('biz')">＋ 추가</button>
-      </div>
-      <div class="board" id="brd_biz"></div>
-    </div>
-  </div><!-- /기업요청 -->
+  <!-- 업무정리 보드는 모집 캘린더 상단으로 이동됨 -->
   </div><!-- /기업지원 -->
 
   <!-- ================= 영업팀 ================= -->
