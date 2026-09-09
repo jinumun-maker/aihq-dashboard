@@ -1,0 +1,200 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>업무정리 보드 (테스트)</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Gothic+A1:wght@400;500;700;900&display=swap">
+<style>
+  :root{
+    --bg:#f4f6fa; --card:#ffffff; --ink:#111827; --muted:#6b7280; --line:#e5e7eb;
+    --limit:#2563eb; --daman:#f59e0b; --good:#16a34a; --warn:#dc2626;
+    --shadow:0 1px 3px rgba(0,0,0,.08),0 1px 2px rgba(0,0,0,.04);
+  }
+  html[data-theme="dark"]{
+    --bg:#0f1420; --card:#1a2130; --ink:#e6e9ef; --muted:#9aa3b2; --line:#2a3346;
+    --shadow:0 1px 3px rgba(0,0,0,.4);
+  }
+  @media (prefers-color-scheme:dark){
+    html:not([data-theme="light"]){
+      --bg:#0f1420; --card:#1a2130; --ink:#e6e9ef; --muted:#9aa3b2; --line:#2a3346;
+      --shadow:0 1px 3px rgba(0,0,0,.4);
+    }
+  }
+  *{box-sizing:border-box}
+  body{margin:0;font-family:'Malgun Gothic','맑은 고딕',system-ui,-apple-system,sans-serif;
+    background:var(--bg);color:var(--ink);padding:20px;line-height:1.5}
+  .wrap{max-width:1100px;margin:0 auto}
+  @media(max-width:600px){ body{padding:14px} }
+  header{display:flex;justify-content:space-between;align-items:flex-end;flex-wrap:wrap;gap:10px;margin-bottom:4px}
+  h1{font-size:20px;margin:0;font-weight:800;letter-spacing:-.5px}
+  h1 small{font-weight:600;color:var(--muted);font-size:12px;margin-left:6px}
+  button{font-family:inherit;font-size:12.5px;padding:7px 12px;border-radius:8px;
+    border:1px solid var(--line);background:var(--card);color:var(--ink);cursor:pointer}
+  button:hover{border-color:var(--muted)}
+  button.primary{background:var(--limit);color:#fff;border-color:var(--limit);font-weight:700}
+  .banner{margin:12px 0;padding:10px 14px;border-radius:10px;font-size:12.5px;line-height:1.55;
+    background:rgba(245,158,11,.12);border:1px solid rgba(245,158,11,.35);color:var(--ink)}
+  /* 팀 탭 */
+  .tabs{display:flex;gap:7px;flex-wrap:wrap;margin:14px 0}
+  .tab{font-family:inherit;font-size:13px;font-weight:700;padding:8px 15px;border-radius:10px;
+    border:1px solid var(--line);background:var(--card);color:var(--muted);cursor:pointer}
+  .tab:hover{border-color:var(--muted)}
+  .tab.active{background:var(--limit);color:#fff;border-color:var(--limit)}
+  .tab .n{font-size:11px;opacity:.85;margin-left:3px}
+  /* 입력 */
+  .addbar{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin:14px 0 18px}
+  .addbar input{font-family:inherit;font-size:13.5px;padding:10px 12px;border:1px solid var(--line);
+    border-radius:9px;background:var(--card);color:var(--ink)}
+  #newText{flex:1;min-width:200px}
+  #newMgr{width:130px}
+  /* 보드 */
+  .board{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;align-items:start}
+  @media(max-width:720px){
+    .board{display:flex;overflow-x:auto;gap:12px;scroll-snap-type:x mandatory;-webkit-overflow-scrolling:touch;padding-bottom:6px}
+    .col{min-width:80vw;scroll-snap-align:start}
+  }
+  .col{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:12px 12px 14px;box-shadow:var(--shadow)}
+  .colhead{display:flex;align-items:center;gap:7px;font-weight:800;font-size:14px;margin-bottom:10px;padding-bottom:9px;border-bottom:2px solid var(--line)}
+  .colhead .cnt{margin-left:auto;font-size:12px;font-weight:700;color:#fff;border-radius:11px;padding:1px 9px}
+  .col.todo .colhead{color:var(--limit)} .col.todo .cnt{background:var(--limit)} .col.todo{border-top:3px solid var(--limit)}
+  .col.doing .colhead{color:var(--daman)} .col.doing .cnt{background:var(--daman)} .col.doing{border-top:3px solid var(--daman)}
+  .col.done .colhead{color:var(--good)} .col.done .cnt{background:var(--good)} .col.done{border-top:3px solid var(--good)}
+  .empty{color:var(--muted);font-size:12.5px;text-align:center;padding:18px 6px;border:1.5px dashed var(--line);border-radius:10px}
+  /* 카드 */
+  .card{background:var(--bg);border:1px solid var(--line);border-left:4px solid var(--line);
+    border-radius:10px;padding:10px 12px;margin-bottom:9px;box-shadow:var(--shadow)}
+  .card.todo{border-left-color:var(--limit)} .card.doing{border-left-color:var(--daman)} .card.done{border-left-color:var(--good)}
+  .card .ctext{font-size:13.5px;white-space:pre-wrap;word-break:break-word}
+  .card.done .ctext{color:var(--muted);text-decoration:line-through}
+  .cfoot{display:flex;align-items:center;gap:6px;margin-top:9px;flex-wrap:wrap}
+  .chip{font-size:11px;font-weight:700;padding:2px 8px;border-radius:9px;background:rgba(37,99,235,.14);color:var(--limit)}
+  .cdate{font-size:11px;color:var(--muted)}
+  .cbtns{margin-left:auto;display:flex;gap:4px}
+  .cbtns button{padding:4px 8px;font-size:12px;border-radius:7px;line-height:1}
+  .foot{margin-top:24px;color:var(--muted);font-size:12px;text-align:center}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>📋 업무정리 보드 <small>테스트 버전</small></h1>
+    <button id="themeBtn" onclick="toggleTheme()" title="밝게/어둡게">🌓 화면</button>
+  </header>
+
+  <div class="banner">
+    🧪 <b>테스트 버전이에요.</b> 지금은 <b>이 기기에만</b> 저장됩니다(다른 기기엔 아직 공유 안 됨).<br>
+    카드를 <b>◀ ▶ 버튼</b>으로 옮기면서 일 진행 상황을 정리해보세요. 마음에 드시면 <b>대시보드 안에 팀별로 정식 등록</b>해드립니다.
+  </div>
+
+  <div class="tabs" id="teamTabs"></div>
+
+  <div class="addbar">
+    <input id="newText" placeholder="할 일·메모 입력 (예: △△현장 견적서 보내기)" onkeydown="if(event.key==='Enter')addCard()">
+    <input id="newMgr" placeholder="담당자(선택)" onkeydown="if(event.key==='Enter')addCard()">
+    <button class="primary" onclick="addCard()">＋ 추가</button>
+  </div>
+
+  <div class="board" id="board"></div>
+
+  <div class="foot">항목을 눌러 수정·삭제 · ◀▶로 단계 이동 · 자동 저장</div>
+</div>
+
+<script>
+(function(){
+"use strict";
+var TEAMS=['경영관리팀','재무팀','운영팀','인사팀','마케팅팀','영업팀','기업지원팀','개발팀'];
+var COLS=[{k:'todo',label:'📝 할 일'},{k:'doing',label:'🔄 진행 중'},{k:'done',label:'✅ 완료'}];
+var LS='aihq-board-test-v1';
+var state=load();
+var team=TEAMS[0];
+
+function load(){ try{ var s=localStorage.getItem(LS); return s?JSON.parse(s):{}; }catch(e){ return {}; } }
+function save(){ try{ localStorage.setItem(LS, JSON.stringify(state)); }catch(e){} }
+function cards(){ return state[team]||(state[team]=[]); }
+function esc(t){ return String(t==null?'':t).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+function today(){ var t=new Date(),p=function(n){return String(n).padStart(2,'0');}; return t.getFullYear()+'-'+p(t.getMonth()+1)+'-'+p(t.getDate()); }
+function md(ds){ if(!ds) return ''; var p=ds.split('-'); return p.length===3?(parseInt(p[1],10)+'/'+parseInt(p[2],10)):ds; }
+
+window.addCard=function(){
+  var t=document.getElementById('newText').value.trim();
+  if(!t){ document.getElementById('newText').focus(); return; }
+  var mgr=document.getElementById('newMgr').value.trim();
+  cards().push({id:Date.now()+'_'+Math.random().toString(36).slice(2,6), text:t, mgr:mgr, col:'todo', ts:today(), doneTs:''});
+  document.getElementById('newText').value=''; document.getElementById('newMgr').value='';
+  document.getElementById('newText').focus();
+  save(); render();
+}
+function findCard(id){ return cards().filter(function(c){return c.id===id;})[0]; }
+window.move=function(id,dir){
+  var c=findCard(id); if(!c) return;
+  var order=['todo','doing','done']; var i=order.indexOf(c.col); var ni=i+dir;
+  if(ni<0||ni>2) return; c.col=order[ni];
+  c.doneTs = c.col==='done' ? today() : '';
+  save(); render();
+};
+window.editCard=function(id){
+  var c=findCard(id); if(!c) return;
+  var v=prompt('내용 수정:', c.text); if(v===null) return; v=v.trim(); if(!v) return;
+  c.text=v;
+  var m=prompt('담당자(비우면 없음):', c.mgr||''); if(m!==null) c.mgr=m.trim();
+  save(); render();
+};
+window.delCard=function(id){
+  var c=findCard(id); if(!c) return;
+  if(!confirm('이 항목을 삭제할까요?\n\n'+c.text)) return;
+  state[team]=cards().filter(function(x){return x.id!==id;});
+  save(); render();
+};
+window.switchTeam=function(t){ team=t; render(); };
+window.toggleTheme=function(){
+  var h=document.documentElement;
+  var cur=h.getAttribute('data-theme');
+  var next = cur==='dark' ? 'light' : (cur==='light' ? 'dark' : 'dark');
+  h.setAttribute('data-theme', next);
+  try{ localStorage.setItem('aihq-board-theme', next); }catch(e){}
+};
+
+function renderTabs(){
+  document.getElementById('teamTabs').innerHTML = TEAMS.map(function(t){
+    var n=(state[t]||[]).filter(function(c){return c.col!=='done';}).length;
+    return '<button class="tab'+(t===team?' active':'')+'" onclick="switchTeam(\''+t+'\')">'+esc(t)+(n?'<span class="n">'+n+'</span>':'')+'</button>';
+  }).join('');
+}
+function cardHTML(c){
+  var canL=c.col!=='todo', canR=c.col!=='done';
+  var dlabel = c.col==='done'&&c.doneTs ? ('완료 '+md(c.doneTs)) : ('추가 '+md(c.ts));
+  return '<div class="card '+c.col+'">'
+    + '<div class="ctext">'+esc(c.text)+'</div>'
+    + '<div class="cfoot">'
+      + (c.mgr?'<span class="chip">👤 '+esc(c.mgr)+'</span>':'')
+      + '<span class="cdate">'+dlabel+'</span>'
+      + '<span class="cbtns">'
+        + (canL?'<button onclick="move(\''+c.id+'\',-1)" title="이전 단계로">◀</button>':'')
+        + (canR?'<button onclick="move(\''+c.id+'\',1)" title="다음 단계로">▶</button>':'')
+        + '<button onclick="editCard(\''+c.id+'\')" title="수정">✏️</button>'
+        + '<button onclick="delCard(\''+c.id+'\')" title="삭제">🗑</button>'
+      + '</span>'
+    + '</div></div>';
+}
+function renderBoard(){
+  var list=cards();
+  document.getElementById('board').innerHTML = COLS.map(function(col){
+    var items=list.filter(function(c){return c.col===col.k;});
+    var body = items.length ? items.map(cardHTML).join('') : '<div class="empty">없음</div>';
+    return '<div class="col '+col.k+'">'
+      + '<div class="colhead">'+col.label+'<span class="cnt">'+items.length+'</span></div>'
+      + body + '</div>';
+  }).join('');
+}
+function render(){ renderTabs(); renderBoard(); }
+
+// 테마 복원
+try{ var th=localStorage.getItem('aihq-board-theme'); if(th) document.documentElement.setAttribute('data-theme', th); }catch(e){}
+render();
+})();
+</script>
+</body>
+</html>
