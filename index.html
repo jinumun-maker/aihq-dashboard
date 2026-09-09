@@ -211,6 +211,29 @@
   .login-note{font-size:11px;color:var(--muted);margin-top:18px;line-height:1.5}
   .tab.locked{opacity:.38;cursor:not-allowed}
   .tab.locked:hover{border-color:var(--line)}
+  /* 📋 업무정리 보드 */
+  .brdadd{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin:12px 0 16px}
+  .brdadd input,.brdadd select{font-family:inherit;font-size:13px;padding:9px 11px;border:1px solid var(--line);border-radius:9px;background:var(--bg);color:var(--ink)}
+  .brdadd .bt{flex:1;min-width:170px}
+  .brdadd .bm{width:110px}
+  .board{display:grid;grid-template-columns:repeat(5,1fr);gap:10px;align-items:start}
+  @media(max-width:860px){ .board{display:flex;overflow-x:auto;gap:10px;scroll-snap-type:x mandatory;-webkit-overflow-scrolling:touch;padding-bottom:6px} .bcol{min-width:76vw;scroll-snap-align:start} }
+  .bcol{background:var(--bg);border:1px solid var(--line);border-radius:12px;padding:10px;border-top:3px solid var(--line)}
+  .bcol.c_todo{border-top-color:var(--limit)} .bcol.c_doing{border-top-color:var(--daman)}
+  .bcol.c_hold{border-top-color:#9333ea} .bcol.c_review{border-top-color:#0891b2} .bcol.c_done{border-top-color:var(--good)}
+  .bcolhd{display:flex;align-items:center;gap:6px;font-weight:800;font-size:12.5px;margin-bottom:9px;padding-bottom:7px;border-bottom:1.5px solid var(--line)}
+  .bcolhd .bc{margin-left:auto;font-size:11px;font-weight:700;color:#fff;background:var(--muted);border-radius:10px;padding:1px 8px}
+  .bcard{background:var(--card);border:1px solid var(--line);border-left:4px solid var(--muted);border-radius:9px;padding:9px 10px;margin-bottom:8px;box-shadow:var(--shadow)}
+  .bcard.p_high{border-left-color:var(--warn)} .bcard.p_mid{border-left-color:var(--daman)} .bcard.p_low{border-left-color:var(--muted)}
+  .bcard .btext{font-size:13px;white-space:pre-wrap;word-break:break-word}
+  .bcard.done .btext{color:var(--muted);text-decoration:line-through}
+  .bmeta{display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-top:7px}
+  .bchip{font-size:10.5px;font-weight:700;padding:1px 7px;border-radius:8px;background:rgba(37,99,235,.13);color:var(--limit)}
+  .bdue{font-size:10.5px;color:var(--muted)} .bdue.over{color:var(--warn);font-weight:700}
+  .bbtns{display:flex;gap:4px;margin-top:8px;flex-wrap:wrap;align-items:center}
+  .bbtns select{font-family:inherit;font-size:11px;padding:3px 4px;border:1px solid var(--line);border-radius:6px;background:var(--card);color:var(--ink);max-width:96px}
+  .bbtns button{padding:3px 7px;font-size:11px;border-radius:6px;line-height:1}
+  .bempty{color:var(--muted);font-size:11.5px;text-align:center;padding:12px 4px;border:1.5px dashed var(--line);border-radius:9px}
 </style>
 <!-- Firebase (실시간 DB·로그인). 로드 실패 시 자동으로 오프라인(localStorage) 모드로 폴백 -->
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
@@ -340,23 +363,21 @@
     <button class="subtab" data-subtab="고객정보" onclick="showSub('고객정보')">👥 고객정보</button>
     <button class="subtab" data-subtab="차량관리" onclick="showSub('차량관리')">🚗 차량관리 <span id="carBadge" class="tabbadge"></span></button>
     <button class="subtab" data-subtab="발주" onclick="showSub('발주')">📦 발주 <span id="ordBadge" class="tabbadge"></span></button>
-    <button class="subtab" data-subtab="운영요청" onclick="showSub('운영요청')">📨 요청함 <span id="opsMsgBadge" class="tabbadge"></span></button>
+    <button class="subtab" data-subtab="운영요청" onclick="showSub('운영요청')">📋 업무정리 <span id="opsMsgBadge" class="tabbadge"></span></button>
     <button class="subtab" data-subtab="견적서" onclick="showSub('견적서')">🧾 견적서</button>
   </div>
 
   <div class="subpg" data-subpg="운영요청">
-    <div class="card entry" style="margin-top:22px">
-      <h2>📨 운영팀 요청 보내기 <span style="font-weight:500;color:var(--muted);font-size:12px">대표님·타부서에게</span></h2>
-      <div class="form-grid">
-        <div class="fld"><label>받는 곳</label><select id="mgOps_to" class="msg-to" data-self="운영팀"></select></div>
-        <div class="fld wide"><label>요청·의견 내용</label><input id="mgOps_text" placeholder="예: 재무팀 - △△현장 자재비 정산 / 대표님 - 일용직 2명 승인" onkeydown="if(event.key==='Enter')sendDeptMsg('운영팀','mgOps_text','mgOps_to')"></div>
+    <div class="card" style="margin-top:22px">
+      <h2>📋 운영팀 업무정리 <span style="font-weight:500;color:var(--muted);font-size:12px">할 일을 카드로 · 마감일·우선순위 · 모든 기기 공유</span></h2>
+      <div class="brdadd">
+        <input class="bt" id="ba_ops_text" placeholder="할 일·메모 입력 (예: △△현장 자재 준비)" onkeydown="if(event.key==='Enter')boardAdd('ops')">
+        <input class="bm" id="ba_ops_mgr" placeholder="담당자(선택)">
+        <select id="ba_ops_prio"><option value="mid">🟡 보통</option><option value="high">🔴 높음</option><option value="low">⚪ 낮음</option></select>
+        <input id="ba_ops_due" type="date" title="마감일(선택)">
+        <button class="primary" onclick="boardAdd('ops')">＋ 추가</button>
       </div>
-      <div style="margin:10px 0;text-align:right"><button class="primary" onclick="sendDeptMsg('운영팀','mgOps_text','mgOps_to')">＋ 요청 보내기</button></div>
-      <div style="font-size:12px;color:var(--muted)">💡 받는 곳을 골라 대표님이나 다른 팀에 보낼 수 있어요. 아래에 주고받은 요청이 모두 표시됩니다.</div>
-    </div>
-    <div class="card" style="margin-top:18px">
-      <h2>📥 주고받은 요청<span id="opsMsgCount" style="font-weight:500;color:var(--muted);font-size:12px"></span></h2>
-      <div id="msgListOps"></div>
+      <div class="board" id="brd_ops"></div>
     </div>
   </div>
 
@@ -551,22 +572,20 @@
     <button class="subtab" data-subtab="지출" onclick="showSub('지출')">💸 지출</button>
     <button class="subtab" data-subtab="고정지출" onclick="showSub('고정지출')">💳 고정지출 <span id="fxBadge" class="tabbadge"></span></button>
     <button class="subtab" data-subtab="재무발주" onclick="showSub('재무발주')">📦 발주 <span id="finOrdBadge" class="tabbadge"></span></button>
-    <button class="subtab" data-subtab="재무요청" onclick="showSub('재무요청')">📨 요청함 <span id="finMsgBadge" class="tabbadge"></span></button>
+    <button class="subtab" data-subtab="재무요청" onclick="showSub('재무요청')">📋 업무정리 <span id="finMsgBadge" class="tabbadge"></span></button>
   </div>
 
   <div class="subpg" data-subpg="재무요청">
-    <div class="card entry" style="margin-top:22px">
-      <h2>📨 재무팀 요청 보내기 <span style="font-weight:500;color:var(--muted);font-size:12px">대표님·타부서에게</span></h2>
-      <div class="form-grid">
-        <div class="fld"><label>받는 곳</label><select id="mgFin_to" class="msg-to" data-self="재무팀"></select></div>
-        <div class="fld wide"><label>요청·의견 내용</label><input id="mgFin_text" placeholder="예: 대표님 - 미수금 회수 우선순위 / 운영팀 - 자재 영수증 제출 요청" onkeydown="if(event.key==='Enter')sendDeptMsg('재무팀','mgFin_text','mgFin_to')"></div>
+    <div class="card" style="margin-top:22px">
+      <h2>📋 재무팀 업무정리 <span style="font-weight:500;color:var(--muted);font-size:12px">할 일을 카드로 · 마감일·우선순위 · 모든 기기 공유</span></h2>
+      <div class="brdadd">
+        <input class="bt" id="ba_fin_text" placeholder="할 일·메모 입력 (예: ○○현장 세금계산서 발행)" onkeydown="if(event.key==='Enter')boardAdd('fin')">
+        <input class="bm" id="ba_fin_mgr" placeholder="담당자(선택)">
+        <select id="ba_fin_prio"><option value="mid">🟡 보통</option><option value="high">🔴 높음</option><option value="low">⚪ 낮음</option></select>
+        <input id="ba_fin_due" type="date" title="마감일(선택)">
+        <button class="primary" onclick="boardAdd('fin')">＋ 추가</button>
       </div>
-      <div style="margin:10px 0;text-align:right"><button class="primary" onclick="sendDeptMsg('재무팀','mgFin_text','mgFin_to')">＋ 요청 보내기</button></div>
-      <div style="font-size:12px;color:var(--muted)">💡 받는 곳을 골라 대표님이나 다른 팀에 보낼 수 있어요. 아래에 주고받은 요청이 모두 표시됩니다.</div>
-    </div>
-    <div class="card" style="margin-top:18px">
-      <h2>📥 주고받은 요청<span id="finMsgCount" style="font-weight:500;color:var(--muted);font-size:12px"></span></h2>
-      <div id="msgListFin"></div>
+      <div class="board" id="brd_fin"></div>
     </div>
   </div>
 
@@ -747,7 +766,7 @@
     <button class="subtab" data-subtab="개요재무" onclick="showSub('개요재무')">💰 재무 요약</button>
     <button class="subtab" data-subtab="개요업무" onclick="showSub('개요업무')">✅ 업무 요약 <span id="dashTaskBadge" class="tabbadge"></span></button>
     <button class="subtab" data-subtab="개요결제" onclick="showSub('개요결제')">💳 결제요청 <span id="payReqMgBadge" class="tabbadge"></span></button>
-    <button class="subtab" data-subtab="개요요청" onclick="showSub('개요요청')">📨 요청함 <span id="msgBadge" class="tabbadge"></span></button>
+    <button class="subtab" data-subtab="개요요청" onclick="showSub('개요요청')">📋 업무정리 <span id="msgBadge" class="tabbadge"></span></button>
   </div>
 
   <!-- ① 💰 재무 요약 -->
@@ -853,34 +872,33 @@
 
   <!-- ④ 📨 요청함 (부서 → 대표) -->
   <div class="subpg" data-subpg="개요요청">
-    <div class="card entry" style="margin-top:14px">
-      <h2>📨 대표님 → 부서에 지시·요청 보내기</h2>
-      <div class="form-grid">
-        <div class="fld"><label>받는 곳</label><select id="mg_to" class="msg-to" data-self="대표님"></select></div>
-        <div class="fld wide"><label>지시·요청 내용</label><input id="mg_text" placeholder="예: 재무팀 - 이번 주 미지급 일당 먼저 처리해주세요" onkeydown="if(event.key==='Enter')sendDeptMsg('대표님','mg_text','mg_to')"></div>
+    <div class="card" style="margin-top:14px">
+      <h2>📋 경영관리팀 업무정리 <span style="font-weight:500;color:var(--muted);font-size:12px">대표님 지시·전사 할 일을 카드로 · 모든 기기 공유</span></h2>
+      <div class="brdadd">
+        <input class="bt" id="ba_mng_text" placeholder="할 일·지시 입력 (예: 재무팀 - 미지급 일당 먼저 처리)" onkeydown="if(event.key==='Enter')boardAdd('mng')">
+        <input class="bm" id="ba_mng_mgr" placeholder="담당/대상(선택)">
+        <select id="ba_mng_prio"><option value="mid">🟡 보통</option><option value="high">🔴 높음</option><option value="low">⚪ 낮음</option></select>
+        <input id="ba_mng_due" type="date" title="마감일(선택)">
+        <button class="primary" onclick="boardAdd('mng')">＋ 추가</button>
       </div>
-      <div style="margin:12px 0;text-align:right"><button class="primary" onclick="sendDeptMsg('대표님','mg_text','mg_to')">＋ 보내기</button></div>
-      <div style="font-size:12px;color:var(--muted)">💡 모든 부서가 주고받는 요청이 여기 모입니다(대표 전용 종합함). 각 팀은 자기 팀 요청함에서 주고받아요.</div>
-    </div>
-    <div class="card" style="margin-top:22px">
-      <h2>📥 전체 요청 종합 <span id="msgCountLabel" style="font-weight:500;color:var(--muted);font-size:12px"></span></h2>
-      <div id="msgList"></div>
+      <div class="board" id="brd_mng"></div>
     </div>
   </div><!-- /개요요청 -->
 
   </div><!-- /대시보드 -->
 
   <div class="pg" data-pg="인사">
-  <!-- 📨 인사팀 요청함 -->
-  <div class="card entry" style="margin-top:22px">
-    <h2>📨 인사팀 요청함 <span style="font-weight:500;color:var(--muted);font-size:12px">대표님·타부서에 보내고 받기</span> <span id="hrMsgBadge" class="tabbadge"></span></h2>
-    <div class="form-grid">
-      <div class="fld"><label>받는 곳</label><select id="mgHr_to" class="msg-to" data-self="인사팀"></select></div>
-      <div class="fld wide"><label>요청·의견 내용</label><input id="mgHr_text" placeholder="예: 대표님 - 은규 안전교육 일정 승인 / 운영팀 - 신규 인원 배치 협의" onkeydown="if(event.key==='Enter')sendDeptMsg('인사팀','mgHr_text','mgHr_to')"></div>
+  <!-- 📋 인사팀 업무정리 -->
+  <div class="card" style="margin-top:22px">
+    <h2>📋 인사팀 업무정리 <span style="font-weight:500;color:var(--muted);font-size:12px">할 일을 카드로 · 마감일·우선순위 · 모든 기기 공유</span> <span id="hrMsgBadge" class="tabbadge"></span></h2>
+    <div class="brdadd">
+      <input class="bt" id="ba_hr_text" placeholder="할 일·메모 입력 (예: 은규 안전교육 일정 잡기)" onkeydown="if(event.key==='Enter')boardAdd('hr')">
+      <input class="bm" id="ba_hr_mgr" placeholder="담당자(선택)">
+      <select id="ba_hr_prio"><option value="mid">🟡 보통</option><option value="high">🔴 높음</option><option value="low">⚪ 낮음</option></select>
+      <input id="ba_hr_due" type="date" title="마감일(선택)">
+      <button class="primary" onclick="boardAdd('hr')">＋ 추가</button>
     </div>
-    <div style="margin:10px 0;text-align:right"><button class="primary" onclick="sendDeptMsg('인사팀','mgHr_text','mgHr_to')">＋ 요청 보내기</button></div>
-    <div id="msgListHr" style="margin-top:8px"></div>
-    <div id="hrMsgCount" style="font-size:11.5px;color:var(--muted)"></div>
+    <div class="board" id="brd_hr"></div>
   </div>
   <!-- 인력 현황 -->
   <div class="card" style="margin-top:22px">
@@ -972,16 +990,17 @@
   </div><!-- /분석 -->
 
   <div class="pg" data-pg="마케팅팀">
-  <!-- 📨 마케팅팀 요청함 -->
-  <div class="card entry" style="margin-top:22px">
-    <h2>📨 마케팅팀 요청함 <span style="font-weight:500;color:var(--muted);font-size:12px">대표님·타부서에 보내고 받기</span> <span id="mktMsgBadge" class="tabbadge"></span></h2>
-    <div class="form-grid">
-      <div class="fld"><label>받는 곳</label><select id="mgMkt_to" class="msg-to" data-self="마케팅팀"></select></div>
-      <div class="fld wide"><label>요청·의견 내용</label><input id="mgMkt_text" placeholder="예: 대표님 - 네이버 광고 30만원 승인 / 운영팀 - 후기용 현장 사진 요청" onkeydown="if(event.key==='Enter')sendDeptMsg('마케팅팀','mgMkt_text','mgMkt_to')"></div>
+  <!-- 📋 마케팅팀 업무정리 -->
+  <div class="card" style="margin-top:22px">
+    <h2>📋 마케팅팀 업무정리 <span style="font-weight:500;color:var(--muted);font-size:12px">할 일을 카드로 · 마감일·우선순위 · 모든 기기 공유</span> <span id="mktMsgBadge" class="tabbadge"></span></h2>
+    <div class="brdadd">
+      <input class="bt" id="ba_mkt_text" placeholder="할 일·메모 입력 (예: 네이버 광고 소재 초안 만들기)" onkeydown="if(event.key==='Enter')boardAdd('mkt')">
+      <input class="bm" id="ba_mkt_mgr" placeholder="담당자(선택)">
+      <select id="ba_mkt_prio"><option value="mid">🟡 보통</option><option value="high">🔴 높음</option><option value="low">⚪ 낮음</option></select>
+      <input id="ba_mkt_due" type="date" title="마감일(선택)">
+      <button class="primary" onclick="boardAdd('mkt')">＋ 추가</button>
     </div>
-    <div style="margin:10px 0;text-align:right"><button class="primary" onclick="sendDeptMsg('마케팅팀','mgMkt_text','mgMkt_to')">＋ 요청 보내기</button></div>
-    <div id="msgListMkt" style="margin-top:8px"></div>
-    <div id="mktMsgCount" style="font-size:11.5px;color:var(--muted)"></div>
+    <div class="board" id="brd_mkt"></div>
   </div>
   <div class="banner" style="background:rgba(37,99,235,.10);border-color:rgba(37,99,235,.3)">
     📣 문의(리드)가 <b>어디서 오고 매출로 이어지는지</b> 추적합니다. 콘텐츠·광고 초안이 필요하면 마케팅팀 AI에게 요청하세요.
@@ -1031,7 +1050,7 @@
   <div class="subtabs">
     <button class="subtab" data-subtab="기업달력" onclick="showSub('기업달력')">📅 모집 캘린더</button>
     <button class="subtab" data-subtab="기업관리" onclick="showSub('기업관리')">📋 지원사업 관리</button>
-    <button class="subtab" data-subtab="기업요청" onclick="showSub('기업요청')">📨 요청함</button>
+    <button class="subtab" data-subtab="기업요청" onclick="showSub('기업요청')">📋 업무정리</button>
   </div>
 
   <div class="subpg" data-subpg="기업달력">
@@ -1097,15 +1116,16 @@
   </div><!-- /기업관리 -->
 
   <div class="subpg" data-subpg="기업요청">
-    <div class="card entry" style="margin-top:22px">
-      <h2>📨 기업지원사업팀 요청함 <span style="font-weight:500;color:var(--muted);font-size:12px">대표님·타부서에 보내고 받기</span></h2>
-      <div class="form-grid">
-        <div class="fld"><label>받는 곳</label><select id="mgBiz_to" class="msg-to" data-self="기업지원팀"></select></div>
-        <div class="fld wide"><label>요청·의견 내용</label><input id="mgBiz_text" placeholder="예: 대표님 - 초기창업패키지 신청 승인 / 재무팀 - 최근 3개월 매출 증빙 필요" onkeydown="if(event.key==='Enter')sendDeptMsg('기업지원팀','mgBiz_text','mgBiz_to')"></div>
+    <div class="card" style="margin-top:22px">
+      <h2>📋 기업지원사업팀 업무정리 <span style="font-weight:500;color:var(--muted);font-size:12px">할 일을 카드로 · 마감일·우선순위 · 모든 기기 공유</span></h2>
+      <div class="brdadd">
+        <input class="bt" id="ba_biz_text" placeholder="할 일·메모 입력 (예: 초기창업패키지 서류 준비)" onkeydown="if(event.key==='Enter')boardAdd('biz')">
+        <input class="bm" id="ba_biz_mgr" placeholder="담당자(선택)">
+        <select id="ba_biz_prio"><option value="mid">🟡 보통</option><option value="high">🔴 높음</option><option value="low">⚪ 낮음</option></select>
+        <input id="ba_biz_due" type="date" title="마감일(선택)">
+        <button class="primary" onclick="boardAdd('biz')">＋ 추가</button>
       </div>
-      <div style="margin:10px 0;text-align:right"><button class="primary" onclick="sendDeptMsg('기업지원팀','mgBiz_text','mgBiz_to')">＋ 요청 보내기</button></div>
-      <div id="msgListBiz" style="margin-top:8px"></div>
-      <div id="bizMsgCount" style="font-size:11.5px;color:var(--muted)"></div>
+      <div class="board" id="brd_biz"></div>
     </div>
   </div><!-- /기업요청 -->
   </div><!-- /기업지원 -->
@@ -1358,6 +1378,7 @@ function _seed(data){    // 메시지·지원사업 시드/마이그레이션 (�
   ];
   if(!Array.isArray(data.vehicles)) data.vehicles=['G80','카니발','스타렉스(검정)','스타리아(흰색)','봉고탑차'];
   if(!Array.isArray(data.carLogs)) data.carLogs=[];   // 차량 정비/점검 기록 [{car,type,date,next,note,cost}]
+  if(!data.boards || typeof data.boards!=='object') data.boards={};   // 📋 팀별 업무정리 보드 {ops:[..],fin:[..],...}
   if(!data.devReview) data.devReview={ month:'2026-08', summary:'뼈대(일일결산 단일입력→자동집계, 재무 인건비·미수금)는 탄탄합니다. 지금 가장 큰 시간낭비는 <b>구글캘린더 수동 최신화</b>와 <b>팀 리마인더 수동</b> — 이 둘을 자동화하면 손이 확 줄어요. (중복 입력은 거의 없음 👍)', decisions:[ {text:'구글캘린더 자동 최신화 (매일 자동, 캘린더=원본으로 덮어씀)', done:false}, {text:'카톡 방장봇 리마인더 (5시 운영팀·6시 재무팀)', done:false} ] };
   data.asOf = realToday();   // 기준일 = 항상 실제 오늘 (예전 고정 날짜가 클라우드에 굳는 문제 방지)
   // ── 배치 인원 보호(crewMap): 캘린더 최신화가 절대 못 건드리는 durable 저장소 + 결산으로 복구 ──
@@ -2437,32 +2458,24 @@ function render(){
     ['finSummary','finSummary2'].forEach(id=>{ const el=document.getElementById(id); if(el) el.innerHTML=finHTML; });
   }
 
-  // 📨 부서 요청 메시지함 (대시보드=대표 관리 / 각 팀=자기 요청)
-  fillMsgRecipients();
-  renderMsgInto('msgList', '대표님', true, 'msgCountLabel');    // 대표: 전체 종합·처리 가능
-  renderMsgInto('msgListFin', '재무팀', false, 'finMsgCount');
-  renderMsgInto('msgListOps', '운영팀', false, 'opsMsgCount');
-  renderMsgInto('msgListMkt', '마케팅팀', false, 'mktMsgCount');
-  renderMsgInto('msgListHr', '인사팀', false, 'hrMsgCount');
-  renderMsgInto('msgListBiz', '기업지원팀', false, 'bizMsgCount');
+  // 📋 팀별 업무정리 보드 렌더 + 미완료 개수 배지 (요청함 대체)
+  renderAllBoards();
   {
-    const msgs=d.messages||[];
-    const toPend=dp=>msgs.filter(m=>m.to===dp&&!m.done).length;  // 내게 온 미처리
-    const allPend=msgs.filter(m=>!m.done).length;                // 전체 미처리(팀↔팀 포함)
-    setBadge('msgBadge', allPend);        // 경영관리팀 요청함(개요요청) = 전체 종합
-    setBadge('dashMsgBadge', allPend);    // 경영관리팀 탭 = 전체 미처리 알림
-    setBadge('finMsgBadge', toPend('재무팀'));
-    setBadge('opsMsgBadge', toPend('운영팀'));
-    setBadge('mktMsgBadge', toPend('마케팅팀'));
-    setBadge('hrMsgBadge', toPend('인사팀'));
-    setBadge('bizMsgBadge', toPend('기업지원팀'));
-    // ── 상위(팀) 탭 배지 = 팀 할 일 + 그 팀에 온 요청함 미처리까지 합산 ──
+    const _bo=t=>{ const a=(d.boards&&d.boards[t])||[]; return a.filter(c=>c.status!=='done').length; };
+    setBadge('msgBadge', _bo('mng'));       // 경영관리팀 업무정리 서브탭
+    setBadge('dashMsgBadge', _bo('mng'));   // 경영관리팀 상위 탭
+    setBadge('finMsgBadge', _bo('fin'));
+    setBadge('opsMsgBadge', _bo('ops'));
+    setBadge('mktMsgBadge', _bo('mkt'));
+    setBadge('hrMsgBadge', _bo('hr'));
+    setBadge('bizMsgBadge', _bo('biz'));
+    // ── 상위(팀) 탭 배지 = 팀 할 일 + 업무정리 미완료까지 합산 ──
     const _finTasks=allUnpaid+fxDueToday.length+ordReqN+payReqN+unbilledN;
     const _opsTasks=unsettledN+ordSentN+carDueN;
-    setBadge('finBadge', _finTasks+toPend('재무팀'));
-    setBadge('opsBadge', _opsTasks+toPend('운영팀'));
-    setBadge('hrBadge', toPend('인사팀'));     // 인사팀은 할 일 배지가 따로 없어 요청함만
-    setBadge('mktBadge', toPend('마케팅팀'));   // 마케팅팀도 요청함만
+    setBadge('finBadge', _finTasks+_bo('fin'));
+    setBadge('opsBadge', _opsTasks+_bo('ops'));
+    setBadge('hrBadge', _bo('hr'));
+    setBadge('mktBadge', _bo('mkt'));
   }
 
   // 🏛️ 기업지원사업팀 (지원사업 관리)
@@ -3174,6 +3187,53 @@ function msgItemHTML(m,i,owner,showAll){
     <div style="margin-top:7px;font-size:13.5px;line-height:1.5;${m.done?'text-decoration:line-through;color:var(--muted)':''}">${escHtml(m.text)}</div>
   </div>`;
 }
+/* ── 📋 업무정리 보드 (팀별 · Firebase 공유, 요청함 대체) ── */
+var BOARD_TEAMS={ops:'운영팀',fin:'재무팀',mng:'경영관리팀',hr:'인사팀',mkt:'마케팅팀',biz:'기업지원팀'};
+var BOARD_COLS=[{k:'todo',t:'📝 할 일'},{k:'doing',t:'🔄 진행 중'},{k:'hold',t:'⏸️ 보류'},{k:'review',t:'🔎 검토 대기'},{k:'done',t:'✅ 완료'}];
+var BOARD_PRIO={high:{t:'🔴 높음',o:0},mid:{t:'🟡 보통',o:1},low:{t:'⚪ 낮음',o:2}};
+function _besc(t){ return String(t==null?'':t).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+function _boardArr(d,team){ d.boards=d.boards||{}; if(!Array.isArray(d.boards[team])) d.boards[team]=[]; return d.boards[team]; }
+window.boardAdd=function(team){
+  var el=document.getElementById('ba_'+team+'_text'); var t=((el&&el.value)||'').trim();
+  if(!t){ if(el) el.focus(); return; }
+  var g=function(f){ var e=document.getElementById('ba_'+team+'_'+f); return e?e.value:''; };
+  var d=getData(); _boardArr(d,team).push({id:Date.now()+'_'+Math.random().toString(36).slice(2,6), text:t, mgr:(g('mgr')||'').trim(), prio:g('prio')||'mid', due:g('due')||'', status:'todo', ts:realToday(), doneTs:''});
+  setData(d);
+  ['text','mgr','due'].forEach(function(f){ var e=document.getElementById('ba_'+team+'_'+f); if(e) e.value=''; });
+  var pe=document.getElementById('ba_'+team+'_prio'); if(pe) pe.value='mid';
+  render(); if(el) el.focus();
+};
+window.boardStatus=function(team,id,st){ var d=getData(); var c=_boardArr(d,team).filter(function(x){return x.id===id;})[0]; if(!c) return; c.status=st; c.doneTs=(st==='done'?realToday():''); setData(d); render(); };
+window.boardPrio=function(team,id,p){ var d=getData(); var c=_boardArr(d,team).filter(function(x){return x.id===id;})[0]; if(!c) return; c.prio=p; setData(d); render(); };
+window.boardEdit=function(team,id){
+  var d=getData(); var c=_boardArr(d,team).filter(function(x){return x.id===id;})[0]; if(!c) return;
+  var v=prompt('내용 수정:', c.text); if(v===null) return; v=v.trim(); if(!v) return; c.text=v;
+  var m=prompt('담당자(비우면 없음):', c.mgr||''); if(m!==null) c.mgr=m.trim();
+  var du=prompt('마감일 YYYY-MM-DD (비우면 없음):', c.due||''); if(du!==null){ du=du.trim(); c.due=/^\d{4}-\d{2}-\d{2}$/.test(du)?du:''; }
+  setData(d); render();
+};
+window.boardDel=function(team,id){ var d=getData(); var c=_boardArr(d,team).filter(function(x){return x.id===id;})[0]; if(!c) return; if(!confirm('이 항목을 삭제할까요?\n\n'+c.text)) return; d.boards[team]=_boardArr(d,team).filter(function(x){return x.id!==id;}); setData(d); render(); };
+function _boardCard(team,c){
+  var over=c.due && c.status!=='done' && c.due<realToday();
+  var st='<select onchange="boardStatus(\''+team+'\',\''+c.id+'\',this.value)" title="단계 이동">'+BOARD_COLS.map(function(col){return '<option value="'+col.k+'"'+(col.k===(c.status||'todo')?' selected':'')+'>'+col.t+'</option>';}).join('')+'</select>';
+  var pr='<select onchange="boardPrio(\''+team+'\',\''+c.id+'\',this.value)" title="우선순위">'+Object.keys(BOARD_PRIO).map(function(k){return '<option value="'+k+'"'+(k===(c.prio||'mid')?' selected':'')+'>'+BOARD_PRIO[k].t+'</option>';}).join('')+'</select>';
+  return '<div class="bcard p_'+(c.prio||'mid')+((c.status==='done')?' done':'')+'">'
+    +'<div class="btext">'+_besc(c.text)+'</div>'
+    +'<div class="bmeta">'+(c.mgr?'<span class="bchip">👤 '+_besc(c.mgr)+'</span>':'')+(c.due?'<span class="bdue'+(over?' over':'')+'">⏰ '+_besc(c.due.slice(5))+(over?' 지남':'')+'</span>':'')+'</div>'
+    +'<div class="bbtns">'+st+pr+'<button onclick="boardEdit(\''+team+'\',\''+c.id+'\')" title="수정">✏️</button><button onclick="boardDel(\''+team+'\',\''+c.id+'\')" title="삭제">🗑</button></div>'
+  +'</div>';
+}
+function renderBoard(team){
+  var mount=document.getElementById('brd_'+team); if(!mount) return;
+  var d=getData(); var arr=_boardArr(d,team).slice();
+  arr.sort(function(a,b){ var pa=(BOARD_PRIO[a.prio]||BOARD_PRIO.mid).o, pb=(BOARD_PRIO[b.prio]||BOARD_PRIO.mid).o; if(pa!==pb) return pa-pb; var da=a.due||'9999-99-99', db=b.due||'9999-99-99'; if(da!==db) return da<db?-1:1; return (a.ts||'')<(b.ts||'')?-1:1; });
+  mount.innerHTML=BOARD_COLS.map(function(col){
+    var items=arr.filter(function(c){return (c.status||'todo')===col.k;});
+    var body=items.length?items.map(function(c){return _boardCard(team,c);}).join(''):'<div class="bempty">없음</div>';
+    return '<div class="bcol c_'+col.k+'"><div class="bcolhd">'+col.t+'<span class="bc">'+items.length+'</span></div>'+body+'</div>';
+  }).join('');
+}
+function renderAllBoards(){ Object.keys(BOARD_TEAMS).forEach(function(t){ renderBoard(t); }); }
 function renderMsgInto(containerId, owner, showAll, countId){
   const el=document.getElementById(containerId); if(!el) return;
   const d=getData(); const msgs=d.messages||[];
