@@ -3577,7 +3577,17 @@ function quickAddOrder(n,c){
   d.orders.push({item:n, category:c, qty:'', note:'', status:'요청', date:realToday()});
   setData(d); render();
 }
-function orderOrdered(i){ const d=getData(); const o=(d.orders||[])[i]; if(!o) return; o.status='주문완료'; o.orderedDate=realToday(); setData(d); render(); }   // 재무팀: 주문완료 처리(지출은 이 날짜 기준)
+function orderOrdered(i){   // 재무팀: 주문완료 처리(지출은 이 날짜 기준) — 금액 필수
+  const d=getData(); const o=(d.orders||[])[i]; if(!o) return;
+  if(!(+o.amount>0)){
+    const v=prompt((o.item||'발주')+'\n주문완료하려면 금액(원)을 먼저 입력하세요:\n(이 금액이 지출로 잡힙니다)', '');
+    if(v===null) return;   // 취소 → 주문완료 안 됨
+    const n=parseFloat(String(v).replace(/[^0-9.]/g,''));
+    if(isNaN(n)||n<=0){ alert('금액을 입력해야 주문완료할 수 있어요.'); return; }
+    o.amount=Math.round(n);
+  }
+  o.status='주문완료'; o.orderedDate=realToday(); setData(d); render();
+}
 function orderReceived(i){ const d=getData(); const o=(d.orders||[])[i]; if(!o) return; o.status='입고완료'; setData(d); render(); } // 운영팀: 입고완료 처리
 function delOrder(i){ const d=getData(); d.orders.splice(i,1); setData(d); render(); }
 function editOrderPerson(i){ const d=getData(); const o=(d.orders||[])[i]; if(!o) return; const v=prompt('담당자(주문자):', o.person||''); if(v!==null){ o.person=v.trim(); setData(d); render(); } }
