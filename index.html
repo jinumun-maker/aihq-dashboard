@@ -2164,15 +2164,16 @@ function render(){
     const ccell = r.contact
       ? `<span style="color:var(--limit);font-weight:600">${r.contact}</span> <button class="del" style="color:var(--muted)" onclick="editContact('${r.kind}',${r.idx})" title="연락처 수정">✏️</button>`
       : `<button class="del" style="color:var(--limit)" onclick="editContact('${r.kind}',${r.idx})">＋ 연락처</button>`;
+    const bankBtn = `<button class="del" style="color:var(--muted);padding:2px 6px" onclick="editBank('${r.kind}',${r.idx})" title="은행·현금·카드 변경">🏦</button>`;
     const pcell = r.payer
-      ? `<b>${r.payer}</b>${bankTag(r.bank)} <button class="del" style="color:var(--muted)" onclick="editPayer('${r.kind}',${r.idx})" title="입금자명 수정">✏️</button>`
-      : `${r.bank?bankTag(r.bank)+' ':''}<button class="del" style="color:var(--limit)" onclick="editPayer('${r.kind}',${r.idx})">＋ 입금자</button>`;
+      ? `<b>${r.payer}</b>${bankTag(r.bank)} <button class="del" style="color:var(--muted)" onclick="editPayer('${r.kind}',${r.idx})" title="입금자명 수정">✏️</button> ${bankBtn}`
+      : `${r.bank?bankTag(r.bank)+' ':''}<button class="del" style="color:var(--limit)" onclick="editPayer('${r.kind}',${r.idx})">＋ 입금자</button> ${bankBtn}`;
     const act = `<button class="del" style="color:var(--good);font-weight:700;border:1px solid var(--good);border-radius:7px;padding:4px 9px" onclick="markPaid('${r.kind}',${r.idx})" title="입금완료 처리">✓ 입금완료</button>`;
     const dLabel = r.date ? `${+r.date.slice(5,7)}/${+r.date.slice(8,10)}` : '';
     return `<tr><td>${r.name}${dLabel?`<br><span style="color:var(--muted);font-size:11px">📅 ${dLabel}</span>`:''}</td><td><span class="pill ${coPill(r.co)}">${coName(r.co)}</span></td>
       <td style="font-size:12.5px">${ccell}</td>
       <td style="font-size:12.5px">${pcell}</td>
-      <td class="num">${KRW(r.amt)}</td><td class="num">${dcell}</td><td style="white-space:nowrap">${act}</td></tr>`;
+      <td class="num" style="white-space:nowrap">${KRW(r.amt)} <button class="del" style="color:var(--muted);padding:2px 6px" onclick="editRecvAmount('${r.kind}',${r.idx})" title="금액 수정">✏️</button></td><td class="num">${dcell}</td><td style="white-space:nowrap">${act}</td></tr>`;
   };
   document.getElementById("recvRows").innerHTML = recv.length
     ? _monthGroups(recv, r=>r.date).map((g,gi)=>{
@@ -2948,6 +2949,26 @@ function editPayer(kind,i){
   if(!obj) return;
   const v=prompt('입금자명:', obj.payer||'');
   if(v!==null){ obj.payer=v.trim(); setData(d); render(); }
+}
+function editRecvAmount(kind,i){   // 미수금 금액 수정
+  const d=getData();
+  if(kind==='recv'){ const r=(d.receivables||[])[i]; if(!r) return;
+    const v=prompt((r.name||'미수금')+'\n미수 금액(원) 수정', (+r.amt||0));
+    if(v===null) return; const n=parseFloat(String(v).replace(/[^0-9.]/g,'')); if(isNaN(n)||n<0){ alert('숫자를 입력하세요.'); return; }
+    r.amt=Math.round(n); setData(d); render();
+  } else { editTaxAmount(i); }   // 결산 건은 견적금액 수정 → 매출·부가세·미수금 모두 반영
+}
+function editBank(kind,i){   // 입금 계좌/수단(하나·국민·농협·현금·카드) 변경
+  const d=getData();
+  const obj = kind==='recv' ? (d.receivables||[])[i] : (d.settlements||[])[i];
+  if(!obj) return;
+  const opts=['하나(계산서 발행)','국민','농협','현금','카드'];
+  const msg='입금 계좌·수단 선택 (번호 입력):\n'+opts.map((o,ix)=>' '+(ix+1)+' = '+o).join('\n')+'\n 0 = 비우기'+(obj.bank?('\n\n현재: '+obj.bank):'');
+  const v=prompt(msg, ''); if(v===null) return;
+  const n=String(v).trim();
+  if(n==='0'){ obj.bank=''; }
+  else { const ix=parseInt(n,10); if(ix>=1&&ix<=opts.length){ obj.bank=opts[ix-1]; } else { alert('0~'+opts.length+' 숫자를 입력하세요.'); return; } }
+  setData(d); render();
 }
 let EDIT_TEAM=-1, EDIT_LEAVE=-1;
 function addTeam(){
