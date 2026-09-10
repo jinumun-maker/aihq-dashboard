@@ -539,12 +539,11 @@
   </div>
 
   <div class="card entry" style="margin-top:22px">
-    <h2>＋ 발주 항목 등록</h2>
+    <h2>＋ 발주 항목 등록 <span style="font-weight:500;color:var(--muted);font-size:12px">뭐가 필요한지만 적으세요 · 💰금액은 재무팀이 입력</span></h2>
     <div class="form-grid">
       <div class="fld wide"><label>품목명</label><input id="od_item" placeholder="예: 락스 / 다이아몬드패드"></div>
       <div class="fld"><label>분류</label><select id="od_category"><option>세제</option><option>소모품</option><option>장비</option><option>안전용품</option><option>기타</option></select></div>
       <div class="fld"><label>수량</label><input id="od_qty" placeholder="예: 5개 / 2박스"></div>
-      <div class="fld"><label>💰 금액(원)</label><input type="number" id="od_amount" placeholder="0 (선택)"></div>
       <div class="fld"><label>👤 담당자(주문자)</label><input id="od_person" placeholder="예: 혜란 / 소이"></div>
       <div class="fld wide"><label>메모</label><input id="od_note" placeholder="선택 (규격·거래처 등)"></div>
     </div>
@@ -2559,7 +2558,7 @@ function render(){
     const list = range==='month' ? S.filter(s=>s.date.slice(0,7)===ym) : S;
     let fuel=0,meal=0,supply=0,etc=0;
     list.forEach(s=>{ fuel+=(+s.fuel||0); meal+=(+s.meal||0); supply+=(+s.supply||0); etc+=(+s.etc||0); });
-    const ordBuy=(d.orders||[]).filter(o=>(o.status==='주문완료'||o.status==='입고완료')&&(+o.amount>0)&&(range==='month'?(o.date||'').slice(0,7)===ym:true)).reduce((a2,o)=>a2+(+o.amount||0),0);
+    const ordBuy=(d.orders||[]).filter(o=>(o.status==='주문완료'||o.status==='입고완료')&&(+o.amount>0)&&(range==='month'?((o.orderedDate||o.date)||'').slice(0,7)===ym:true)).reduce((a2,o)=>a2+(+o.amount||0),0);
     const total=fuel+meal+supply+etc+ordBuy;
     const pct=v=>total?Math.round(v/total*100):0;
     const rl=document.getElementById('expRangeLabel'); if(rl) rl.textContent = range==='month'?('· '+parseInt(ym.slice(5),10)+'월'):'· 전체 기간';
@@ -2614,7 +2613,7 @@ function render(){
     const a=agg(blist);
     const rev=a.rev, lab=a.lab, siteExp=a.exp;
     // 발주 구매비(구매·입고 완료분)를 경비에 합산
-    const ordBuyBal=(d.orders||[]).filter(o=>(o.status==='주문완료'||o.status==='입고완료')&&(+o.amount>0)&&(brange==='month'?(o.date||'').slice(0,7)===ym:true)).reduce((s,o)=>s+(+o.amount||0),0);
+    const ordBuyBal=(d.orders||[]).filter(o=>(o.status==='주문완료'||o.status==='입고완료')&&(+o.amount>0)&&(brange==='month'?((o.orderedDate||o.date)||'').slice(0,7)===ym:true)).reduce((s,o)=>s+(+o.amount||0),0);
     const exp=siteExp+ordBuyBal;
     // 고정지출(월세·보험·공과금 등): 이번 달=1개월분, 올해=데이터 개월수만큼
     const fixMonthly=(d.fixedExpenses||[]).reduce((s,f)=>s+(+f.amount||0),0);
@@ -2713,13 +2712,18 @@ function render(){
   const _ordSorted=_ordAll.map((o,i)=>({o,i})).sort((a,b)=>(_ordRank[a.o.status]-_ordRank[b.o.status])||(b.o.date||'').localeCompare(a.o.date||''));
   const _stPill=s=>s==='입고완료'?'p-good':(s==='주문완료'?'p-daman':'p-late');
   const _sumTile=t=>`<div class="sumtile ${t.a?'alert':''}"><div class="v">${t.v}</div><div class="l">${t.l}</div></div>`;
-  const _ordCells=(o,i)=>`<td>${o.item}${o.note?` <span style="color:var(--muted);font-size:11px">${o.note}</span>`:''}</td>
-      <td><span class="pill">${o.category||'기타'}</span></td>
-      <td>${o.qty||'-'}</td>
-      <td class="num" style="white-space:nowrap">${o.amount?KRW(o.amount):`<button class="del" style="color:var(--muted)" onclick="editOrderAmount(${i})">＋금액</button>`}${o.amount?` <button class="del" style="color:var(--muted)" onclick="editOrderAmount(${i})" title="금액 수정">✏️</button>`:''}</td>
-      <td style="font-size:12px">${o.person?`${o.person} <button class="del" style="color:var(--muted)" onclick="editOrderPerson(${i})" title="담당자 수정">✏️</button>`:`<button class="del" style="color:var(--limit)" onclick="editOrderPerson(${i})">＋담당자</button>`}</td>
-      <td style="color:var(--muted);font-size:12px">${(o.date||'').slice(5)}</td>
-      <td><span class="pill ${_stPill(o.status)}">${o.status}</span></td>`;
+  const _ordCells=(o,i,canEditAmt)=>{
+    const amtHtml = canEditAmt
+      ? (o.amount?KRW(o.amount):'<button class="del" style="color:var(--muted)" onclick="editOrderAmount('+i+')">＋금액</button>')+(o.amount?' <button class="del" style="color:var(--muted)" onclick="editOrderAmount('+i+')" title="금액 수정">✏️</button>':'')
+      : (o.amount?KRW(o.amount):'<span style="color:var(--muted);font-size:11px">재무팀 입력</span>');
+    return `<td>${o.item}${o.note?` <span style="color:var(--muted);font-size:11px">${o.note}</span>`:''}</td>`
+      +`<td><span class="pill">${o.category||'기타'}</span></td>`
+      +`<td>${o.qty||'-'}</td>`
+      +`<td class="num" style="white-space:nowrap">${amtHtml}</td>`
+      +`<td style="font-size:12px">${o.person?`${o.person} <button class="del" style="color:var(--muted)" onclick="editOrderPerson(${i})" title="담당자 수정">✏️</button>`:`<button class="del" style="color:var(--limit)" onclick="editOrderPerson(${i})">＋담당자</button>`}</td>`
+      +`<td style="color:var(--muted);font-size:12px">${(o.date||'').slice(5)}</td>`
+      +`<td><span class="pill ${_stPill(o.status)}">${o.status}</span></td>`;
+  };
   // ── 운영팀 발주 뷰 ──
   const ordSumEl=document.getElementById('ordSummary');
   if(ordSumEl){
@@ -2733,7 +2737,7 @@ function render(){
     document.getElementById('ordRows').innerHTML = _ordSorted.length? _ordSorted.map(({o,i})=>{
       const act = o.status==='주문완료' ? `<button class="del" style="color:var(--good);font-weight:700;border:1px solid var(--good);border-radius:7px;padding:4px 9px" onclick="orderReceived(${i})" title="물건 도착 확인">📦 입고완료</button>`
         : (o.status==='요청' ? '<span style="color:var(--muted);font-size:11px">재무팀 주문 대기</span>' : '<span style="color:var(--good);font-size:11px">완료</span>');
-      return `<tr>${_ordCells(o,i)}<td style="white-space:nowrap">${act} <button class="del" onclick="delOrder(${i})" title="삭제">✕</button></td></tr>`;
+      return `<tr>${_ordCells(o,i,false)}<td style="white-space:nowrap">${act} <button class="del" onclick="delOrder(${i})" title="삭제">✕</button></td></tr>`;
     }).join('') : `<tr><td colspan="8" style="color:var(--muted)">발주 항목이 없습니다. 위 빠른추가나 등록으로 추가하세요.</td></tr>`;
   }
   // ── 재무팀 발주 뷰 ──
@@ -2747,7 +2751,7 @@ function render(){
     document.getElementById('finOrdRows').innerHTML = pend.length? pend.map(({o,i})=>{
       const act = o.status==='요청' ? `<button class="del" style="color:var(--limit);font-weight:700;border:1px solid var(--limit);border-radius:7px;padding:4px 9px" onclick="orderOrdered(${i})" title="인터넷 주문/구매 완료">✅ 주문완료</button>`
         : '<span style="color:var(--muted);font-size:11px">배송중 (운영팀 입고 대기)</span>';
-      return `<tr>${_ordCells(o,i)}<td style="white-space:nowrap">${act}</td></tr>`;
+      return `<tr>${_ordCells(o,i,true)}<td style="white-space:nowrap">${act}</td></tr>`;
     }).join('') : `<tr><td colspan="8" style="color:var(--muted)">주문할 요청이 없습니다.</td></tr>`;
   }
 
@@ -3562,9 +3566,9 @@ function addOrder(){
   const item=document.getElementById('od_item').value.trim(); if(!item){ alert('품목명을 입력하세요.'); return; }
   const d=getData(); d.orders=d.orders||[];
   d.orders.push({item, category:document.getElementById('od_category').value, qty:document.getElementById('od_qty').value.trim(),
-    amount:num('od_amount'), person:document.getElementById('od_person').value.trim(), note:document.getElementById('od_note').value.trim(), status:'요청', date:realToday()});
+    amount:0, person:document.getElementById('od_person').value.trim(), note:document.getElementById('od_note').value.trim(), status:'요청', date:realToday()});
   setData(d); render();
-  ['od_item','od_qty','od_amount','od_person','od_note'].forEach(id=>document.getElementById(id).value='');
+  ['od_item','od_qty','od_person','od_note'].forEach(id=>document.getElementById(id).value='');
   document.getElementById('od_item').focus();
 }
 function quickAddOrder(n,c){
@@ -3573,7 +3577,7 @@ function quickAddOrder(n,c){
   d.orders.push({item:n, category:c, qty:'', note:'', status:'요청', date:realToday()});
   setData(d); render();
 }
-function orderOrdered(i){ const d=getData(); const o=(d.orders||[])[i]; if(!o) return; o.status='주문완료'; setData(d); render(); }   // 재무팀: 주문완료 처리
+function orderOrdered(i){ const d=getData(); const o=(d.orders||[])[i]; if(!o) return; o.status='주문완료'; o.orderedDate=realToday(); setData(d); render(); }   // 재무팀: 주문완료 처리(지출은 이 날짜 기준)
 function orderReceived(i){ const d=getData(); const o=(d.orders||[])[i]; if(!o) return; o.status='입고완료'; setData(d); render(); } // 운영팀: 입고완료 처리
 function delOrder(i){ const d=getData(); d.orders.splice(i,1); setData(d); render(); }
 function editOrderPerson(i){ const d=getData(); const o=(d.orders||[])[i]; if(!o) return; const v=prompt('담당자(주문자):', o.person||''); if(v!==null){ o.person=v.trim(); setData(d); render(); } }
