@@ -1997,8 +1997,8 @@ function render(){
   const mMiss=missingCount(monthList), allMiss=missingCount(S);
 
   let recv=[];
-  (d.receivables||[]).forEach((r,idx)=>recv.push({kind:'recv',idx,name:r.name,co:r.co||'limit',amt:(+r.amt||0),contact:r.contact||'',payer:r.payer||'',bank:r.bank||'',date:r.date||'',days:(r.date?daysBetween(r.date,d.asOf):null)}));
-  S.forEach((s,idx)=>{ if(s.paid==="미수금") recv.push({kind:'settle',idx,name:s.site,co:s.co,amt:calcRow(s).rev,contact:s.contact||'',payer:s.payer||'',bank:s.bank||'',date:s.date||'',days:daysBetween(s.date,d.asOf)}); });
+  (d.receivables||[]).forEach((r,idx)=>recv.push({kind:'recv',idx,name:r.name,co:r.co||'limit',amt:(+r.amt||0),contact:r.contact||'',payer:r.payer||'',bank:r.bank||'',memo:r.memo||'',date:r.date||'',days:(r.date?daysBetween(r.date,d.asOf):null)}));
+  S.forEach((s,idx)=>{ if(s.paid==="미수금") recv.push({kind:'settle',idx,name:s.site,co:s.co,amt:calcRow(s).rev,contact:s.contact||'',payer:s.payer||'',bank:s.bank||'',memo:s.memo||'',date:s.date||'',days:daysBetween(s.date,d.asOf)}); });
   recv.sort((a,b)=>(b.date||'').localeCompare(a.date||''));   // 월별 그룹용: 최신 날짜 먼저
   const recvTotal=recv.reduce((a,r)=>a+r.amt,0);
 
@@ -2168,7 +2168,8 @@ function render(){
     const pcell = r.payer
       ? `<b>${r.payer}</b>${bankTag(r.bank)} <button class="del" style="color:var(--muted)" onclick="editPayer('${r.kind}',${r.idx})" title="입금자명 수정">✏️</button> ${bankBtn}`
       : `${r.bank?bankTag(r.bank)+' ':''}<button class="del" style="color:var(--limit)" onclick="editPayer('${r.kind}',${r.idx})">＋ 입금자</button> ${bankBtn}`;
-    const act = `<button class="del" style="color:var(--good);font-weight:700;border:1px solid var(--good);border-radius:7px;padding:4px 9px" onclick="markPaid('${r.kind}',${r.idx})" title="입금완료 처리">✓ 입금완료</button>`;
+    const memoInp = `<input value="${escHtml(r.memo||'')}" onchange="setRecvMemo('${r.kind}',${r.idx},this.value)" placeholder="메모" title="메모 (이름 등 짧게)" style="width:92px;margin-left:6px;padding:3px 7px;border:1px solid var(--line);border-radius:7px;background:var(--bg);color:var(--ink);font-family:inherit;font-size:12px;vertical-align:middle">`;
+    const act = `<button class="del" style="color:var(--good);font-weight:700;border:1px solid var(--good);border-radius:7px;padding:4px 9px" onclick="markPaid('${r.kind}',${r.idx})" title="입금완료 처리">✓ 입금완료</button>${memoInp}`;
     const dLabel = r.date ? `${+r.date.slice(5,7)}/${+r.date.slice(8,10)}` : '';
     return `<tr><td>${r.name}${dLabel?`<br><span style="color:var(--muted);font-size:11px">📅 ${dLabel}</span>`:''}</td><td><span class="pill ${coPill(r.co)}">${coName(r.co)}</span></td>
       <td style="font-size:12.5px">${ccell}</td>
@@ -2969,6 +2970,11 @@ function editBank(kind,i){   // 입금 계좌/수단(하나·국민·농협·현
   if(n==='0'){ obj.bank=''; }
   else { const ix=parseInt(n,10); if(ix>=1&&ix<=opts.length){ obj.bank=opts[ix-1]; } else { alert('0~'+opts.length+' 숫자를 입력하세요.'); return; } }
   setData(d); render();
+}
+function setRecvMemo(kind,i,v){   // 미수금 메모(이름 등 짧게) — 입력 후 포커스 벗어나면 저장
+  const d=getData();
+  const obj = kind==='recv' ? (d.receivables||[])[i] : (d.settlements||[])[i];
+  if(!obj) return; obj.memo=(v||'').trim(); setData(d);
 }
 let EDIT_TEAM=-1, EDIT_LEAVE=-1;
 function addTeam(){
