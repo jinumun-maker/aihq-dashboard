@@ -892,6 +892,15 @@
   </div><!-- /대시보드 -->
 
   <div class="pg" data-pg="인사">
+  <div class="subtabs">
+    <button class="subtab" data-subtab="인사업무" onclick="showSub('인사업무')">📋 업무정리 <span id="hrMsgBadge" class="tabbadge"></span></button>
+    <button class="subtab" data-subtab="인사팀원" onclick="showSub('인사팀원')">🧑‍🤝‍🧑 팀원·휴가 <span id="hrLeaveBadge" class="tabbadge"></span></button>
+    <button class="subtab" data-subtab="인사채용" onclick="showSub('인사채용')">📢 채용 <span id="hrRecBadge" class="tabbadge"></span></button>
+    <button class="subtab" data-subtab="인사서류" onclick="showSub('인사서류')">📄 입·퇴사 서류 <span id="hrDocBadge" class="tabbadge"></span></button>
+    <button class="subtab" data-subtab="인사교육" onclick="showSub('인사교육')">🎓 교육·안전 <span id="hrTrnBadge" class="tabbadge"></span></button>
+  </div>
+
+  <div class="subpg" data-subpg="인사업무">
   <!-- 📋 인사팀 업무정리 -->
   <div class="card" style="margin-top:22px">
     <h2>📋 인사팀 업무정리 <span style="font-weight:500;color:var(--muted);font-size:12px">할 일을 카드로 · 마감일·우선순위 · 모든 기기 공유</span> <span id="hrMsgBadge" class="tabbadge"></span></h2>
@@ -910,7 +919,9 @@
     <h2>👷 인력 현황 <span style="font-weight:500;color:var(--muted);font-size:12px">숫자를 클릭해 바로 수정</span></h2>
     <div class="staff" id="staff"></div>
   </div>
+  </div><!-- /인사업무 -->
 
+  <div class="subpg" data-subpg="인사팀원">
   <!-- 팀원 명단 -->
   <div class="card" style="margin-top:22px">
     <h2>🧑‍🤝‍🧑 팀원 명단 <span style="font-weight:500;color:var(--muted);font-size:12px" id="attnLine"></span></h2>
@@ -936,6 +947,133 @@
     <div style="overflow-x:auto"><table><thead><tr><th>이름</th><th>유형</th><th>날짜</th><th>상태</th><th></th></tr></thead><tbody id="leaveRows"></tbody></table></div>
     <div id="leaveWarn" style="margin-top:12px;font-size:12.5px"></div>
   </div>
+  </div><!-- /인사팀원 -->
+
+  <!-- ===== 📢 채용 ===== -->
+  <div class="subpg" data-subpg="인사채용">
+  <div class="card" style="margin-top:22px">
+    <h2>📢 채용 현황</h2>
+    <div class="sumrow" id="recSummary"></div>
+  </div>
+
+  <div class="card entry" style="margin-top:22px">
+    <h2>＋ 지원자 등록 <span style="font-weight:500;color:var(--muted);font-size:12px">문의 오면 한 줄</span></h2>
+    <div class="form-grid">
+      <div class="fld"><label>이름</label><input id="rc_name" placeholder="이름"></div>
+      <div class="fld"><label>연락처</label><input id="rc_contact" placeholder="010-0000-0000"></div>
+      <div class="fld"><label>지원경로</label><select id="rc_from"><option>알바몬</option><option>당근</option><option>벼룩시장</option><option>소개</option><option>직접방문</option><option>기타</option></select></div>
+      <div class="fld"><label>직무</label><select id="rc_job"><option>청소</option><option>폴리싱</option><option>철거</option><option>운전</option><option>기타</option></select></div>
+      <div class="fld"><label>소속</label><select id="rc_co"><option value="공통">공통</option><option value="limit">리미트</option><option value="daman">다만</option></select></div>
+      <div class="fld"><label>면접일 (선택)</label><input type="date" id="rc_date"></div>
+      <div class="fld"><label>상태</label><select id="rc_status"><option>접수</option><option>면접예정</option><option>채용</option><option>보류</option></select></div>
+      <div class="fld wide"><label>메모 (선택)</label><input id="rc_note" placeholder="예: 경력 3년 / 오전만 가능"></div>
+    </div>
+    <div style="margin:12px 0;text-align:right"><button class="primary" id="rc_btn" onclick="addRecruit()">＋ 지원자 등록</button></div>
+  </div>
+
+  <div class="card" style="margin-top:22px">
+    <h2>📋 지원자 목록 <span style="font-weight:500;color:var(--muted);font-size:12px">채용 확정하면 <b>팀원 등록</b> 버튼으로 명단에 바로 추가</span></h2>
+    <div style="overflow-x:auto"><table>
+      <thead><tr><th>이름</th><th>연락처</th><th>경로</th><th>직무</th><th>면접일</th><th>상태</th><th></th></tr></thead>
+      <tbody id="recRows"></tbody></table></div>
+  </div>
+
+  <div class="card" style="margin-top:22px">
+    <h2>📝 구인공고 문구 <span style="font-weight:500;color:var(--muted);font-size:12px">저장해두고 복사해서 알바몬·당근에 붙여넣기</span></h2>
+    <div class="form-grid" style="grid-template-columns:1fr 3fr">
+      <div class="fld"><label>제목</label><input id="ad_title" placeholder="예: 청소 일용직 모집"></div>
+      <div class="fld"><label>내용</label><input id="ad_body" placeholder="공고 문구를 붙여넣으세요"></div>
+    </div>
+    <div style="margin:12px 0;text-align:right"><button class="primary" onclick="addAd()">＋ 공고 저장</button></div>
+    <div id="adList"></div>
+  </div>
+  </div><!-- /인사채용 -->
+
+  <!-- ===== 📄 입·퇴사 서류 ===== -->
+  <div class="subpg" data-subpg="인사서류">
+  <div class="card" style="margin-top:22px">
+    <h2>📄 서류 처리 현황</h2>
+    <div class="sumrow" id="docSummary"></div>
+    <div id="docWarn" style="margin-top:12px;font-size:12.5px"></div>
+  </div>
+
+  <div class="card entry" style="margin-top:22px">
+    <h2>＋ 서류 등록</h2>
+    <div class="form-grid">
+      <div class="fld"><label>이름</label><input id="hd_name" placeholder="이름"></div>
+      <div class="fld wide"><label>종류</label><select id="hd_type">
+        <option>근로계약서</option>
+        <option>4대보험 취득신고</option>
+        <option>4대보험 상실신고</option>
+        <option>일용직 근로내용확인신고</option>
+        <option>퇴직금 산정</option>
+        <option>경력증명서</option>
+        <option>이직확인서</option>
+        <option>기타</option></select></div>
+      <div class="fld"><label>날짜</label><input type="date" id="hd_date"></div>
+      <div class="fld"><label>상태</label><select id="hd_status"><option>대기</option><option>완료</option></select></div>
+      <div class="fld wide"><label>비고 (선택)</label><input id="hd_note" placeholder="예: 세무사 전달 완료"></div>
+    </div>
+    <div style="margin:12px 0;text-align:right"><button class="primary" id="hd_btn" onclick="addHrDoc()">＋ 서류 등록</button></div>
+  </div>
+
+  <div class="card" style="margin-top:22px">
+    <h2>📋 서류 목록 <span style="font-weight:500;color:var(--muted);font-size:12px">상태를 눌러 대기 ↔ 완료</span></h2>
+    <div style="overflow-x:auto"><table>
+      <thead><tr><th>이름</th><th>종류</th><th>날짜</th><th>상태</th><th>비고</th><th></th></tr></thead>
+      <tbody id="hdRows"></tbody></table></div>
+  </div>
+
+  <div class="card entry2" style="margin-top:22px">
+    <h2>🧮 퇴직금 계산 <span style="font-weight:500;color:var(--muted);font-size:12px">1년 이상 · 주 15시간 이상이면 지급 대상</span></h2>
+    <div class="form-grid">
+      <div class="fld"><label>입사일</label><input type="date" id="sv_in" onchange="calcSeverance()"></div>
+      <div class="fld"><label>퇴사일</label><input type="date" id="sv_out" onchange="calcSeverance()"></div>
+      <div class="fld wide"><label>퇴사 전 3개월 임금 총액 (원) <span style="color:var(--muted);font-weight:400;font-size:11px">세전·수당 포함</span></label><input type="number" id="sv_wage" placeholder="0" oninput="calcSeverance()"></div>
+    </div>
+    <div id="svResult" style="margin-top:14px;font-size:13.5px"></div>
+  </div>
+  </div><!-- /인사서류 -->
+
+  <!-- ===== 🎓 교육·안전 ===== -->
+  <div class="subpg" data-subpg="인사교육">
+  <div class="card" style="margin-top:22px">
+    <h2>🎓 교육 현황</h2>
+    <div class="sumrow" id="trnSummary"></div>
+  </div>
+
+  <div class="card" style="margin-top:22px">
+    <h2>⚠️ 안전교육 미이수 <span style="font-weight:500;color:var(--muted);font-size:12px">팀원 명단에 있는데 안전교육 기록이 없는 사람 · 법정 의무</span></h2>
+    <div id="safetyMissing"></div>
+  </div>
+
+  <div class="card entry" style="margin-top:22px">
+    <h2>＋ 교육 기록</h2>
+    <div class="form-grid">
+      <div class="fld"><label>이름</label><input id="tr_name" placeholder="이름" list="teamNames"><datalist id="teamNames"></datalist></div>
+      <div class="fld wide"><label>교육 종류</label><select id="tr_type">
+        <option>안전교육(신규채용자)</option>
+        <option>정기 안전보건교육</option>
+        <option>신입 온보딩</option>
+        <option>장비 교육</option>
+        <option>작업 교육(청소)</option>
+        <option>작업 교육(폴리싱·철거)</option>
+        <option>기타</option></select></div>
+      <div class="fld"><label>날짜</label><input type="date" id="tr_date"></div>
+      <div class="fld"><label>시간 (h)</label><input type="number" id="tr_hours" placeholder="예: 4"></div>
+      <div class="fld"><label>강사·담당</label><input id="tr_by" placeholder="예: 소이"></div>
+      <div class="fld wide"><label>내용 (선택)</label><input id="tr_note" placeholder="예: 분진 마스크·고소작업 수칙"></div>
+    </div>
+    <div style="margin:12px 0;text-align:right"><button class="primary" id="tr_btn" onclick="addTraining()">＋ 교육 기록 추가</button></div>
+  </div>
+
+  <div class="card" style="margin-top:22px">
+    <h2>📋 교육 이력 <span style="font-weight:500;color:var(--muted);font-size:12px">최근순</span></h2>
+    <div style="overflow-x:auto"><table>
+      <thead><tr><th>날짜</th><th>이름</th><th>교육 종류</th><th class="num">시간</th><th>강사</th><th>내용</th><th></th></tr></thead>
+      <tbody id="trRows"></tbody></table></div>
+  </div>
+  </div><!-- /인사교육 -->
 
   </div><!-- /인사 -->
 
@@ -1383,6 +1521,11 @@ function _seed(data){    // 메시지·지원사업 시드/마이그레이션 (�
   ];
   if(!Array.isArray(data.vehicles)) data.vehicles=['G80','카니발','스타렉스(검정)','스타리아(흰색)','봉고탑차'];
   if(!Array.isArray(data.carLogs)) data.carLogs=[];   // 차량 정비/점검 기록 [{car,type,date,next,note,cost}]
+  // ── 👷 인사팀 ──
+  if(!Array.isArray(data.recruits)) data.recruits=[];   // 지원자 [{name,contact,from,job,co,date,status,note}]
+  if(!Array.isArray(data.jobAds))   data.jobAds=[];     // 구인공고 문구 [{title,body,date}]
+  if(!Array.isArray(data.hrDocs))   data.hrDocs=[];     // 입·퇴사 서류 [{name,type,date,status,note}]
+  if(!Array.isArray(data.trainings))data.trainings=[];  // 교육 이력 [{name,type,date,hours,by,note}]
   if(!data.boards || typeof data.boards!=='object') data.boards={};   // 📋 팀별 업무정리 보드 {ops:[..],fin:[..],...}
   if(!data.devReview) data.devReview={ month:'2026-08', summary:'뼈대(일일결산 단일입력→자동집계, 재무 인건비·미수금)는 탄탄합니다. 지금 가장 큰 시간낭비는 <b>구글캘린더 수동 최신화</b>와 <b>팀 리마인더 수동</b> — 이 둘을 자동화하면 손이 확 줄어요. (중복 입력은 거의 없음 👍)', decisions:[ {text:'구글캘린더 자동 최신화 (매일 자동, 캘린더=원본으로 덮어씀)', done:false}, {text:'카톡 방장봇 리마인더 (5시 운영팀·6시 재무팀)', done:false} ] };
   data.asOf = realToday();   // 기준일 = 항상 실제 오늘 (예전 고정 날짜가 클라우드에 굳는 문제 방지)
@@ -2283,6 +2426,116 @@ function render(){
     `⚠️ 승인 대기 <b>${pending}건</b> — 현장 배치 전 확인하세요.`:
     `<span style="color:var(--muted)">대기 중인 휴가 신청 없음</span>`;
 
+  // ===== 👷 인사팀 : 채용 · 서류 · 교육 =====
+  const _hrTile=t=>`<div class="sumtile ${t.a?'alert':''}"><div class="v">${t.v}</div><div class="l">${t.l}</div></div>`;
+  const _dsp=s=>(s&&s.length===10)?s.slice(5):(s||'-');
+  const _hrToday=realToday();
+
+  // ── 📢 채용 ──
+  const RC=d.recruits||[];
+  const rcNew=RC.filter(r=>r.status==='접수').length;
+  const rcItv=RC.filter(r=>r.status==='면접예정').length;
+  const rcHired=RC.filter(r=>r.status==='채용').length;
+  const recSumEl=document.getElementById('recSummary');
+  if(recSumEl){
+    recSumEl.innerHTML=[
+      {v:rcNew+'명',l:'📥 접수 (연락해야)',a:rcNew>0},
+      {v:rcItv+'명',l:'🗓️ 면접예정',a:rcItv>0},
+      {v:rcHired+'명',l:'✅ 채용 확정'}
+    ].map(_hrTile).join('');
+    const rcSorted=RC.map((r,i)=>({r,i})).sort((a,b)=>(b.r.date||'').localeCompare(a.r.date||''));
+    document.getElementById('recRows').innerHTML = rcSorted.length? rcSorted.map(({r,i})=>{
+      const stCls = r.status==='채용'?'p-good' : (r.status==='보류'?'p-late' : (r.status==='면접예정'?'p-daman':'p-limit'));
+      const inTeam=(d.team||[]).some(t=>t.name===r.name);
+      const act = (r.status==='채용' && !inTeam)
+        ? `<button class="del" style="color:var(--good);font-weight:700;border:1px solid var(--good);border-radius:7px;padding:4px 9px" onclick="recruitToTeam(${i})" title="팀원 명단에 추가">＋팀원 등록</button>`
+        : (inTeam?'<span style="color:var(--good);font-size:11px">명단 등록됨</span>':'');
+      return `<tr><td>${escHtml(r.name)}${r.note?` <span style="color:var(--muted);font-size:11px">${escHtml(r.note)}</span>`:''}</td>
+        <td style="font-size:12.5px">${escHtml(r.contact||'-')}</td>
+        <td><span class="pill">${escHtml(r.from||'-')}</span></td>
+        <td>${escHtml(r.job||'-')}</td>
+        <td style="color:var(--muted);font-size:12px">${_dsp(r.date)}</td>
+        <td><span class="pill ${stCls}">${escHtml(r.status)}</span></td>
+        <td style="white-space:nowrap">${act} <button class="del" style="color:var(--limit)" onclick="recruitEdit(${i})" title="수정">✏️</button><button class="del" onclick="delRecruit(${i})" title="삭제">✕</button></td></tr>`;
+    }).join('') : `<tr><td colspan="7" style="color:var(--muted)">지원자가 없습니다. 위에서 등록하세요.</td></tr>`;
+    const adEl=document.getElementById('adList');
+    if(adEl) adEl.innerHTML=(d.jobAds||[]).length? (d.jobAds||[]).map((a,i)=>
+      `<div style="border:1px solid var(--line);border-radius:9px;padding:12px 14px;margin-top:10px;background:var(--bg)">
+        <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+          <b style="font-size:13.5px">${escHtml(a.title)}</b>
+          <span style="color:var(--muted);font-size:11.5px">${_dsp(a.date)}</span>
+          <span style="margin-left:auto;display:flex;gap:6px">
+            <button class="del" style="color:var(--limit);border:1px solid var(--line);border-radius:7px;padding:4px 9px" onclick="copyAd(${i})">📋 복사</button>
+            <button class="del" onclick="delAd(${i})" title="삭제">✕</button></span>
+        </div>
+        <div style="margin-top:7px;font-size:12.8px;color:var(--muted);white-space:pre-wrap">${escHtml(a.body)}</div>
+      </div>`).join('') : `<div style="color:var(--muted);font-size:12.5px;margin-top:10px">저장된 공고 문구가 없습니다.</div>`;
+  }
+
+  // ── 📄 입·퇴사 서류 ──
+  const HD=d.hrDocs||[];
+  const hdWait=HD.filter(x=>x.status!=='완료').length;
+  const hdMon=HD.filter(x=>(x.date||'').slice(0,7)===ym).length;
+  const docSumEl=document.getElementById('docSummary');
+  if(docSumEl){
+    docSumEl.innerHTML=[
+      {v:hdWait+'건',l:'⏳ 처리 대기',a:hdWait>0},
+      {v:hdMon+'건',l:'📄 이번 달 처리'},
+      {v:HD.length+'건',l:'📚 전체 기록'}
+    ].map(_hrTile).join('');
+    const hdSorted=HD.map((x,i)=>({x,i})).sort((a,b)=>((a.x.status==='완료')-(b.x.status==='완료'))||(b.x.date||'').localeCompare(a.x.date||''));
+    document.getElementById('hdRows').innerHTML = hdSorted.length? hdSorted.map(({x,i})=>
+      `<tr><td>${escHtml(x.name)}</td>
+       <td style="font-size:12.8px">${escHtml(x.type)}</td>
+       <td style="color:var(--muted);font-size:12px">${_dsp(x.date)}</td>
+       <td><span class="pill ${x.status==='완료'?'p-good':'p-late'}" style="cursor:pointer" onclick="toggleHrDoc(${i})">${escHtml(x.status)}</span></td>
+       <td style="font-size:12.5px;color:var(--muted)">${escHtml(x.note||'-')}</td>
+       <td style="white-space:nowrap"><button class="del" style="color:var(--limit)" onclick="hrDocEdit(${i})" title="수정">✏️</button><button class="del" onclick="delHrDoc(${i})" title="삭제">✕</button></td></tr>`
+    ).join('') : `<tr><td colspan="6" style="color:var(--muted)">등록된 서류가 없습니다.</td></tr>`;
+    // 매월 15일 = 일용직 근로내용확인신고 기한
+    const dayN=parseInt(_hrToday.slice(8),10);
+    const filedThisMonth=HD.some(x=>x.type==='일용직 근로내용확인신고' && (x.date||'').slice(0,7)===ym && x.status==='완료');
+    const dw=document.getElementById('docWarn');
+    if(dw){
+      if(filedThisMonth) dw.innerHTML=`<span style="color:var(--good)">✅ 이번 달 일용직 근로내용확인신고 완료</span>`;
+      else if(dayN<=15) dw.innerHTML=`⏰ <b>일용직 근로내용확인신고</b> — 이번 달 <b>15일</b>까지 (${15-dayN}일 남음)`;
+      else dw.innerHTML=`<span style="color:var(--warn)">⚠️ <b>일용직 근로내용확인신고</b> 기한(15일)이 지났습니다 — 확인하세요</span>`;
+    }
+  }
+
+  // ── 🎓 교육·안전 ──
+  const TR=d.trainings||[];
+  const trMon=TR.filter(t=>(t.date||'').slice(0,7)===ym).length;
+  const safeNames=new Set(TR.filter(t=>String(t.type||'').indexOf('안전')>=0).map(t=>t.name));
+  const teamNames=(d.team||[]).map(t=>t.name).filter(Boolean);
+  const missing=teamNames.filter(n=>!safeNames.has(n));
+  const trnSumEl=document.getElementById('trnSummary');
+  if(trnSumEl){
+    trnSumEl.innerHTML=[
+      {v:trMon+'건',l:'🎓 이번 달 교육'},
+      {v:missing.length+'명',l:'⚠️ 안전교육 미이수',a:missing.length>0},
+      {v:TR.length+'건',l:'📚 전체 이력'}
+    ].map(_hrTile).join('');
+    const dl=document.getElementById('teamNames');
+    if(dl) dl.innerHTML=teamNames.map(n=>`<option value="${escHtml(n)}">`).join('');
+    const smEl=document.getElementById('safetyMissing');
+    if(smEl) smEl.innerHTML = missing.length
+      ? `<div style="display:flex;gap:8px;flex-wrap:wrap">${missing.map(n=>`<button onclick="prefillTraining('${escHtml(n)}')" style="border-color:var(--warn);color:var(--warn);font-weight:700">${escHtml(n)} · 교육 기록하기</button>`).join('')}</div>
+         <div style="margin-top:10px;font-size:12px;color:var(--muted)">이름을 누르면 아래 폼에 자동으로 채워집니다.</div>`
+      : (teamNames.length? `<span style="color:var(--good);font-size:13px">✅ 팀원 ${teamNames.length}명 모두 안전교육 기록이 있습니다.</span>`
+                         : `<span style="color:var(--muted);font-size:13px">팀원 명단이 비어 있습니다.</span>`);
+    const trSorted=TR.map((t,i)=>({t,i})).sort((a,b)=>(b.t.date||'').localeCompare(a.t.date||''));
+    document.getElementById('trRows').innerHTML = trSorted.length? trSorted.map(({t,i})=>
+      `<tr><td style="color:var(--muted);font-size:12px">${_dsp(t.date)}</td>
+       <td>${escHtml(t.name)}</td>
+       <td><span class="pill ${String(t.type||'').indexOf('안전')>=0?'p-good':'p-limit'}">${escHtml(t.type)}</span></td>
+       <td class="num">${t.hours?t.hours+'h':'-'}</td>
+       <td style="font-size:12.5px">${escHtml(t.by||'-')}</td>
+       <td style="font-size:12.5px;color:var(--muted)">${escHtml(t.note||'-')}</td>
+       <td style="white-space:nowrap"><button class="del" style="color:var(--limit)" onclick="trainingEdit(${i})" title="수정">✏️</button><button class="del" onclick="delTraining(${i})" title="삭제">✕</button></td></tr>`
+    ).join('') : `<tr><td colspan="7" style="color:var(--muted)">교육 기록이 없습니다.</td></tr>`;
+  }
+
   // ===== 조회·분석 =====
   const qmEl=document.getElementById('q_month');
   if(qmEl && !qmEl.dataset.filled){
@@ -2482,7 +2735,13 @@ function render(){
     const _opsTasks=unsettledN+ordSentN+carDueN;
     setBadge('finBadge', _finTasks+_bo('fin'));
     setBadge('opsBadge', _opsTasks+_bo('ops'));
-    setBadge('hrBadge', _bo('hr'));
+    // 👷 인사팀 하위탭 배지
+    setBadge('hrLeaveBadge', pending);              // 휴가 승인 대기
+    setBadge('hrRecBadge', rcNew+rcItv);            // 접수 + 면접예정
+    setBadge('hrDocBadge', hdWait);                 // 서류 처리 대기
+    setBadge('hrTrnBadge', missing.length);         // 안전교육 미이수
+    const _hrTasks=pending+rcNew+rcItv+hdWait+missing.length;
+    setBadge('hrBadge', _hrTasks+_bo('hr'));
     setBadge('mktBadge', _bo('mkt'));
   }
 
@@ -3019,6 +3278,145 @@ function leaveEdit(i){ const d=getData(); const l=(d.leave||[])[i]; if(!l) retur
 }
 function delLeave(i){ const d=getData(); d.leave.splice(i,1); if(EDIT_LEAVE===i){EDIT_LEAVE=-1;document.getElementById('lf_btn').textContent='＋ 휴가 추가';} setData(d); render(); }
 function setStaff(k,v){ const d=getData(); d.staff=d.staff||{}; d.staff[k]=parseInt(v)||0; setData(d); }
+
+/* ===== 👷 인사팀 : 채용 · 서류 · 교육 ===== */
+const _v=id=>{ const e=document.getElementById(id); return e?e.value.trim():''; };
+const _set=(id,val)=>{ const e=document.getElementById(id); if(e) e.value=val==null?'':val; };
+
+// ── 📢 채용 ──
+let EDIT_REC=-1;
+function addRecruit(){
+  const name=_v('rc_name'); if(!name){ alert('이름을 입력하세요.'); return; }
+  const d=getData(); d.recruits=d.recruits||[];
+  const rec={name, contact:_v('rc_contact'), from:_v('rc_from'), job:_v('rc_job'), co:_v('rc_co'),
+             date:_v('rc_date')||realToday(), status:_v('rc_status'), note:_v('rc_note')};
+  if(EDIT_REC>=0 && d.recruits[EDIT_REC]){ d.recruits[EDIT_REC]=rec; EDIT_REC=-1; } else d.recruits.push(rec);
+  setData(d); render();
+  ['rc_name','rc_contact','rc_date','rc_note'].forEach(id=>_set(id,''));
+  const b=document.getElementById('rc_btn'); if(b) b.textContent='＋ 지원자 등록';
+  const f=document.getElementById('rc_name'); if(f) f.focus();
+}
+function recruitEdit(i){
+  const r=(getData().recruits||[])[i]; if(!r) return; EDIT_REC=i;
+  _set('rc_name',r.name); _set('rc_contact',r.contact); _set('rc_from',r.from||'알바몬'); _set('rc_job',r.job||'청소');
+  _set('rc_co',r.co||'공통'); _set('rc_date',r.date); _set('rc_status',r.status||'접수'); _set('rc_note',r.note);
+  const b=document.getElementById('rc_btn'); if(b) b.textContent='✔ 수정 저장';
+  document.getElementById('rc_name').scrollIntoView({behavior:'smooth',block:'center'});
+}
+function delRecruit(i){
+  const d=getData(); if(!confirm('이 지원자를 삭제할까요?')) return;
+  d.recruits.splice(i,1); if(EDIT_REC===i){ EDIT_REC=-1; const b=document.getElementById('rc_btn'); if(b) b.textContent='＋ 지원자 등록'; }
+  setData(d); render();
+}
+function recruitToTeam(i){
+  const d=getData(); const r=(d.recruits||[])[i]; if(!r) return;
+  d.team=d.team||[];
+  if(d.team.some(t=>t.name===r.name)){ alert(r.name+' 님은 이미 팀원 명단에 있습니다.'); return; }
+  if(!confirm(r.name+' 님을 팀원 명단에 추가할까요?')) return;
+  d.team.push({name:r.name, role:r.job||'일용직', co:r.co||'공통', since:realToday()});
+  setData(d); render();
+  alert(r.name+' 님을 팀원 명단에 추가했습니다.\n🧑‍🤝‍🧑 팀원·휴가 탭에서 확인하세요.');
+}
+function addAd(){
+  const title=_v('ad_title'); const body=_v('ad_body');
+  if(!title){ alert('제목을 입력하세요.'); return; }
+  const d=getData(); d.jobAds=d.jobAds||[];
+  d.jobAds.unshift({title, body, date:realToday()});
+  setData(d); render(); _set('ad_title',''); _set('ad_body','');
+}
+function delAd(i){ const d=getData(); if(!confirm('이 공고 문구를 삭제할까요?')) return; d.jobAds.splice(i,1); setData(d); render(); }
+function copyAd(i){
+  const a=(getData().jobAds||[])[i]; if(!a) return;
+  const text=a.title+'\n\n'+(a.body||'');
+  const done=()=>alert('공고 문구를 복사했습니다.\n알바몬·당근에 붙여넣으세요.');
+  if(navigator.clipboard && navigator.clipboard.writeText){ navigator.clipboard.writeText(text).then(done).catch(()=>fallbackCopy(text,done)); }
+  else fallbackCopy(text,done);
+}
+function fallbackCopy(text,cb){
+  const ta=document.createElement('textarea'); ta.value=text; ta.style.position='fixed'; ta.style.opacity='0';
+  document.body.appendChild(ta); ta.select();
+  try{ document.execCommand('copy'); cb(); }catch(e){ alert('복사에 실패했습니다. 직접 선택해서 복사해주세요.'); }
+  document.body.removeChild(ta);
+}
+
+// ── 📄 입·퇴사 서류 ──
+let EDIT_HD=-1;
+function addHrDoc(){
+  const name=_v('hd_name'); if(!name){ alert('이름을 입력하세요.'); return; }
+  const d=getData(); d.hrDocs=d.hrDocs||[];
+  const rec={name, type:_v('hd_type'), date:_v('hd_date')||realToday(), status:_v('hd_status'), note:_v('hd_note')};
+  if(EDIT_HD>=0 && d.hrDocs[EDIT_HD]){ d.hrDocs[EDIT_HD]=rec; EDIT_HD=-1; } else d.hrDocs.push(rec);
+  setData(d); render();
+  ['hd_name','hd_date','hd_note'].forEach(id=>_set(id,''));
+  const b=document.getElementById('hd_btn'); if(b) b.textContent='＋ 서류 등록';
+}
+function hrDocEdit(i){
+  const x=(getData().hrDocs||[])[i]; if(!x) return; EDIT_HD=i;
+  _set('hd_name',x.name); _set('hd_type',x.type); _set('hd_date',x.date); _set('hd_status',x.status||'대기'); _set('hd_note',x.note);
+  const b=document.getElementById('hd_btn'); if(b) b.textContent='✔ 수정 저장';
+  document.getElementById('hd_name').scrollIntoView({behavior:'smooth',block:'center'});
+}
+function delHrDoc(i){
+  const d=getData(); if(!confirm('이 서류 기록을 삭제할까요?')) return;
+  d.hrDocs.splice(i,1); if(EDIT_HD===i){ EDIT_HD=-1; const b=document.getElementById('hd_btn'); if(b) b.textContent='＋ 서류 등록'; }
+  setData(d); render();
+}
+function toggleHrDoc(i){ const d=getData(); const x=(d.hrDocs||[])[i]; if(!x) return; x.status = x.status==='완료'?'대기':'완료'; setData(d); render(); }
+
+function calcSeverance(){
+  const el=document.getElementById('svResult'); if(!el) return;
+  const inD=_v('sv_in'), outD=_v('sv_out'); const wage=parseFloat(_v('sv_wage'))||0;
+  if(!inD||!outD){ el.innerHTML='<span style="color:var(--muted)">입사일·퇴사일을 넣으면 계산됩니다.</span>'; return; }
+  const a=new Date(inD), b=new Date(outD);
+  const days=Math.round((b-a)/86400000);
+  if(days<=0){ el.innerHTML='<span style="color:var(--warn)">퇴사일이 입사일보다 빠릅니다.</span>'; return; }
+  if(days<365){
+    el.innerHTML=`<div style="color:var(--warn);font-weight:700">재직 ${days}일 (1년 미만) — 퇴직금 지급 대상이 아닙니다.</div>
+      <div style="color:var(--muted);font-size:12.5px;margin-top:5px">1년 이상 + 주 15시간 이상 근무가 지급 조건입니다.</div>`;
+    return;
+  }
+  if(!wage){ el.innerHTML=`<div>재직 <b>${days}일</b> (약 ${(days/365).toFixed(1)}년) — 지급 대상입니다.</div>
+    <div style="color:var(--muted);font-size:12.5px;margin-top:5px">3개월 임금 총액을 넣으면 금액이 계산됩니다.</div>`; return; }
+  const p3=new Date(b); p3.setMonth(p3.getMonth()-3);
+  const p3days=Math.max(1,Math.round((b-p3)/86400000));
+  const avg=wage/p3days;
+  const sev=Math.round(avg*30*(days/365));
+  el.innerHTML=`<div class="sumrow">
+      <div class="sumtile"><div class="v">${KRW(sev)}</div><div class="l">퇴직금 (세전 개산)</div></div>
+      <div class="sumtile"><div class="v">${KRW(Math.round(avg))}</div><div class="l">1일 평균임금</div></div>
+      <div class="sumtile"><div class="v">${days}일</div><div class="l">재직 (약 ${(days/365).toFixed(1)}년)</div></div>
+    </div>
+    <div style="color:var(--muted);font-size:12px;margin-top:9px">계산식: 1일 평균임금 × 30일 × (재직일수 ÷ 365) · <b>세전 개산치</b>입니다. 실제 지급액은 세무사 확인 후 확정하세요.</div>`;
+}
+
+// ── 🎓 교육·안전 ──
+let EDIT_TR=-1;
+function addTraining(){
+  const name=_v('tr_name'); if(!name){ alert('이름을 입력하세요.'); return; }
+  const d=getData(); d.trainings=d.trainings||[];
+  const rec={name, type:_v('tr_type'), date:_v('tr_date')||realToday(),
+             hours:parseFloat(_v('tr_hours'))||0, by:_v('tr_by'), note:_v('tr_note')};
+  if(EDIT_TR>=0 && d.trainings[EDIT_TR]){ d.trainings[EDIT_TR]=rec; EDIT_TR=-1; } else d.trainings.push(rec);
+  setData(d); render();
+  ['tr_name','tr_date','tr_hours','tr_note'].forEach(id=>_set(id,''));
+  const b=document.getElementById('tr_btn'); if(b) b.textContent='＋ 교육 기록 추가';
+}
+function trainingEdit(i){
+  const t=(getData().trainings||[])[i]; if(!t) return; EDIT_TR=i;
+  _set('tr_name',t.name); _set('tr_type',t.type); _set('tr_date',t.date);
+  _set('tr_hours',t.hours||''); _set('tr_by',t.by); _set('tr_note',t.note);
+  const b=document.getElementById('tr_btn'); if(b) b.textContent='✔ 수정 저장';
+  document.getElementById('tr_name').scrollIntoView({behavior:'smooth',block:'center'});
+}
+function delTraining(i){
+  const d=getData(); if(!confirm('이 교육 기록을 삭제할까요?')) return;
+  d.trainings.splice(i,1); if(EDIT_TR===i){ EDIT_TR=-1; const b=document.getElementById('tr_btn'); if(b) b.textContent='＋ 교육 기록 추가'; }
+  setData(d); render();
+}
+function prefillTraining(name){
+  _set('tr_name',name); _set('tr_type','안전교육(신규채용자)'); _set('tr_date',realToday());
+  document.getElementById('tr_name').scrollIntoView({behavior:'smooth',block:'center'});
+}
 
 function addLead(){
   const cust=document.getElementById('mf_customer').value.trim();
@@ -3640,6 +4038,7 @@ showSub('운영달력');    // 운영팀 기본 하위탭 = 일정 달력
 showSub('분석조회');    // 분석팀 기본 하위탭 = 결산 조회
 showSub('재무달력');    // 재무팀 기본 하위탭 = 일정 달력
 showSub('기업달력');    // 기업지원사업팀 기본 하위탭 = 모집 캘린더
+showSub('인사업무');    // 인사팀 기본 하위탭 = 업무정리
 // ═══ 로그인 초기화 ═══
 (function(){
   const ls=document.getElementById('loginScreen');
