@@ -2215,11 +2215,11 @@ function render(){
       : (totalN>0? `<b style="color:var(--good)">✅ 현장 ${totalN}건 전부 입금완료 — 누락 없음</b>` : `<span style="color:var(--muted)">해당 기간 현장이 없습니다.</span>`);
     const paidRowsEl=document.getElementById('paidRows');
     if(paidRowsEl){
-      const paidRowFn = s=>`<tr>
+      const paidRowFn = s=>{ const i=S.indexOf(s); return `<tr>
         <td>${(s.date||'').slice(5)}</td><td>${s.site||'-'}</td>
         <td><span class="pill ${coPill(s.co)}">${coName(s.co)}</span></td>
         <td class="num">${KRW(calcRow(s).rev)}</td>
-        <td>${s.payer?escHtml(s.payer):'<span style="color:var(--muted)">-</span>'}${bankTag(s.bank)}</td></tr>`;
+        <td style="white-space:nowrap">${s.payer?escHtml(s.payer):'<span style="color:var(--muted)">-</span>'}${bankTag(s.bank)} <button class="del" style="color:var(--warn);border:1px solid var(--warn);border-radius:7px;padding:3px 8px;margin-left:4px" onclick="markUnpaid(${i})" title="입금완료 취소 → 미수금으로 되돌리기">↩ 취소</button></td></tr>`; };
       paidRowsEl.innerHTML = paidList.length
         ? _monthGroups(paidList, s=>s.date).map((g,gi)=>{
             const sum=g.items.reduce((a,s)=>a+calcRow(s).rev,0);
@@ -2936,6 +2936,11 @@ function markPaid(kind,i){
   if(kind==='recv'){ if(d.receivables) d.receivables.splice(i,1); }
   else if(kind==='settle'){ if(d.settlements && d.settlements[i]) d.settlements[i].paid='입금완료'; }
   setData(d); render();
+}
+function markUnpaid(i){   // 입금완료 취소 → 다시 미수금 (실수로 눌렀을 때 되돌리기)
+  const d=getData(); const s=(d.settlements||[])[i]; if(!s) return;
+  if(!confirm('입금완료를 취소하고 다시 미수금으로 되돌릴까요?\n\n'+(s.date||'')+'  '+(s.site||''))) return;
+  s.paid='미수금'; setData(d); render();
 }
 function editContact(kind,i){
   const d=getData();
