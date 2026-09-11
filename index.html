@@ -614,6 +614,7 @@
     <button class="subtab" data-subtab="지출" onclick="showSub('지출')">💸 지출</button>
     <button class="subtab" data-subtab="고정지출" onclick="showSub('고정지출')">💳 고정지출 <span id="fxBadge" class="tabbadge"></span></button>
     <button class="subtab" data-subtab="재무발주" onclick="showSub('재무발주')">📦 발주 <span id="finOrdBadge" class="tabbadge"></span></button>
+    <button class="subtab" data-subtab="급여명세서" onclick="showSub('급여명세서')">💵 급여명세서 <span id="payrollBadge" class="tabbadge"></span></button>
   </div>
 
   <div class="subpg" data-subpg="재무달력">
@@ -796,6 +797,18 @@
       <tbody id="finOrdRows"></tbody></table></div>
   </div>
   </div><!-- /재무발주 -->
+
+  <div class="subpg" data-subpg="급여명세서">
+  <div class="card" style="margin-top:22px">
+    <h2>💵 급여명세서 <span style="font-weight:500;color:var(--muted);font-size:12px">인사팀 팀원 월급 기준 · 매달 마지막 주 월요일 지급</span></h2>
+    <div id="payrollHead" style="margin:8px 0 14px"></div>
+    <div style="overflow-x:auto"><table>
+      <thead><tr><th>이름</th><th>직책</th><th>소속</th><th class="num">기본급(월급)</th><th class="num">공제</th><th class="num">실지급</th><th>명세서</th></tr></thead>
+      <tbody id="payrollRows"></tbody></table></div>
+    <div style="margin-top:14px;text-align:right"><button class="primary" onclick="downloadAllPayslips()">📄 전체 명세서 다운로드</button></div>
+    <div style="font-size:12px;color:var(--muted);margin-top:8px">💡 월급은 <b>인사팀 → 팀원 명단</b>에서 등록/수정해요. 공제(4대보험·소득세 등)는 아는 경우만 ✏️로 입력하면 실지급액에 반영됩니다. 명세서는 이 달 기준으로 자동 만들어지고, <b>📄 받기</b>를 누르면 파일로 저장됩니다.</div>
+  </div>
+  </div><!-- /급여명세서 -->
 
   </div><!-- /재무팀 -->
 
@@ -2772,6 +2785,10 @@ function render(){
   // 📋 팀별 업무정리 보드 렌더 + 미완료 개수 배지 (요청함 대체)
   renderAllBoards();
   renderSettleHistory();
+  renderPayroll();
+  { const _pt=realToday(), _py=+_pt.slice(0,4), _pm=(+_pt.slice(5,7))-1, _pd=_lastMondayOfMonth(_py,_pm);
+    const _pn=(d.team||[]).filter(t=>(+t.salary||0)>0).length;
+    setBadge('payrollBadge', (_pt>=_pd)?_pn:0); }   // 지급일(마지막 주 월요일) 도래 시 명세서 준비 알림
   {
     // 💬 안 읽은 대화 = 우리 팀 보드 카드 + 우리가 다른 팀에 보낸 카드
     const _chatU=t=>{ let n=0; Object.keys(BOARD_TEAMS).forEach(ot=>{
@@ -3356,6 +3373,71 @@ function rejectLeave(i){
   l.status='반려'; setData(d); render();
 }
 function setStaff(k,v){ const d=getData(); d.staff=d.staff||{}; d.staff[k]=parseInt(v)||0; setData(d); }
+
+/* ===== 💵 급여명세서 (재무팀) ===== */
+function _lastMondayOfMonth(y,m){ var dt=new Date(y,m+1,0); while(dt.getDay()!==1){ dt.setDate(dt.getDate()-1); } var p=n=>String(n).padStart(2,'0'); return dt.getFullYear()+'-'+p(dt.getMonth()+1)+'-'+p(dt.getDate()); }
+function _won(n){ return Number(n||0).toLocaleString('ko-KR'); }
+function _downloadFile(name, content, mime){
+  try{ var blob=new Blob([content],{type:mime||'text/html;charset=utf-8'}); var url=URL.createObjectURL(blob);
+    var a=document.createElement('a'); a.href=url; a.download=name; document.body.appendChild(a); a.click();
+    setTimeout(function(){ try{URL.revokeObjectURL(url); a.remove();}catch(e){} },1200);
+  }catch(e){ alert('다운로드가 안 돼요: '+e); }
+}
+function _payslipCard(t,y,m,d){
+  var payDate=_lastMondayOfMonth(y,m);
+  var sal=+t.salary||0, ded=+t.deduct||0, net=sal-ded;
+  var co=(t.co==='limit'||t.co==='daman')?t.co:null;
+  var qc=(d.quoteCfg&&co&&d.quoteCfg[co])||null;
+  var coNm=(qc&&qc.name)?qc.name:coName(t.co);
+  var biz=(qc&&qc.bizNo)?('사업자등록번호 '+qc.bizNo):'';
+  return '<div style="max-width:520px;margin:20px auto;border:1px solid #ccc;border-radius:10px;padding:24px;font-family:\'Malgun Gothic\',sans-serif;color:#111;background:#fff">'
+    +'<h2 style="text-align:center;margin:0 0 4px">급여명세서</h2>'
+    +'<div style="text-align:center;color:#666;font-size:13px;margin-bottom:16px">'+y+'년 '+(m+1)+'월분 · 지급일 '+payDate+' (월)</div>'
+    +'<table style="width:100%;font-size:13.5px;border-collapse:collapse">'
+    +'<tr><td style="padding:5px;color:#666;width:70px">회사</td><td style="padding:5px;font-weight:700">'+coNm+(biz?(' <span style="font-weight:400;color:#888;font-size:12px">'+biz+'</span>'):'')+'</td></tr>'
+    +'<tr><td style="padding:5px;color:#666">성명</td><td style="padding:5px;font-weight:700">'+(t.name||'')+'</td></tr>'
+    +'<tr><td style="padding:5px;color:#666">직책</td><td style="padding:5px">'+(t.role||'-')+'</td></tr>'
+    +'</table>'
+    +'<table style="width:100%;font-size:14px;border-collapse:collapse;margin-top:14px;border-top:2px solid #111">'
+    +'<tr><td style="padding:8px 5px;color:#666">기본급</td><td style="padding:8px 5px;text-align:right">'+_won(sal)+' 원</td></tr>'
+    +(ded?('<tr><td style="padding:8px 5px;color:#666">공제</td><td style="padding:8px 5px;text-align:right;color:#c00">-'+_won(ded)+' 원</td></tr>'):'')
+    +'<tr style="border-top:2px solid #111"><td style="padding:10px 5px;font-weight:800">실지급액</td><td style="padding:10px 5px;text-align:right;font-weight:800;font-size:16px">'+_won(net)+' 원</td></tr>'
+    +'</table>'
+    +'<div style="text-align:right;color:#888;font-size:12px;margin-top:16px">발행일 '+realToday()+'</div>'
+    +'</div>';
+}
+function _payslipDoc(inner, title){ return '<!doctype html><html lang="ko"><head><meta charset="utf-8"><title>'+title+'</title></head><body style="margin:0;background:#f4f6fa">'+inner+'</body></html>'; }
+function renderPayroll(){
+  var el=document.getElementById('payrollRows'); if(!el) return;
+  var d=getData(); var team=(d.team||[]); var today=realToday();
+  var y=+today.slice(0,4), m=(+today.slice(5,7))-1; var payDate=_lastMondayOfMonth(y,m);
+  var withSal=team.map(function(t,i){return {t:t,i:i};}).filter(function(x){return (+x.t.salary||0)>0;});
+  var due=today>=payDate;
+  var head=document.getElementById('payrollHead');
+  if(head) head.innerHTML='<div style="font-size:13.5px">📅 <b>'+y+'년 '+(m+1)+'월분</b> · 지급일 <b>'+payDate+' (월)</b> '+(due?'<span class="pill p-good">지급일 도래 — 명세서 준비됨</span>':'<span class="pill p-late">지급 예정</span>')+'</div>'
+    +'<div style="font-size:12px;color:var(--muted);margin-top:3px">월급 등록된 팀원 '+withSal.length+'명</div>';
+  el.innerHTML = withSal.length? withSal.map(function(x){ var t=x.t,i=x.i; var sal=+t.salary||0, ded=+t.deduct||0, net=sal-ded;
+    return '<tr><td>'+escHtml(t.name)+'</td><td>'+(t.role?escHtml(t.role):'-')+'</td><td><span class="pill '+coPill(t.co)+'">'+coName(t.co)+'</span></td>'
+      +'<td class="num">'+KRW(sal)+'</td>'
+      +'<td class="num" style="white-space:nowrap">'+(ded?('-'+KRW(ded)):'<span style="color:var(--muted)">0</span>')+' <button class="del" style="color:var(--muted);padding:2px 6px" onclick="setPayDeduct('+i+')" title="공제 입력">✏️</button></td>'
+      +'<td class="num" style="font-weight:700">'+KRW(net)+'</td>'
+      +'<td><button class="del" style="color:var(--limit);border:1px solid var(--limit);border-radius:7px;padding:3px 9px" onclick="downloadPayslip('+i+')">📄 받기</button></td></tr>';
+  }).join('') : '<tr><td colspan="7" style="color:var(--muted)">월급이 등록된 팀원이 없어요. 인사팀 → 팀원 명단에서 월급을 넣어주세요.</td></tr>';
+}
+function setPayDeduct(i){ var d=getData(); var t=(d.team||[])[i]; if(!t) return;
+  var v=prompt((t.name||'')+' 공제액(원) — 4대보험·소득세 등 (없으면 0):', (+t.deduct||0));
+  if(v===null) return; t.deduct=parseInt(String(v).replace(/[^0-9]/g,''),10)||0; setData(d); render();
+}
+function downloadPayslip(i){ var d=getData(); var t=(d.team||[])[i]; if(!t) return;
+  var today=realToday(); var y=+today.slice(0,4), m=(+today.slice(5,7))-1;
+  _downloadFile('급여명세서_'+(t.name||'직원')+'_'+y+'-'+String(m+1).padStart(2,'0')+'.html', _payslipDoc(_payslipCard(t,y,m,d),'급여명세서 '+(t.name||'')));
+}
+function downloadAllPayslips(){ var d=getData(); var team=(d.team||[]).filter(function(t){return (+t.salary||0)>0;});
+  if(!team.length){ alert('월급이 등록된 팀원이 없어요.\n인사팀 → 팀원 명단에서 월급을 먼저 넣어주세요.'); return; }
+  var today=realToday(); var y=+today.slice(0,4), m=(+today.slice(5,7))-1;
+  var inner=team.map(function(t){ return _payslipCard(t,y,m,d)+'<div style="page-break-after:always"></div>'; }).join('');
+  _downloadFile('급여명세서_전체_'+y+'-'+String(m+1).padStart(2,'0')+'.html', _payslipDoc(inner,'급여명세서 전체 '+y+'-'+(m+1)));
+}
 
 /* ===== 👷 인사팀 : 채용 · 서류 · 교육 ===== */
 const _v=id=>{ const e=document.getElementById(id); return e?e.value.trim():''; };
