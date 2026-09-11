@@ -71,6 +71,7 @@
   .cal .ci.fx{background:rgba(225,29,72,.13);color:#e11d48}
   .cal .ci.rev{background:rgba(22,163,74,.12);color:#15803d;font-weight:700}
   .cal .ci.done{background:rgba(100,116,139,.15);color:#475569}
+  .cal .ci.lv{background:rgba(8,145,178,.15);color:#0e7490}
   .cal .ci.noassign{background:rgba(245,158,11,.22);color:#b45309;font-weight:700;border:1px dashed #f59e0b}
   .cal .ci.gopen{background:rgba(22,163,74,.15);color:#15803d;font-weight:700}
   .cal .ci.gend{background:rgba(225,29,72,.16);color:#e11d48;font-weight:700}
@@ -404,6 +405,17 @@
     <div class="card" style="margin-top:22px">
       <h2>📅 이번 달 현장 일정 <span style="font-weight:500;color:var(--muted);font-size:12px">배치·미팅 한눈에</span></h2>
       <div id="calGridOps"></div>
+    </div>
+    <!-- 🏖️ 휴가 신청 (직접 등록 → 인사팀 승인 → 달력 반영) -->
+    <div class="card" style="margin-top:22px">
+      <h2>🏖️ 휴가 신청 <span style="font-weight:500;color:var(--muted);font-size:12px">여기서 바로 신청 → 인사팀이 승인하면 위 달력에 표시돼요</span></h2>
+      <div class="form-grid">
+        <div class="fld"><label>이름</label><input id="ol_name" placeholder="이름"></div>
+        <div class="fld"><label>유형</label><select id="ol_type"><option>연차</option><option>반차(오전)</option><option>반차(오후)</option><option>병가</option><option>기타</option></select></div>
+        <div class="fld"><label>날짜</label><input type="date" id="ol_date"></div>
+      </div>
+      <div style="margin:10px 0;text-align:right"><button class="primary" onclick="addLeaveReq()">＋ 휴가 신청</button></div>
+      <div id="opsLeaveMine" style="margin-top:6px"></div>
     </div>
   </div>
 
@@ -950,9 +962,14 @@
       <div class="fld"><label>이름</label><input id="tf_name" placeholder="이름"></div>
       <div class="fld"><label>역할</label><input id="tf_role" placeholder="예: 반장 / 일용직"></div>
       <div class="fld"><label>소속</label><select id="tf_co"><option value="공통">공통</option><option value="limit">리미트</option><option value="daman">다만</option></select></div>
+      <div class="fld"><label>📞 연락처</label><input id="tf_phone" placeholder="010-0000-0000"></div>
+      <div class="fld"><label>🎂 생년월일</label><input type="date" id="tf_birth"></div>
+      <div class="fld"><label>📅 입사일</label><input type="date" id="tf_since"></div>
+      <div class="fld"><label>💰 월급(원)</label><input type="number" id="tf_salary" placeholder="0"></div>
+      <div class="fld wide"><label>🏠 주소</label><input id="tf_addr" placeholder="주소 (선택)"></div>
     </div>
     <div style="margin:12px 0;text-align:right"><button class="primary" id="tf_btn" onclick="addTeam()">＋ 팀원 추가</button></div>
-    <div style="overflow-x:auto"><table><thead><tr><th>이름</th><th>역할</th><th>소속</th><th></th></tr></thead><tbody id="teamRows"></tbody></table></div>
+    <div style="overflow-x:auto"><table><thead><tr><th>이름</th><th>역할</th><th>소속</th><th>연락처</th><th>입사일</th><th class="num">월급</th><th></th></tr></thead><tbody id="teamRows"></tbody></table></div>
   </div>
 
   <!-- 휴가·부재 -->
@@ -2426,11 +2443,17 @@ function render(){
     {k:"팀장",l:"팀장"},{k:"반장",l:"반장"},{k:"일용직",l:"일용직(평균)"},{k:"신입",l:"신입"}
   ].map(s=>`<div class="s"><input class="staffn" type="number" value="${st[s.k]||0}" onchange="setStaff('${s.k}',this.value)"><div class="l">${s.l}</div></div>`).join("");
 
-  document.getElementById("teamRows").innerHTML=(d.team||[]).map((t,i)=>
-    `<tr><td>${t.name}${t.since?' <span class="pill p-good">NEW</span>':''}</td>
+  document.getElementById("teamRows").innerHTML=(d.team||[]).map((t,i)=>{
+    const age=_ageFrom(t.birth);
+    const sub=[t.birth?('🎂 '+t.birth+(age!=null?` (만 ${age}세)`:'')):'', t.addr?('🏠 '+t.addr):''].filter(Boolean).join('  ·  ');
+    return `<tr><td>${escHtml(t.name)}${_isRecent(t.since,30)?' <span class="pill p-good">NEW</span>':''}${sub?`<br><span style="color:var(--muted);font-size:11px">${escHtml(sub)}</span>`:''}</td>
      <td>${t.role||'-'}</td><td><span class="pill ${coPill(t.co)}">${coName(t.co)}</span></td>
-     <td style="white-space:nowrap"><button class="del" style="color:var(--limit)" onclick="teamEdit(${i})" title="수정">✏️</button><button class="del" onclick="delTeam(${i})" title="삭제">✕</button></td></tr>`).join("")
-     || `<tr><td colspan="4" style="color:var(--muted)">팀원이 없습니다. 위에서 추가하세요.</td></tr>`;
+     <td style="font-size:12px;white-space:nowrap">${t.phone?escHtml(t.phone):'-'}</td>
+     <td style="font-size:12px;white-space:nowrap">${t.since||'-'}</td>
+     <td class="num">${t.salary?KRW(t.salary):'-'}</td>
+     <td style="white-space:nowrap"><button class="del" style="color:var(--limit)" onclick="teamEdit(${i})" title="수정">✏️</button><button class="del" onclick="delTeam(${i})" title="삭제">✕</button></td></tr>`;
+   }).join("")
+     || `<tr><td colspan="7" style="color:var(--muted)">팀원이 없습니다. 위에서 추가하세요.</td></tr>`;
 
   const crewToday=todayList.reduce((a,s)=>a+crewList(s).length,0);
   document.getElementById("attnLine").textContent=todayList.length?
@@ -2438,14 +2461,21 @@ function render(){
 
   document.getElementById("leaveRows").innerHTML=(d.leave||[]).map((l,i)=>{
     const dsp=(l.date&&l.date.length===10)?l.date.slice(5):(l.date||'-');
-    return `<tr><td>${l.name}</td><td>${l.type}</td><td>${dsp}</td>
-     <td><span class="pill ${l.status==='승인'?'p-good':'p-late'}">${l.status}</span></td>
-     <td style="white-space:nowrap"><button class="del" style="color:var(--limit)" onclick="leaveEdit(${i})" title="수정">✏️</button><button class="del" onclick="delLeave(${i})" title="삭제">✕</button></td></tr>`;
+    const pill=l.status==='승인'?'p-good':'p-late';
+    const act=l.status==='대기'
+      ? `<button class="del" style="color:var(--good);border:1px solid var(--good);border-radius:7px;padding:3px 8px" onclick="approveLeave(${i})" title="승인 → 달력에 표시">✓ 승인</button> <button class="del" style="color:var(--warn);border:1px solid var(--warn);border-radius:7px;padding:3px 8px" onclick="rejectLeave(${i})" title="반려">✕ 반려</button>`
+      : `<button class="del" style="color:var(--limit)" onclick="leaveEdit(${i})" title="수정">✏️</button>`;
+    return `<tr><td>${escHtml(l.name)}</td><td>${escHtml(l.type)}</td><td>${dsp}</td>
+     <td><span class="pill ${pill}">${l.status}</span></td>
+     <td style="white-space:nowrap">${act} <button class="del" onclick="delLeave(${i})" title="삭제">✕</button></td></tr>`;
   }).join("") || `<tr><td colspan="5" style="color:var(--muted)">휴가·부재 예정이 없습니다.</td></tr>`;
   const pending=(d.leave||[]).filter(l=>l.status==="대기").length;
   document.getElementById("leaveWarn").innerHTML=pending?
-    `⚠️ 승인 대기 <b>${pending}건</b> — 현장 배치 전 확인하세요.`:
+    `⚠️ 승인 대기 <b>${pending}건</b> — <b>✓ 승인</b>하면 달력에 표시돼요.`:
     `<span style="color:var(--muted)">대기 중인 휴가 신청 없음</span>`;
+  { const ml=document.getElementById('opsLeaveMine');
+    if(ml){ const recent=(d.leave||[]).slice(-6).reverse();
+      ml.innerHTML = recent.length ? '<div style="font-size:12px;color:var(--muted);margin-bottom:4px">최근 신청 현황</div>'+recent.map(l=>`<div style="font-size:12.5px;padding:4px 0;border-top:1px solid var(--line)">${escHtml(l.name)} · ${escHtml(l.type)} · ${l.date?l.date.slice(5):''} <span class="pill ${l.status==='승인'?'p-good':'p-late'}" style="margin-left:4px">${l.status}</span></div>`).join('') : ''; } }
 
   // ===== 👷 인사팀 : 채용 · 서류 · 교육 =====
   const _hrTile=t=>`<div class="sumtile ${t.a?'alert':''}"><div class="v">${t.v}</div><div class="l">${t.l}</div></div>`;
@@ -3269,19 +3299,26 @@ function setRecvMemo(kind,i,v){   // 미수금 메모(이름 등 짧게) — 입
   if(!obj) return; obj.memo=(v||'').trim(); setData(d);
 }
 let EDIT_TEAM=-1, EDIT_LEAVE=-1;
+function _tg(id){ const e=document.getElementById(id); return e?e.value.trim():''; }
+function _ageFrom(b){ if(!/^\d{4}-\d{2}-\d{2}$/.test(b||'')) return null; const t=realToday(); let a=(+t.slice(0,4))-(+b.slice(0,4)); if(t.slice(5)<b.slice(5)) a--; return (a>=0&&a<130)?a:null; }
+function _isRecent(ds,days){ if(!/^\d{4}-\d{2}-\d{2}$/.test(ds||'')) return false; const diff=(new Date(realToday())-new Date(ds))/86400000; return diff>=0 && diff<=days; }
 function addTeam(){
-  const name=document.getElementById('tf_name').value.trim(); if(!name){ alert('이름을 입력하세요.'); return; }
+  const name=_tg('tf_name'); if(!name){ alert('이름을 입력하세요.'); return; }
   const d=getData(); d.team=d.team||[];
-  const rec={name, role:document.getElementById('tf_role').value.trim(), co:document.getElementById('tf_co').value};
-  if(EDIT_TEAM>=0 && d.team[EDIT_TEAM]){ if(d.team[EDIT_TEAM].since) rec.since=d.team[EDIT_TEAM].since; d.team[EDIT_TEAM]=rec; EDIT_TEAM=-1; }
+  const salary=parseInt(String(_tg('tf_salary')).replace(/[^0-9]/g,''),10)||0;
+  const rec={name, role:_tg('tf_role'), co:document.getElementById('tf_co').value,
+    phone:_tg('tf_phone'), birth:_tg('tf_birth'), since:_tg('tf_since'), addr:_tg('tf_addr'), salary};
+  if(EDIT_TEAM>=0 && d.team[EDIT_TEAM]){ d.team[EDIT_TEAM]=rec; EDIT_TEAM=-1; }
   else d.team.push(rec);
   setData(d); render();
-  document.getElementById('tf_name').value=''; document.getElementById('tf_role').value='';
+  ['tf_name','tf_role','tf_phone','tf_birth','tf_since','tf_addr','tf_salary'].forEach(id=>{const e=document.getElementById(id);if(e)e.value='';});
   document.getElementById('tf_btn').textContent='＋ 팀원 추가';
   document.getElementById('tf_name').focus();
 }
 function teamEdit(i){ const d=getData(); const t=(d.team||[])[i]; if(!t) return;
-  document.getElementById('tf_name').value=t.name||''; document.getElementById('tf_role').value=t.role||''; document.getElementById('tf_co').value=t.co||'공통';
+  const s=(id,v)=>{const e=document.getElementById(id);if(e)e.value=v;};
+  s('tf_name',t.name||''); s('tf_role',t.role||''); document.getElementById('tf_co').value=t.co||'공통';
+  s('tf_phone',t.phone||''); s('tf_birth',t.birth||''); s('tf_since',t.since||''); s('tf_addr',t.addr||''); s('tf_salary',t.salary||'');
   EDIT_TEAM=i; document.getElementById('tf_btn').textContent='✓ 수정 저장'; document.getElementById('tf_name').focus();
 }
 function delTeam(i){ const d=getData(); d.team.splice(i,1); if(EDIT_TEAM===i){EDIT_TEAM=-1;document.getElementById('tf_btn').textContent='＋ 팀원 추가';} setData(d); render(); }
@@ -3301,6 +3338,23 @@ function leaveEdit(i){ const d=getData(); const l=(d.leave||[])[i]; if(!l) retur
   EDIT_LEAVE=i; document.getElementById('lf_btn').textContent='✓ 수정 저장'; document.getElementById('lf_name').focus();
 }
 function delLeave(i){ const d=getData(); d.leave.splice(i,1); if(EDIT_LEAVE===i){EDIT_LEAVE=-1;document.getElementById('lf_btn').textContent='＋ 휴가 추가';} setData(d); render(); }
+function addLeaveReq(){   // 운영팀 달력에서 직접 휴가 신청(대기 → 인사팀 승인)
+  const name=(document.getElementById('ol_name').value||'').trim(); if(!name){ alert('이름을 입력하세요.'); return; }
+  const date=document.getElementById('ol_date').value; if(!date){ alert('휴가 날짜를 선택하세요.'); return; }
+  const d=getData(); d.leave=d.leave||[];
+  d.leave.push({name, type:document.getElementById('ol_type').value, date, status:'대기'});
+  setData(d); render();
+  document.getElementById('ol_name').value=''; document.getElementById('ol_date').value='';
+  alert('휴가 신청이 접수됐어요.\n인사팀이 승인하면 달력에 표시됩니다.');
+}
+function approveLeave(i){   // 인사팀: 승인 → 달력에 표시(휴가는 d.leave에 두고 달력에서 읽음 → 캘린더 최신화에도 안 지워짐)
+  const d=getData(); const l=(d.leave||[])[i]; if(!l) return; l.status='승인'; setData(d); render();
+}
+function rejectLeave(i){
+  const d=getData(); const l=(d.leave||[])[i]; if(!l) return;
+  if(!confirm((l.name||'')+' '+(l.type||'')+' ('+(l.date||'')+') 휴가를 반려할까요?')) return;
+  l.status='반려'; setData(d); render();
+}
 function setStaff(k,v){ const d=getData(); d.staff=d.staff||{}; d.staff[k]=parseInt(v)||0; setData(d); }
 
 /* ===== 👷 인사팀 : 채용 · 서류 · 교육 ===== */
@@ -3951,9 +4005,10 @@ function buildMonthCal(y,m,d,opts){
   const pad=n=>String(n).padStart(2,'0');
   const first=new Date(y,m,1), startDow=first.getDay();
   const dim=new Date(y,m+1,0).getDate(), today=realToday();
-  const sch={},ev={},rev={},fxByDay={},done={},schKeys=new Set();
+  const sch={},ev={},lv={},rev={},fxByDay={},done={},schKeys=new Set();
   if(opts.schedule)(d.schedule||[]).forEach((s,idx)=>{ if(!s.date)return; (sch[s.date]=sch[s.date]||[]).push({s,idx}); schKeys.add(s.date+'|'+s.site); });
   if(opts.events)(d.calendar||[]).forEach((e,ei)=>{ if(!e.date)return; (ev[e.date]=ev[e.date]||[]).push({e,ei}); });
+  if(opts.events)(d.leave||[]).forEach(l=>{ if(l.status==='승인'&&l.date){ (lv[l.date]=lv[l.date]||[]).push(l); } });   // 승인된 휴가 표시
   if(opts.revenue)(d.settlements||[]).forEach(s=>{ if(!s.date)return; rev[s.date]=(rev[s.date]||0)+(+s.quote||0)+(+s.extra||0); });
   if(opts.completed)(d.settlements||[]).forEach((s,idx)=>{ if(!s.date)return; (done[s.date]=done[s.date]||[]).push({s,idx}); });
   if(opts.fixed)(d.fixedExpenses||[]).forEach(f=>{ const dd=+f.dueDay; if(dd>=1&&dd<=31)(fxByDay[dd]=fxByDay[dd]||[]).push(f); });
@@ -3978,6 +4033,7 @@ function buildMonthCal(y,m,d,opts){
     (done[ds]||[]).forEach(({s,idx})=>{ if(schKeys.has(ds+'|'+s.site))return; const cr=(crewNames(s)||'').split(/,\s*/)[0];
       items+=`<span class="ci done clk" onclick="calDoneInfo(${idx})" title="완료 현장 — 클릭해 인원 확인">✅ ${esc(s.site)}${cr?' ·'+esc(cr):''}</span>`; });
     (ev[ds]||[]).forEach(({e,ei})=>{ items+=`<span class="ci ev clk" draggable="true" data-dt="ev" data-di="${ei}" onclick="calEvInfo(${ei})" title="클릭=이동/삭제 · 끌어서 날짜 이동 (${esc(e.title)} ${esc(e.note)})">📌 ${e.time?esc(e.time)+' ':''}${esc(e.title)}</span>`; });
+    (lv[ds]||[]).forEach(l=>{ items+=`<span class="ci lv" title="휴가(승인)">🏖️ ${esc(l.name)} ${esc(l.type)}</span>`; });
     (fxByDay[dayNum]||[]).forEach(f=>{ items+=`<span class="ci fx" title="${esc(f.name)} ${KRW(f.amount)}">💳 ${esc(f.name)}</span>`; });
     if(opts.revenue&&rev[ds])items+=`<span class="ci rev" title="이 날 매출 ${KRW(rev[ds])}">💰 ${KRWm(rev[ds])}</span>`;
     if(opts.grants){
