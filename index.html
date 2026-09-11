@@ -235,6 +235,24 @@
   .bbtns select{font-family:inherit;font-size:11px;padding:3px 4px;border:1px solid var(--line);border-radius:6px;background:var(--card);color:var(--ink);max-width:112px}
   .bbtns button{padding:3px 7px;font-size:11px;border-radius:6px;line-height:1}
   .bempty{color:var(--muted);font-size:11.5px;text-align:center;padding:12px 4px;border:1.5px dashed var(--line);border-radius:9px}
+  /* 💬 카드 채팅 */
+  .bchat-btn{position:relative}
+  .bchat-btn.unread{border-color:var(--warn);color:var(--warn);font-weight:800}
+  .bchat{margin-top:9px;padding-top:9px;border-top:1px dashed var(--line)}
+  .bchat-list{max-height:210px;overflow-y:auto;display:flex;flex-direction:column;gap:7px;margin-bottom:8px}
+  .bmsg{display:flex;flex-direction:column;gap:2px;max-width:92%}
+  .bmsg.mine{align-self:flex-end;align-items:flex-end}
+  .bmsg .bmsg-hd{font-size:10px;color:var(--muted);font-weight:700;display:flex;gap:5px;align-items:center}
+  .bmsg .bmsg-tx{font-size:12.3px;line-height:1.45;padding:6px 9px;border-radius:10px;white-space:pre-wrap;word-break:break-word;
+    background:var(--bg);border:1px solid var(--line)}
+  .bmsg.mine .bmsg-tx{background:rgba(37,99,235,.12);border-color:rgba(37,99,235,.3)}
+  .bmsg.fresh .bmsg-tx{border-color:var(--warn);background:rgba(220,38,38,.07)}
+  .bchat-empty{color:var(--muted);font-size:11.5px;text-align:center;padding:8px 4px}
+  .bchat-in{display:flex;gap:5px}
+  .bchat-in input{flex:1;min-width:0;font-family:inherit;font-size:12.3px;padding:6px 9px;
+    border:1px solid var(--line);border-radius:8px;background:var(--card);color:var(--ink)}
+  .bchat-in button{padding:5px 11px;font-size:11.5px;border-radius:8px;font-weight:700;
+    background:var(--limit);color:#fff;border-color:var(--limit);white-space:nowrap}
 </style>
 <!-- Firebase (실시간 DB·로그인). 로드 실패 시 자동으로 오프라인(localStorage) 모드로 폴백 -->
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
@@ -2722,7 +2740,10 @@ function render(){
   renderAllBoards();
   renderSettleHistory();
   {
-    const _bo=t=>{ const a=(d.boards&&d.boards[t])||[]; return a.filter(c=>c.status!=='done').length; };
+    // 💬 안 읽은 대화 = 우리 팀 보드 카드 + 우리가 다른 팀에 보낸 카드
+    const _chatU=t=>{ let n=0; Object.keys(BOARD_TEAMS).forEach(ot=>{
+      ((d.boards&&d.boards[ot])||[]).forEach(c=>{ if(ot===t||c.from===t) n+=_chatUnread(c,t); }); }); return n; };
+    const _bo=t=>{ const a=(d.boards&&d.boards[t])||[]; return a.filter(c=>c.status!=='done').length + _chatU(t); };
     setBadge('msgBadge', _bo('mng'));       // 경영관리팀 업무정리 서브탭
     setBadge('dashMsgBadge', _bo('mng'));   // 경영관리팀 상위 탭
     setBadge('finMsgBadge', _bo('fin'));
@@ -3677,12 +3698,86 @@ function _boardCard(storedTeam,c,viewTeam){
   var sent=c.from && c.from!==storedTeam;
   var routeChip = sent ? (viewTeam===c.from ? '<span class="bchip bsent">→ '+_besc(BOARD_TEAMS[storedTeam]||'')+'</span>' : '<span class="bchip">← '+_besc(BOARD_TEAMS[c.from]||'')+'</span>') : '';
   var mgrChip = c.mgr ? '<span class="bchip">👤 '+_besc(c.mgr)+'</span>' : '';
+  var chat=Array.isArray(c.chat)?c.chat:[];
+  var unread=_chatUnread(c,viewTeam);
+  var open=BOARD_CHAT_OPEN[c.id];
+  var chatBtn='<button class="bchat-btn'+(unread?' unread':'')+'" onclick="boardChatToggle(\''+c.id+'\',\''+viewTeam+'\')" title="대화">💬'
+    +(chat.length?' '+chat.length:'')+(unread?' <b>●</b>':'')+'</button>';
   return '<div class="bcard p_'+(c.prio||'mid')+((c.status==='done')?' done':'')+'">'
     +'<div class="btext">'+_besc(c.text)+'</div>'
     +'<div class="bmeta">'+routeChip+mgrChip+(c.due?'<span class="bdue'+(over?' over':'')+'">⏰ '+_besc(c.due.slice(5))+(over?' 지남':'')+'</span>':'')+'</div>'
-    +'<div class="bbtns">'+st+pr+tg+'<button onclick="boardEdit(\''+storedTeam+'\',\''+c.id+'\')" title="수정">✏️</button><button onclick="boardDel(\''+storedTeam+'\',\''+c.id+'\')" title="삭제">🗑</button></div>'
+    +'<div class="bbtns">'+st+pr+tg+chatBtn+'<button onclick="boardEdit(\''+storedTeam+'\',\''+c.id+'\')" title="수정">✏️</button><button onclick="boardDel(\''+storedTeam+'\',\''+c.id+'\')" title="삭제">🗑</button></div>'
+    +(open?_boardChatPanel(storedTeam,c,viewTeam,chat):'')
   +'</div>';
 }
+/* ── 💬 카드 대화 (팀 간 피드백) ── */
+var BOARD_CHAT_OPEN={};    // {cardId:true} — render() 후에도 열린 상태 유지
+var BOARD_CHAT_FRESH={};   // {cardId:{team:열기 직전 읽은 개수}} — 새 메시지 강조용
+// 읽음 기준 = '몇 번째 메시지까지 봤나'. 같은 분(minute)에 온 메시지가 읽음 처리되는 문제 방지.
+function _chatSeenIdx(c,team){ return Number((c.chatSeen&&c.chatSeen[team])||0); }
+function _chatUnread(c,viewTeam){
+  var chat=Array.isArray(c.chat)?c.chat:[]; var from=_chatSeenIdx(c,viewTeam), n=0;
+  for(var i=from;i<chat.length;i++){ if(chat[i].team!==viewTeam) n++; }
+  return n;
+}
+function _nowStamp(){ var t=new Date(),p=function(n){return String(n).padStart(2,'0');};
+  return t.getFullYear()+'-'+p(t.getMonth()+1)+'-'+p(t.getDate())+' '+p(t.getHours())+':'+p(t.getMinutes()); }
+function _whoName(){ var r=ROLE_INFO[CURRENT_ROLE]; return r?r.name:'담당자'; }
+function _boardChatPanel(storedTeam,c,viewTeam,chat){
+  var freshFrom=(BOARD_CHAT_FRESH[c.id]&&BOARD_CHAT_FRESH[c.id][viewTeam]);
+  if(freshFrom===undefined) freshFrom=chat.length;
+  var msgs=chat.length? chat.map(function(m,ix){
+    var mine=(m.team===viewTeam);
+    var fresh=(!mine && ix>=freshFrom);
+    return '<div class="bmsg'+(mine?' mine':'')+(fresh?' fresh':'')+'">'
+      +'<div class="bmsg-hd">'+(mine?'':'<span class="bchip">'+_besc(BOARD_TEAMS[m.team]||'')+'</span>')
+        +'<span>'+_besc(m.who||'')+'</span><span>'+_besc(m.ts||'')+'</span></div>'
+      +'<div class="bmsg-tx">'+_besc(m.text)+'</div></div>';
+  }).join('') : '<div class="bchat-empty">아직 대화가 없습니다. 첫 메시지를 남겨보세요.</div>';
+  var iid='bch_'+viewTeam+'_'+c.id;
+  return '<div class="bchat">'
+    +'<div class="bchat-list" id="'+iid+'_list">'+msgs+'</div>'
+    +'<div class="bchat-in">'
+      +'<input id="'+iid+'" placeholder="답장 입력…" onkeydown="if(event.key===\'Enter\')boardChatSend(\''+storedTeam+'\',\''+c.id+'\',\''+viewTeam+'\')">'
+      +'<button onclick="boardChatSend(\''+storedTeam+'\',\''+c.id+'\',\''+viewTeam+'\')">보내기</button>'
+    +'</div></div>';
+}
+window.boardChatToggle=function(id,viewTeam){
+  var willOpen=!BOARD_CHAT_OPEN[id];
+  if(willOpen){ BOARD_CHAT_OPEN[id]=true; _markChatSeen(id,viewTeam); }
+  else { delete BOARD_CHAT_OPEN[id]; delete BOARD_CHAT_FRESH[id]; }
+  render();
+  if(willOpen) setTimeout(function(){
+    var boxes=document.querySelectorAll('[id$="_'+id+'_list"]');
+    boxes.forEach(function(b){ b.scrollTop=b.scrollHeight; });
+  },30);
+};
+function _markChatSeen(id,viewTeam){   // 카드를 연 '그 팀'만 읽음 처리
+  var d=getData(), hit=null;
+  Object.keys(BOARD_TEAMS).forEach(function(t){
+    _boardArr(d,t).forEach(function(x){ if(x.id===id) hit=x; });
+  });
+  if(!hit||!viewTeam) return;
+  BOARD_CHAT_FRESH[id]=BOARD_CHAT_FRESH[id]||{};
+  if(BOARD_CHAT_FRESH[id][viewTeam]===undefined) BOARD_CHAT_FRESH[id][viewTeam]=_chatSeenIdx(hit,viewTeam);
+  hit.chatSeen=hit.chatSeen||{};
+  hit.chatSeen[viewTeam]=(hit.chat||[]).length;
+  setData(d);
+}
+window.boardChatSend=function(storedTeam,id,viewTeam){
+  var el=document.getElementById('bch_'+viewTeam+'_'+id);
+  var t=((el&&el.value)||'').trim(); if(!t){ if(el) el.focus(); return; }
+  var d=getData(); var c=_boardArr(d,storedTeam).filter(function(x){return x.id===id;})[0]; if(!c) return;
+  if(!Array.isArray(c.chat)) c.chat=[];
+  c.chat.push({who:_whoName(), team:viewTeam, text:t, ts:_nowStamp()});
+  c.chatSeen=c.chatSeen||{}; c.chatSeen[viewTeam]=c.chat.length;   // 보낸 팀은 전부 읽은 상태
+  setData(d); if(el) el.value='';
+  BOARD_CHAT_OPEN[id]=true; render();
+  setTimeout(function(){
+    var box=document.getElementById('bch_'+viewTeam+'_'+id+'_list'); if(box) box.scrollTop=box.scrollHeight;
+    var inp=document.getElementById('bch_'+viewTeam+'_'+id); if(inp) inp.focus();
+  },30);
+};
 function renderBoard(viewTeam){
   var mount=document.getElementById('brd_'+viewTeam); if(!mount) return;
   var d=getData(); var list=[];
