@@ -2091,15 +2091,20 @@ function addPayReq(){
   alert('재무팀에 결제 요청을 보냈습니다.');
 }
 function payReqDone(i){ const d=getData(); const p=(d.payReqs||[])[i]; if(!p) return; if(!confirm('이 건을 결제완료로 처리할까요?')) return; p.status='완료'; p.doneDate=realToday(); setData(d); render(); }
-function payReqReopen(i){ const d=getData(); const p=(d.payReqs||[])[i]; if(!p) return; p.status='요청'; p.doneDate=''; setData(d); render(); }
+function payReqReopen(i){ const d=getData(); const p=(d.payReqs||[])[i]; if(!p) return; p.status='요청'; p.doneDate=''; p.rejectReason=''; setData(d); render(); }
+function rejectPayReq(i){ const d=getData(); const p=(d.payReqs||[])[i]; if(!p) return;   // 재무팀: 결제요청 반려(사유→경영관리팀)
+  const r=prompt((p.item||'결제요청')+' '+KRW(p.amount)+'\n반려 사유 (경영관리팀에 전달됩니다):', p.rejectReason||'');
+  if(r===null) return;
+  p.status='반려'; p.rejectReason=(r||'').trim(); p.rejectDate=realToday(); setData(d); render();
+}
 function delPayReq(i){ const d=getData(); if(!confirm('이 결제 요청을 삭제할까요?')) return; d.payReqs.splice(i,1); setData(d); render(); }
 function renderPayReqs(){
   const esc=t=>String(t||'').replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;');
   const md=ds=>ds?`${+ds.slice(5,7)}/${+ds.slice(8,10)}`:'';
   const d=getData();
   const list=(d.payReqs||[]).map((p,i)=>({p,i}));
-  const pending=list.filter(x=>x.p.status!=='완료'), done=list.filter(x=>x.p.status==='완료');
-  const sorted=pending.concat(done);   // 요청중 먼저
+  const pending=list.filter(x=>x.p.status==='요청'), done=list.filter(x=>x.p.status==='완료'), rejected=list.filter(x=>x.p.status==='반려');
+  const sorted=pending.concat(done, rejected);   // 요청중 → 완료 → 반려
   const pendTotal=pending.reduce((a,x)=>a+(+x.p.amount||0),0);
   const meta=p=>[p.vendor?esc(p.vendor):'', p.memo?esc(p.memo):''].filter(Boolean).join(' · ');
   // 경영관리팀 쪽 (보낸 요청 + 상태)
@@ -2108,7 +2113,9 @@ function renderPayReqs(){
     mgEl.innerHTML = sorted.length ? sorted.map(({p,i})=>{
       const tag = p.status==='완료'
         ? `<span style="color:var(--good);font-weight:700;font-size:12px;white-space:nowrap">✅ 결제완료 ${md(p.doneDate)}</span>`
-        : `<span style="color:var(--warn);font-weight:700;font-size:12px;white-space:nowrap">⏳ 요청중</span>`;
+        : (p.status==='반려'
+          ? `<span style="color:var(--warn);font-weight:700;font-size:12px" title="${p.rejectReason?esc(p.rejectReason):''}">🚫 반려${p.rejectReason?' · '+esc(p.rejectReason):''}</span>`
+          : `<span style="color:var(--warn);font-weight:700;font-size:12px;white-space:nowrap">⏳ 요청중</span>`);
       const mt=meta(p);
       return `<div class="pay-line" style="${p.status==='완료'?'opacity:.6':''}">
         <span class="who"><b>${esc(p.item)}</b> <b style="color:var(--warn)">${KRW(p.amount)}</b>${mt||p.date?` <span style="color:var(--muted);font-size:12px">· ${mt}${p.date?`${mt?' · ':''}📅 ${md(p.date)}`:''}</span>`:''}</span>
@@ -2122,16 +2129,20 @@ function renderPayReqs(){
     finEl.innerHTML = sorted.length ? sorted.map(({p,i})=>{
       const btn = p.status==='완료'
         ? `<button onclick="payReqReopen(${i})" style="font-size:12px;padding:5px 11px;border-radius:8px;border:1px solid var(--muted);color:var(--muted);background:var(--card);white-space:nowrap">↩ 되돌리기</button>`
-        : `<button onclick="payReqDone(${i})" style="font-size:12px;padding:5px 11px;border-radius:8px;border:1px solid var(--good);color:var(--good);background:var(--card);font-weight:700;white-space:nowrap">✅ 결제완료</button>`;
+        : (p.status==='반려'
+          ? `<button onclick="payReqReopen(${i})" style="font-size:12px;padding:5px 11px;border-radius:8px;border:1px solid var(--muted);color:var(--muted);background:var(--card);white-space:nowrap">↩ 요청중으로</button>`
+          : `<button onclick="payReqDone(${i})" style="font-size:12px;padding:5px 11px;border-radius:8px;border:1px solid var(--good);color:var(--good);background:var(--card);font-weight:700;white-space:nowrap">✅ 결제완료</button> <button onclick="rejectPayReq(${i})" style="font-size:12px;padding:5px 11px;border-radius:8px;border:1px solid var(--warn);color:var(--warn);background:var(--card);white-space:nowrap">✕ 반려</button>`);
       const mt=meta(p);
-      return `<div class="pay-line" style="${p.status==='완료'?'opacity:.6':''}">
-        <span class="who">${p.status==='완료'?'✅ ':''}<b>${esc(p.item)}</b> <b style="color:var(--warn)">${KRW(p.amount)}</b>
-          <span style="color:var(--muted);font-size:12px">${mt?('· '+mt+' '):''}· 요청 ${md(p.reqDate)}</span></span>
+      const dim=(p.status==='완료'||p.status==='반려')?'opacity:.6':'';
+      const pre=p.status==='완료'?'✅ ':(p.status==='반려'?'🚫 ':'');
+      return `<div class="pay-line" style="${dim}">
+        <span class="who">${pre}<b>${esc(p.item)}</b> <b style="color:var(--warn)">${KRW(p.amount)}</b>
+          <span style="color:var(--muted);font-size:12px">${mt?('· '+mt+' '):''}· 요청 ${md(p.reqDate)}${(p.status==='반려'&&p.rejectReason)?' · 반려: '+esc(p.rejectReason):''}</span></span>
         <span style="display:flex;gap:6px;align-items:center">${btn}</span></div>`;
     }).join('') : `<div style="color:var(--muted);font-size:13px">들어온 결제 요청이 없습니다.</div>`;
   }
   const mgSum=document.getElementById('payReqMgSummary');
-  if(mgSum) mgSum.textContent = list.length ? `요청중 ${pending.length}건 · 완료 ${done.length}건` : '';
+  if(mgSum) mgSum.textContent = list.length ? `요청중 ${pending.length}건 · 완료 ${done.length}건${rejected.length?' · 반려 '+rejected.length+'건':''}` : '';
   const finSum=document.getElementById('payReqFinSummary');
   if(finSum) finSum.textContent = pending.length ? `처리 대기 ${pending.length}건 · ${KRW(pendTotal)}` : (list.length?'모두 처리 완료 ✅':'');
 }
@@ -2256,7 +2267,7 @@ function render(){
   const _orders=d.orders||[];
   const ordReqN=_orders.filter(o=>o.status==='요청').length;      // 재무팀이 주문해야
   const ordSentN=_orders.filter(o=>o.status==='주문완료').length; // 운영팀이 입고 확인해야
-  const payReqN=(d.payReqs||[]).filter(p=>p.status!=='완료').length; // 재무팀이 결제해야
+  const payReqN=(d.payReqs||[]).filter(p=>p.status==='요청').length; // 재무팀이 결제해야(요청중만, 반려 제외)
   const unbilledN=S.filter(s=>isTaxable(s)&&calcRow(s).rev>0&&taxStatus(s)!=="발행"&&taxStatus(s)!=="해당없음").length; // 세금계산서 미발행(재무팀 발행해야)
   setBadge('finBadge', allUnpaid+fxDueToday.length+ordReqN+payReqN+unbilledN);
   setBadge('payBadge', allUnpaid);
