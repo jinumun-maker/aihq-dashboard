@@ -3046,7 +3046,7 @@ function render(){
   const _reqN=_ordAll.filter(o=>o.status==='요청').length;
   const _sentN=_ordAll.filter(o=>o.status==='주문완료').length;
   const _doneN=_ordAll.filter(o=>o.status==='입고완료').length;
-  const _ordRank={'요청':0,'주문완료':1,'입고완료':2};
+  const _ordRank={'요청':0,'주문완료':1,'입고완료':2,'취소':3};
   const _ordSorted=_ordAll.map((o,i)=>({o,i})).sort((a,b)=>(_ordRank[a.o.status]-_ordRank[b.o.status])||(b.o.date||'').localeCompare(a.o.date||''));
   const _stPill=s=>s==='입고완료'?'p-good':(s==='주문완료'?'p-daman':'p-late');
   const _sumTile=t=>`<div class="sumtile ${t.a?'alert':''}"><div class="v">${t.v}</div><div class="l">${t.l}</div></div>`;
@@ -3074,7 +3074,9 @@ function render(){
     if(qEl) qEl.innerHTML=ORDER_QUICK.map(x=>`<button onclick="quickAddOrder('${x.n}','${x.c}')" style="font-size:12.5px;padding:7px 12px">＋ ${x.n}</button>`).join('');
     document.getElementById('ordRows').innerHTML = _ordSorted.length? _ordSorted.map(({o,i})=>{
       const act = o.status==='주문완료' ? `<button class="del" style="color:var(--good);font-weight:700;border:1px solid var(--good);border-radius:7px;padding:4px 9px" onclick="orderReceived(${i})" title="물건 도착 확인">📦 입고완료</button>`
-        : (o.status==='요청' ? '<span style="color:var(--muted);font-size:11px">재무팀 주문 대기</span>' : '<span style="color:var(--good);font-size:11px">완료</span>');
+        : (o.status==='요청' ? '<span style="color:var(--muted);font-size:11px">재무팀 주문 대기</span>'
+        : (o.status==='취소' ? `<span style="color:var(--warn);font-size:11px">🚫 재무팀 취소${o.cancelReason?' · '+escHtml(o.cancelReason):''}</span>`
+        : '<span style="color:var(--good);font-size:11px">완료</span>'));
       return `<tr>${_ordCells(o,i,false)}<td style="white-space:nowrap">${act} <button class="del" onclick="delOrder(${i})" title="삭제">✕</button></td></tr>`;
     }).join('') : `<tr><td colspan="8" style="color:var(--muted)">발주 항목이 없습니다. 위 빠른추가나 등록으로 추가하세요.</td></tr>`;
   }
@@ -3085,9 +3087,10 @@ function render(){
       {v:_reqN+'건',l:'📝 주문 요청 (주문해야)',a:_reqN>0},
       {v:_sentN+'건',l:'🚚 주문완료 (배송중)'}
     ].map(_sumTile).join('');
-    const pend=_ordSorted.filter(x=>x.o.status!=='입고완료');
+    const pend=_ordSorted.filter(x=>x.o.status!=='입고완료' && x.o.status!=='취소');
     document.getElementById('finOrdRows').innerHTML = pend.length? pend.map(({o,i})=>{
-      const act = o.status==='요청' ? `<button class="del" style="color:var(--limit);font-weight:700;border:1px solid var(--limit);border-radius:7px;padding:4px 9px" onclick="orderOrdered(${i})" title="인터넷 주문/구매 완료">✅ 주문완료</button>`
+      const act = o.status==='요청'
+        ? `<button class="del" style="color:var(--limit);font-weight:700;border:1px solid var(--limit);border-radius:7px;padding:4px 9px" onclick="orderOrdered(${i})" title="인터넷 주문/구매 완료">✅ 주문완료</button> <button class="del" style="color:var(--warn);border:1px solid var(--warn);border-radius:7px;padding:4px 9px" onclick="cancelOrder(${i})" title="재고 충분 등으로 취소">✕ 취소</button>`
         : '<span style="color:var(--muted);font-size:11px">배송중 (운영팀 입고 대기)</span>';
       return `<tr>${_ordCells(o,i,true)}<td style="white-space:nowrap">${act}</td></tr>`;
     }).join('') : `<tr><td colspan="8" style="color:var(--muted)">주문할 요청이 없습니다.</td></tr>`;
@@ -4224,6 +4227,12 @@ function quickAddOrder(n,c){
   if(d.orders.some(o=>o.item===n && o.status!=='입고완료')){ alert(n+' 은(는) 이미 목록에 있습니다.'); return; }
   d.orders.push({item:n, category:c, qty:'', note:'', status:'요청', date:realToday()});
   setData(d); render();
+}
+function cancelOrder(i){   // 재무팀: 재고 충분 등으로 발주 요청 취소(운영팀에 사유 표시)
+  const d=getData(); const o=(d.orders||[])[i]; if(!o) return;
+  const r=prompt((o.item||'발주')+' 요청을 취소합니다.\n취소 사유 (운영팀에 표시됩니다):', o.cancelReason||'재고 충분');
+  if(r===null) return;
+  o.status='취소'; o.cancelReason=(r||'').trim(); o.cancelDate=realToday(); setData(d); render();
 }
 function orderOrdered(i){   // 재무팀: 주문완료 처리(지출은 이 날짜 기준) — 금액 필수
   const d=getData(); const o=(d.orders||[])[i]; if(!o) return;
