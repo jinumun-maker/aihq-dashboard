@@ -1825,6 +1825,7 @@ function toggleSent(i,j){ const d=getData(); const s=d.settlements[i];
 /* 부가세 / 세금계산서 */
 const isTaxable = s => (s.vat||"과세")!=="면세";
 const vatOf = s => !isTaxable(s) ? 0 : (vatInclusive(s) ? (grossOf(s)-supplyOf(s)) : Math.round(supplyOf(s)*0.1));
+const grossPay = s => supplyOf(s)+vatOf(s);   // 클라이언트가 실제 내는 금액(공급가+부가세). 미수금·입금 표시에 사용
 const taxStatus = s => s.tax||"미발행";
 function toggleTax(i){ const d=getData(); const s=d.settlements[i];
   s.tax = taxStatus(s)==="발행" ? "미발행" : "발행"; setData(d); render(); }
@@ -2225,7 +2226,7 @@ function render(){
 
   let recv=[];
   (d.receivables||[]).forEach((r,idx)=>recv.push({kind:'recv',idx,name:r.name,co:r.co||'limit',amt:(+r.amt||0),contact:r.contact||'',payer:r.payer||'',bank:r.bank||'',memo:r.memo||'',date:r.date||'',days:(r.date?daysBetween(r.date,d.asOf):null)}));
-  S.forEach((s,idx)=>{ if(s.paid==="미수금") recv.push({kind:'settle',idx,name:s.site,co:s.co,amt:calcRow(s).rev,contact:s.contact||'',payer:s.payer||'',bank:s.bank||'',memo:s.memo||'',date:s.date||'',days:daysBetween(s.date,d.asOf)}); });
+  S.forEach((s,idx)=>{ if(s.paid==="미수금") recv.push({kind:'settle',idx,name:s.site,co:s.co,amt:grossPay(s),contact:s.contact||'',payer:s.payer||'',bank:s.bank||'',memo:s.memo||'',date:s.date||'',days:daysBetween(s.date,d.asOf)}); });
   recv.sort((a,b)=>(b.date||'').localeCompare(a.date||''));   // 월별 그룹용: 최신 날짜 먼저
   const recvTotal=recv.reduce((a,r)=>a+r.amt,0);
 
@@ -2422,9 +2423,9 @@ function render(){
                       .sort((a,b)=>(b.date||'').localeCompare(a.date||''));
     const unpaidSettleList = S.filter(s=> s.paid==='미수금' && inP(s.date));
     const unpaidRecvArr = (d.receivables||[]).filter(r=> inP(r.date));
-    const paidN=paidList.length, paidAmt=paidList.reduce((a,s)=>a+calcRow(s).rev,0);
+    const paidN=paidList.length, paidAmt=paidList.reduce((a,s)=>a+grossPay(s),0);
     const unpaidN=unpaidSettleList.length + unpaidRecvArr.length;
-    const unpaidAmtP=unpaidSettleList.reduce((a,s)=>a+calcRow(s).rev,0)+unpaidRecvArr.reduce((a,r)=>a+(+r.amt||0),0);
+    const unpaidAmtP=unpaidSettleList.reduce((a,s)=>a+grossPay(s),0)+unpaidRecvArr.reduce((a,r)=>a+(+r.amt||0),0);
     const totalN=paidN+unpaidN, rate=totalN?Math.round(paidN/totalN*100):0;
     const pm=document.getElementById('payBtnMonth'), pa=document.getElementById('payBtnAll');
     if(pm) pm.style.cssText='font-size:11.5px;padding:5px 11px;'+(payRange==='month'?'background:var(--limit);color:#fff;border-color:var(--limit)':'');
@@ -2445,11 +2446,11 @@ function render(){
       const paidRowFn = s=>{ const i=S.indexOf(s); return `<tr>
         <td>${(s.date||'').slice(5)}</td><td>${s.site||'-'}</td>
         <td><span class="pill ${coPill(s.co)}">${coName(s.co)}</span></td>
-        <td class="num">${KRW(calcRow(s).rev)}</td>
+        <td class="num">${KRW(grossPay(s))}</td>
         <td style="white-space:nowrap">${s.payer?escHtml(s.payer):'<span style="color:var(--muted)">-</span>'}${bankTag(s.bank)} <button class="del" style="color:var(--warn);border:1px solid var(--warn);border-radius:7px;padding:3px 8px;margin-left:4px" onclick="markUnpaid(${i})" title="입금완료 취소 → 미수금으로 되돌리기">↩ 취소</button></td></tr>`; };
       paidRowsEl.innerHTML = paidList.length
         ? _monthGroups(paidList, s=>s.date).map((g,gi)=>{
-            const sum=g.items.reduce((a,s)=>a+calcRow(s).rev,0);
+            const sum=g.items.reduce((a,s)=>a+grossPay(s),0);
             const open=mgOpen('paid',g.key,gi===0);
             return `<tr><td colspan="5" onclick="toggleMG('paid','${g.key}',${open})" style="cursor:pointer;background:var(--bg);font-weight:800;font-size:12px;color:var(--good);padding:7px 10px;border-top:2px solid var(--line)">${open?'▾':'▸'} 📅 ${g.label} <span style="color:var(--muted);font-weight:600">· ${g.items.length}건 · ${KRW(sum)}</span></td></tr>`
               + (open? g.items.map(paidRowFn).join('') : '');
