@@ -2399,10 +2399,15 @@ function render(){
     const memoInp = `<input value="${escHtml(r.memo||'')}" onchange="setRecvMemo('${r.kind}',${r.idx},this.value)" placeholder="메모" title="메모 (이름 등 짧게)" style="width:92px;margin-left:6px;padding:3px 7px;border:1px solid var(--line);border-radius:7px;background:var(--bg);color:var(--ink);font-family:inherit;font-size:12px;vertical-align:middle">`;
     const act = `<button class="del" style="color:var(--good);font-weight:700;border:1px solid var(--good);border-radius:7px;padding:4px 9px" onclick="markPaid('${r.kind}',${r.idx})" title="입금완료 처리">✓ 입금완료</button>${memoInp}`;
     const dLabel = r.date ? `${+r.date.slice(5,7)}/${+r.date.slice(8,10)}` : '';
+    // 결산건은 부가세 구분(별도/포함/면세) 표시 + ⚖️로 바로 수정 → 미수금 금액 자동 반영. 수동 미수금은 부가세 개념 없어 생략
+    const vs = r.kind==='settle' ? S[r.idx] : null;
+    const vatTag = vs
+      ? `<br><span style="font-size:10.5px;color:var(--muted)">${vatInclusive(vs)?'부가세 포함':(isTaxable(vs)?'부가세 별도':'면세')}</span> <button class="del" style="color:var(--muted);padding:1px 5px;font-size:10.5px" onclick="editVat(${r.idx})" title="부가세 구분 수정 (별도/포함/면세)">⚖️</button>`
+      : '';
     return `<tr><td>${r.name}${dLabel?`<br><span style="color:var(--muted);font-size:11px">📅 ${dLabel}</span>`:''}</td><td><span class="pill ${coPill(r.co)}">${coName(r.co)}</span></td>
       <td style="font-size:12.5px">${ccell}</td>
       <td style="font-size:12.5px">${pcell}</td>
-      <td class="num" style="white-space:nowrap">${KRW(r.amt)} <button class="del" style="color:var(--muted);padding:2px 6px" onclick="editRecvAmount('${r.kind}',${r.idx})" title="금액 수정">✏️</button></td><td class="num">${dcell}</td><td style="white-space:nowrap">${act}</td></tr>`;
+      <td class="num" style="white-space:nowrap">${KRW(r.amt)} <button class="del" style="color:var(--muted);padding:2px 6px" onclick="editRecvAmount('${r.kind}',${r.idx})" title="금액 수정">✏️</button>${vatTag}</td><td class="num">${dcell}</td><td style="white-space:nowrap">${act}</td></tr>`;
   };
   document.getElementById("recvRows").innerHTML = recv.length
     ? _monthGroups(recv, r=>r.date).map((g,gi)=>{
