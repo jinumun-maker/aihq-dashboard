@@ -1843,6 +1843,15 @@ function editTaxAmount(i){ const d=getData(); const s=d.settlements[i]; if(!s) r
   const n=parseFloat(String(v).replace(/[^0-9.]/g,''));
   if(isNaN(n)||n<0){ alert('숫자를 입력하세요.'); return; }
   s.quote=Math.round(n); setData(d); render(); }
+function editVat(i){ const d=getData(); const s=d.settlements[i]; if(!s) return;   // 과세구분(부가세 별도/포함/면세) 수정
+  const opts=['과세','과세(포함)','면세'];
+  const cur=s.vat||'과세';
+  const v=prompt(`${s.site} (${s.date||''})\n과세구분을 고르세요 (번호 입력):\n 1 = 과세 (부가세 별도)\n 2 = 과세 (부가세 포함)\n 3 = 면세\n\n현재: ${cur}`, String((opts.indexOf(cur)+1)||1));
+  if(v===null) return;
+  const n=parseInt(String(v).trim(),10);
+  if(n>=1&&n<=3){ s.vat=opts[n-1]; setData(d); render(); }
+  else alert('1~3 숫자를 입력하세요.');
+}
 // 세금계산서 목록 한 줄(발행대상=target / 발행완료=done / 대상아님=na)
 function taxRow(s,i,section){
   const rev=calcRow(s).rev, vat=vatOf(s);
@@ -1853,8 +1862,10 @@ function taxRow(s,i,section){
   if(section==='done'||section==='na') acts+=sb('↩ 미발행','revertTax('+i+')','var(--warn)','미발행으로 되돌리기');
   if(section!=='na') acts+=sb('🚫 대상아님','setTaxNA('+i+')','var(--muted)','계산서 발행 대상이 아님');
   acts+=sb('✏️ 금액','editTaxAmount('+i+')','var(--limit)','견적 금액 수정');
+  acts+=sb('⚖️ 부가세','editVat('+i+')','var(--daman)','과세구분(부가세 별도/포함/면세) 수정');
+  const vatLabel=vatInclusive(s)?'부가세포함':(isTaxable(s)?'부가세별도':'면세');
   return `<div class="pay-line">
-    <span class="who">${md?`<span style="color:var(--muted);font-size:11px">📅 ${md}</span> `:''}${s.site} <span style="color:var(--muted);font-size:11px">· 공급가 ${KRW(rev)} + VAT ${KRW(vat)}</span></span>
+    <span class="who">${md?`<span style="color:var(--muted);font-size:11px">📅 ${md}</span> `:''}${s.site} <span style="color:var(--muted);font-size:11px">· 공급가 ${KRW(rev)} + VAT ${KRW(vat)} · <b>${vatLabel}</b></span></span>
     <span class="amt">${KRW(rev+vat)}</span>
     <span style="display:flex;gap:5px;flex-wrap:wrap;justify-content:flex-end">${acts}</span></div>`;
 }
