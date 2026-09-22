@@ -406,6 +406,18 @@
       <h2>📅 이번 달 현장 일정 <span style="font-weight:500;color:var(--muted);font-size:12px">배치·미팅 한눈에</span></h2>
       <div id="calGridOps"></div>
     </div>
+    <!-- 📅 일정 등록 (운영팀에서 바로 달력에 미팅·실측·방문 등 등록) -->
+    <div class="card" style="margin-top:22px">
+      <h2>📅 일정 등록 <span style="font-weight:500;color:var(--muted);font-size:12px">미팅·실측·방문 등 → 위 달력에 📌로 표시</span></h2>
+      <div class="form-grid" style="grid-template-columns:1fr 1fr">
+        <div class="fld"><label>날짜</label><input type="date" id="cfo_date"></div>
+        <div class="fld"><label>시간</label><input id="cfo_time" placeholder="14:00 (선택)"></div>
+        <div class="fld wide"><label>제목</label><input id="cfo_title" placeholder="예: ○○현장 실측 / 거래처 미팅"></div>
+        <div class="fld wide"><label>메모</label><input id="cfo_note" placeholder="선택"></div>
+      </div>
+      <div style="margin:12px 0;text-align:right"><button class="primary" onclick="addCalEvent('cfo_')">＋ 일정 등록</button></div>
+      <div style="font-size:12px;color:var(--muted)">💡 현장 배치(인원·견적 포함)는 <b>배치</b> 탭에서 등록하세요. 여기서는 미팅·약속 같은 일반 일정을 넣습니다.</div>
+    </div>
     <!-- 🏖️ 휴가 신청 (직접 등록 → 인사팀 승인 → 달력 반영) -->
     <div class="card" style="margin-top:22px">
       <h2>🏖️ 휴가 신청 <span style="font-weight:500;color:var(--muted);font-size:12px">여기서 바로 신청 → 인사팀이 승인하면 위 달력에 표시돼요</span></h2>
@@ -3221,15 +3233,16 @@ function calDoneInfo(i){
   const d=getData(); const s=(d.settlements||[])[i]; if(!s) return;
   alert(`✅ 완료 현장\n📍 ${s.site}\n📅 ${s.date}\n\n👷 참여 인원\n${crewNames(s)||'-'}\n\n💰 매출 ${KRW((+s.quote||0)+(+s.extra||0))}`);
 }
-function addCalEvent(){
-  const title=document.getElementById('cf_title').value.trim(); if(!title){ alert('일정 제목을 입력하세요.'); return; }
+function addCalEvent(p){
+  p=p||'cf_'; const g=id=>document.getElementById(p+id);   // 폼 접두어(cf_=경영, cfo_=운영팀) — 같은 페이지에 두 폼 공존
+  const title=g('title').value.trim(); if(!title){ alert('일정 제목을 입력하세요.'); return; }
   const d=getData(); d.calendar=d.calendar||[];
-  const _cd=document.getElementById('cf_date').value||realToday();
+  const _cd=g('date').value||realToday();
   if(d.deleted) delete d.deleted[_cd+'|'+_nkey(title)];   // 다시 등록하면 삭제 표식 해제
-  d.calendar.push({date:_cd, time:document.getElementById('cf_time').value.trim(), title, note:document.getElementById('cf_note').value.trim()});
+  d.calendar.push({date:_cd, time:g('time').value.trim(), title, note:g('note').value.trim()});
   setData(d); render();
-  ['cf_title','cf_time','cf_note'].forEach(id=>document.getElementById(id).value='');
-  document.getElementById('cf_title').focus();
+  ['title','time','note'].forEach(id=>g(id).value='');
+  g('title').focus();
 }
 function delCalEvent(i){ const d=getData(); const e=(d.calendar||[])[i]; if(!e) return; _killJob(e.date, e.title); }
 function calEvInfo(i){   // 달력의 구글캘린더 일정(📌) 클릭 → 이동/삭제
