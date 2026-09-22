@@ -406,17 +406,21 @@
       <h2>📅 이번 달 현장 일정 <span style="font-weight:500;color:var(--muted);font-size:12px">배치·미팅 한눈에</span></h2>
       <div id="calGridOps"></div>
     </div>
-    <!-- 📅 일정 등록 (운영팀에서 바로 달력에 미팅·실측·방문 등 등록) -->
+    <!-- 📅 현장·일정 등록 (운영팀 달력 아래에서 배정 인원까지 바로 등록) -->
     <div class="card" style="margin-top:22px">
-      <h2>📅 일정 등록 <span style="font-weight:500;color:var(--muted);font-size:12px">미팅·실측·방문 등 → 위 달력에 📌로 표시</span></h2>
-      <div class="form-grid" style="grid-template-columns:1fr 1fr">
-        <div class="fld"><label>날짜</label><input type="date" id="cfo_date"></div>
-        <div class="fld"><label>시간</label><input id="cfo_time" placeholder="14:00 (선택)"></div>
-        <div class="fld wide"><label>제목</label><input id="cfo_title" placeholder="예: ○○현장 실측 / 거래처 미팅"></div>
-        <div class="fld wide"><label>메모</label><input id="cfo_note" placeholder="선택"></div>
+      <h2>📅 현장·일정 등록 <span style="font-weight:500;color:var(--muted);font-size:12px">배정 인원까지 · 저장하면 위 달력·주간배치표에 표시</span></h2>
+      <div class="form-grid">
+        <div class="fld"><label>날짜</label><input type="date" id="so_date"></div>
+        <div class="fld"><label>회사</label><select id="so_co"><option value="limit">리미트(청소)</option><option value="daman">다만산업</option></select></div>
+        <div class="fld wide"><label>현장·일정명</label><input id="so_site" placeholder="예: ○○아파트 입주청소 / 거래처 미팅"></div>
+        <div class="fld wide"><label>작업 내용 (선택)</label><input id="so_work" placeholder="예: 입주청소 / 폴리싱"></div>
+        <div class="fld wide"><label>👷 배정 인원 (이름, 쉼표)</label><input id="so_crew" placeholder="예: 소이, 은규, 일용직1"></div>
+        <div class="fld"><label>💰 견적금액 (원, 선택)</label><input type="number" id="so_quote" placeholder="0"></div>
+        <div class="fld wide"><label>📞 고객 연락처 (선택)</label><input id="so_contact" placeholder="예: 김사장 010-1234-5678"></div>
+        <div class="fld"><label>상태</label><select id="so_status"><option>예약</option><option>확정</option></select></div>
       </div>
-      <div style="margin:12px 0;text-align:right"><button class="primary" onclick="addCalEvent('cfo_')">＋ 일정 등록</button></div>
-      <div style="font-size:12px;color:var(--muted)">💡 현장 배치(인원·견적 포함)는 <b>배치</b> 탭에서 등록하세요. 여기서는 미팅·약속 같은 일반 일정을 넣습니다.</div>
+      <div style="margin:12px 0;text-align:right"><button class="primary" onclick="addSchedule('so_')">＋ 일정 저장</button></div>
+      <div style="font-size:12px;color:var(--muted)">💡 배정 인원은 캘린더 최신화에도 보존됩니다. 순수 미팅·약속(시간 포함)은 경영 탭의 <b>일정 등록</b>에서도 넣을 수 있어요.</div>
     </div>
     <!-- 🏖️ 휴가 신청 (직접 등록 → 인사팀 승인 → 달력 반영) -->
     <div class="card" style="margin-top:22px">
@@ -3187,21 +3191,22 @@ let SCHED_WEEK=0;
 function weekStart(asOf,off){ const dt=new Date(asOf+'T00:00:00'); const day=(dt.getDay()+6)%7; dt.setDate(dt.getDate()-day+off*7); return dt; }
 function realToday(){ const t=new Date(),p=n=>String(n).padStart(2,'0'); return t.getFullYear()+'-'+p(t.getMonth()+1)+'-'+p(t.getDate()); }
 function weekOffsetOf(ds){ return Math.round((weekStart(ds,0)-weekStart(realToday(),0))/604800000); }
-function addSchedule(){
-  const site=document.getElementById('sf_site').value.trim(); if(!site){ alert('현장을 입력하세요.'); return; }
+function addSchedule(p){
+  p=p||'sf_'; const g=id=>document.getElementById(p+id);   // 폼 접두어(sf_=배치탭, so_=운영팀 달력 아래) — 인원까지 등록
+  const site=g('site').value.trim(); if(!site){ alert('현장을 입력하세요.'); return; }
   const d=getData(); d.schedule=d.schedule||[];
-  const rec={date:document.getElementById('sf_date').value||realToday(), co:document.getElementById('sf_co').value,
-    site:site, work:document.getElementById('sf_work').value.trim(), crew:document.getElementById('sf_crew').value.trim(),
-    contact:document.getElementById('sf_contact').value.trim(), quote:num('sf_quote'),
-    status:document.getElementById('sf_status').value, manual:true};
+  const rec={date:g('date').value||realToday(), co:g('co').value,
+    site:site, work:g('work').value.trim(), crew:g('crew').value.trim(),
+    contact:g('contact').value.trim(), quote:num(p+'quote'),
+    status:g('status').value, manual:true};
   d.schedule.push(rec);
   if(d.deleted) delete d.deleted[rec.date+'|'+_nkey(rec.site)];   // 다시 등록하면 삭제 표식 해제
   if(rec.crew && rec.crew.trim()){ d.crewMap=d.crewMap||{}; d.crewMap[rec.date+'|'+rec.site]=rec.crew.trim(); }  // 영구 저장
   setData(d);
   SCHED_WEEK=weekOffsetOf(rec.date);   // 저장한 배치가 있는 주로 이동
   render();
-  ['sf_site','sf_work','sf_crew','sf_contact','sf_quote'].forEach(id=>document.getElementById(id).value='');
-  document.getElementById('sf_site').focus();
+  ['site','work','crew','contact','quote'].forEach(k=>{const el=g(k); if(el) el.value='';});
+  g('site').focus();
 }
 function _killJob(date,name){   // 일정 완전 삭제: 배치·캘린더 양쪽에서 지우고 '삭제 표식'을 남겨 최신화에도 안 되살아나게
   const d=getData(); const nk=_nkey(name);
