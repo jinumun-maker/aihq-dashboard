@@ -379,6 +379,17 @@
     <h2>📋 운영팀 업무 요약 <span id="opsSummaryDate" style="font-weight:500;color:var(--muted);font-size:12px"></span></h2>
     <div class="sumrow" id="opsSummary"></div>
   </div>
+  <!-- 💬 팀 메시지 (확인·요청 기록) -->
+  <div class="card" style="margin-top:16px">
+    <h2>💬 팀 메시지 <span style="font-weight:500;color:var(--muted);font-size:12px">확인·요청할 내용을 다른 팀/대표님에게 보내 기록으로 남겨요</span> <span id="opsMsgCount" style="font-weight:500;color:var(--muted);font-size:12px"></span></h2>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+      <span style="font-size:12.5px;color:var(--muted)">받는 곳</span>
+      <select class="msg-to" data-self="운영팀" id="opsMsgTo" style="padding:7px 10px;border:1px solid var(--line);border-radius:8px;background:var(--bg);color:var(--ink);font-family:inherit;font-size:13px"></select>
+      <input id="opsMsgText" placeholder="확인·요청할 내용 입력 (예: △△현장 자재비 정산 확인)" onkeydown="if(event.key==='Enter')sendDeptMsg('운영팀','opsMsgText','opsMsgTo')" style="flex:1;min-width:180px;padding:8px 11px;border:1px solid var(--line);border-radius:8px;background:var(--bg);color:var(--ink);font-family:inherit;font-size:13px">
+      <button class="primary" onclick="sendDeptMsg('운영팀','opsMsgText','opsMsgTo')">＋ 보내기</button>
+    </div>
+    <div id="opsMsgBox" style="margin-top:12px"></div>
+  </div>
   <div class="subtabs">
     <button class="subtab" data-subtab="운영달력" onclick="showSub('운영달력')">📅 일정 달력 <span id="opsMsgBadge" class="tabbadge"></span></button>
     <button class="subtab" data-subtab="배치" onclick="showSub('배치')">🗓️ 주간 근무배치</button>
@@ -621,6 +632,17 @@
     <h2>📋 재무팀 업무 요약</h2>
     <div class="sumrow" id="finSummary"></div>
   </div>
+  <!-- 💬 팀 메시지 (확인·요청 기록) -->
+  <div class="card" style="margin-top:16px">
+    <h2>💬 팀 메시지 <span style="font-weight:500;color:var(--muted);font-size:12px">확인·요청할 내용을 다른 팀/대표님에게 보내 기록으로 남겨요</span> <span id="finMsgCount" style="font-weight:500;color:var(--muted);font-size:12px"></span></h2>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+      <span style="font-size:12.5px;color:var(--muted)">받는 곳</span>
+      <select class="msg-to" data-self="재무팀" id="finMsgTo" style="padding:7px 10px;border:1px solid var(--line);border-radius:8px;background:var(--bg);color:var(--ink);font-family:inherit;font-size:13px"></select>
+      <input id="finMsgText" placeholder="확인·요청할 내용 입력 (예: 운영팀 발주 건 금액 확인 요청)" onkeydown="if(event.key==='Enter')sendDeptMsg('재무팀','finMsgText','finMsgTo')" style="flex:1;min-width:180px;padding:8px 11px;border:1px solid var(--line);border-radius:8px;background:var(--bg);color:var(--ink);font-family:inherit;font-size:13px">
+      <button class="primary" onclick="sendDeptMsg('재무팀','finMsgText','finMsgTo')">＋ 보내기</button>
+    </div>
+    <div id="finMsgBox" style="margin-top:12px"></div>
+  </div>
   <div class="subtabs">
     <button class="subtab" data-subtab="재무달력" onclick="showSub('재무달력')">📅 일정 달력 <span id="finMsgBadge" class="tabbadge"></span></button>
     <button class="subtab" data-subtab="미수금" onclick="showSub('미수금')">💰 미수금 <span id="recvBadge" class="tabbadge"></span></button>
@@ -829,6 +851,17 @@
   </div><!-- /재무팀 -->
 
   <div class="pg" data-pg="대시보드">
+  <!-- 💬 팀 메시지 (대표님 명의로 각 팀에 지시·확인 요청) -->
+  <div class="card" style="margin-top:22px">
+    <h2>💬 팀 메시지 <span style="font-weight:500;color:var(--muted);font-size:12px">대표님 명의로 각 팀에 확인·지시 내용을 보내 기록으로 남겨요</span> <span id="mngMsgCount" style="font-weight:500;color:var(--muted);font-size:12px"></span></h2>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+      <span style="font-size:12.5px;color:var(--muted)">받는 곳</span>
+      <select class="msg-to" data-self="대표님" id="mngMsgTo" style="padding:7px 10px;border:1px solid var(--line);border-radius:8px;background:var(--bg);color:var(--ink);font-family:inherit;font-size:13px"></select>
+      <input id="mngMsgText" placeholder="확인·지시 내용 입력 (예: 재무팀 이번 주 미수금 회수 상황 보고)" onkeydown="if(event.key==='Enter')sendDeptMsg('대표님','mngMsgText','mngMsgTo')" style="flex:1;min-width:180px;padding:8px 11px;border:1px solid var(--line);border-radius:8px;background:var(--bg);color:var(--ink);font-family:inherit;font-size:13px">
+      <button class="primary" onclick="sendDeptMsg('대표님','mngMsgText','mngMsgTo')">＋ 보내기</button>
+    </div>
+    <div id="mngMsgBox" style="margin-top:12px"></div>
+  </div>
   <div class="subtabs">
     <button class="subtab" data-subtab="개요일정" onclick="showSub('개요일정')">📅 일정 달력 <span id="msgBadge" class="tabbadge"></span></button>
     <button class="subtab" data-subtab="개요재무" onclick="showSub('개요재무')">💰 재무 요약</button>
@@ -954,6 +987,17 @@
   </div><!-- /대시보드 -->
 
   <div class="pg" data-pg="인사">
+  <!-- 💬 팀 메시지 (확인·요청 기록) -->
+  <div class="card" style="margin-top:22px">
+    <h2>💬 팀 메시지 <span style="font-weight:500;color:var(--muted);font-size:12px">확인·요청할 내용을 다른 팀/대표님에게 보내 기록으로 남겨요</span> <span id="hrMsgCount" style="font-weight:500;color:var(--muted);font-size:12px"></span></h2>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+      <span style="font-size:12.5px;color:var(--muted)">받는 곳</span>
+      <select class="msg-to" data-self="인사팀" id="hrMsgTo" style="padding:7px 10px;border:1px solid var(--line);border-radius:8px;background:var(--bg);color:var(--ink);font-family:inherit;font-size:13px"></select>
+      <input id="hrMsgText" placeholder="확인·요청할 내용 입력 (예: 신규 입사자 계약서 확인 요청)" onkeydown="if(event.key==='Enter')sendDeptMsg('인사팀','hrMsgText','hrMsgTo')" style="flex:1;min-width:180px;padding:8px 11px;border:1px solid var(--line);border-radius:8px;background:var(--bg);color:var(--ink);font-family:inherit;font-size:13px">
+      <button class="primary" onclick="sendDeptMsg('인사팀','hrMsgText','hrMsgTo')">＋ 보내기</button>
+    </div>
+    <div id="hrMsgBox" style="margin-top:12px"></div>
+  </div>
   <div class="subtabs">
     <button class="subtab" data-subtab="인사업무" onclick="showSub('인사업무')">📋 업무정리 <span id="hrMsgBadge" class="tabbadge"></span></button>
     <button class="subtab" data-subtab="인사팀원" onclick="showSub('인사팀원')">🧑‍🤝‍🧑 팀원·휴가 <span id="hrLeaveBadge" class="tabbadge"></span></button>
@@ -1200,6 +1244,17 @@
   </div><!-- /분석 -->
 
   <div class="pg" data-pg="마케팅팀">
+  <!-- 💬 팀 메시지 (확인·요청 기록) -->
+  <div class="card" style="margin-top:22px">
+    <h2>💬 팀 메시지 <span style="font-weight:500;color:var(--muted);font-size:12px">확인·요청할 내용을 다른 팀/대표님에게 보내 기록으로 남겨요</span> <span id="mktMsgCount" style="font-weight:500;color:var(--muted);font-size:12px"></span></h2>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+      <span style="font-size:12.5px;color:var(--muted)">받는 곳</span>
+      <select class="msg-to" data-self="마케팅팀" id="mktMsgTo" style="padding:7px 10px;border:1px solid var(--line);border-radius:8px;background:var(--bg);color:var(--ink);font-family:inherit;font-size:13px"></select>
+      <input id="mktMsgText" placeholder="확인·요청할 내용 입력 (예: 대표님 광고 예산 승인 요청)" onkeydown="if(event.key==='Enter')sendDeptMsg('마케팅팀','mktMsgText','mktMsgTo')" style="flex:1;min-width:180px;padding:8px 11px;border:1px solid var(--line);border-radius:8px;background:var(--bg);color:var(--ink);font-family:inherit;font-size:13px">
+      <button class="primary" onclick="sendDeptMsg('마케팅팀','mktMsgText','mktMsgTo')">＋ 보내기</button>
+    </div>
+    <div id="mktMsgBox" style="margin-top:12px"></div>
+  </div>
   <!-- 📋 마케팅팀 업무정리 -->
   <div class="card" style="margin-top:22px">
     <h2>📋 마케팅팀 업무정리 <span style="font-weight:500;color:var(--muted);font-size:12px">할 일을 카드로 · 마감일·우선순위 · 모든 기기 공유</span> <span id="mktMsgBadge" class="tabbadge"></span></h2>
@@ -1258,6 +1313,17 @@
     AI가 조사·정리하고, 신청·집행은 대표님 승인 후 진행. <b>※ 금액·마감일은 2026년 공고 기준으로 재확인 필요</b>
   </div>
 
+  <!-- 💬 팀 메시지 (확인·요청 기록) -->
+  <div class="card" style="margin-top:22px">
+    <h2>💬 팀 메시지 <span style="font-weight:500;color:var(--muted);font-size:12px">확인·요청할 내용을 다른 팀/대표님에게 보내 기록으로 남겨요</span> <span id="bizMsgCount" style="font-weight:500;color:var(--muted);font-size:12px"></span></h2>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+      <span style="font-size:12.5px;color:var(--muted)">받는 곳</span>
+      <select class="msg-to" data-self="기업지원팀" id="bizMsgTo" style="padding:7px 10px;border:1px solid var(--line);border-radius:8px;background:var(--bg);color:var(--ink);font-family:inherit;font-size:13px"></select>
+      <input id="bizMsgText" placeholder="확인·요청할 내용 입력 (예: 대표님 지원사업 신청서류 서명 요청)" onkeydown="if(event.key==='Enter')sendDeptMsg('기업지원팀','bizMsgText','bizMsgTo')" style="flex:1;min-width:180px;padding:8px 11px;border:1px solid var(--line);border-radius:8px;background:var(--bg);color:var(--ink);font-family:inherit;font-size:13px">
+      <button class="primary" onclick="sendDeptMsg('기업지원팀','bizMsgText','bizMsgTo')">＋ 보내기</button>
+    </div>
+    <div id="bizMsgBox" style="margin-top:12px"></div>
+  </div>
   <div class="subtabs">
     <button class="subtab" data-subtab="기업달력" onclick="showSub('기업달력')">📅 모집 캘린더</button>
     <button class="subtab" data-subtab="기업관리" onclick="showSub('기업관리')">📋 지원사업 관리</button>
@@ -2844,6 +2910,14 @@ function render(){
 
   // 📋 팀별 업무정리 보드 렌더 + 미완료 개수 배지 (요청함 대체)
   renderAllBoards();
+  // 💬 팀 메시지(확인·요청 기록) 렌더 + 받은 대기 배지 (박스와 같은 getData 소스 사용)
+  fillMsgRecipients();
+  { const _msgs=(getData().messages)||[];
+    [['운영팀','ops',['opsMsgBadge']],['재무팀','fin',['finMsgBadge']],['대표님','mng',['msgBadge','dashMsgBadge']],['인사팀','hr',['hrMsgBadge']],['마케팅팀','mkt',['mktMsgBadge']],['기업지원팀','biz',['bizMsgBadge']]]
+      .forEach(function(row){ var party=row[0], pfx=row[1], badges=row[2];
+        renderMsgInto(pfx+'MsgBox', party, false, pfx+'MsgCount');
+        var pend=_msgs.filter(function(m){ return m.to===party && !m.done; }).length;
+        badges.forEach(function(b){ setBadge(b, pend); }); }); }
   renderSettleHistory();
   renderPayroll();
   { const _pt=realToday(), _py=+_pt.slice(0,4), _pm=(+_pt.slice(5,7))-1, _pd=_lastMondayOfMonth(_py,_pm);
