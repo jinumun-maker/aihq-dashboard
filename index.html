@@ -692,6 +692,10 @@
   <div class="card entry2" id="payCard" style="margin-top:22px">
     <h2>🧮 인건비 입력 <span style="font-weight:500;color:var(--muted);font-size:12px">재무팀 · 사람별 일당</span> <span id="payMiss"></span>
       <button style="margin-left:auto" onclick="applyRates()">🔄 단가표로 미입력 채우기</button></h2>
+    <div style="margin:4px 0 12px;display:flex;gap:8px;align-items:center">
+      <input id="paySearch" placeholder="🔎 이름으로 찾기 (예: 은규) — 누구한테 얼마 보낼지 빠르게" oninput="setPaySearch(this.value)" style="flex:1;min-width:0;padding:9px 12px;border:1px solid var(--line);border-radius:9px;background:var(--bg);color:var(--ink);font-family:inherit;font-size:13px">
+      <button class="del" onclick="clearPaySearch()" style="padding:8px 12px;white-space:nowrap">✕ 지우기</button>
+    </div>
     <div id="payArea"></div>
   </div>
 
@@ -2254,8 +2258,16 @@ function render(){
   document.getElementById("payMiss").innerHTML = allMiss>0
     ? `<span class="pill p-late">🔴 미입력 ${allMiss}명</span>`
     : `<span class="pill p-good">✅ 모두 입력됨</span>`;
-  const payRows=S.map((s,i)=>({s,i})).filter(x=>crewList(x.s).length)
+  const _psq=_nkey(PAY_SEARCH);   // 이름 검색(정규화: 띄어쓰기·기호 무시)
+  let payRows=S.map((s,i)=>({s,i})).filter(x=>crewList(x.s).length)
     .sort((a,b)=>(laborMissing(b.s)-laborMissing(a.s))||b.s.date.localeCompare(a.s.date));  // 미입력 먼저 → 최신순
+  if(_psq) payRows=payRows.filter(x=>crewList(x.s).some(p=>_nkey(p.name).indexOf(_psq)>=0));   // 이름 포함 현장만
+  let paySearchSummary='';   // 🔎 그 사람 미이체 몇 명·합계 얼마
+  if(_psq){
+    let un=0,ua=0,dn=0;
+    payRows.forEach(x=>crewList(x.s).forEach(p=>{ if(_nkey(p.name).indexOf(_psq)>=0 && +p.pay>0){ if(p.sent){dn++;} else {un++; ua+=(+p.pay||0);} } }));
+    paySearchSummary=`<div style="font-size:12.5px;margin-bottom:8px;padding:9px 12px;background:var(--bg);border:1px solid var(--line);border-radius:9px">🔎 '<b>${escHtml(PAY_SEARCH)}</b>' — <b style="color:var(--warn)">미이체 ${un}명 ${KRW(ua)}</b> · 이체완료 ${dn}명</div>`;
+  }
   const payblockHTML = ({s,i}) =>
     `<div class="payblock ${laborMissing(s)?'miss':''}">
       <div class="payhead">${s.date.slice(5)} · <span class="pill ${coPill(s.co)}">${coName(s.co)}</span> ${s.site}${s.manager?` <span style="color:var(--limit);font-size:11px;font-weight:700">👤${s.manager}</span>`:''}
@@ -2284,14 +2296,14 @@ function render(){
     </div>`;
   const payAreaEl=document.getElementById("payArea");
   if(!payRows.length){
-    payAreaEl.innerHTML = `<div style="color:var(--muted);font-size:13px">배치인원이 있는 결산이 없습니다.</div>`;
+    payAreaEl.innerHTML = paySearchSummary + `<div style="color:var(--muted);font-size:13px">${_psq?`'${escHtml(PAY_SEARCH)}' 검색 결과가 없습니다.`:'배치인원이 있는 결산이 없습니다.'}</div>`;
   } else {
     const PER=15;                                        // 페이지당 건수
     const totalPages=Math.max(1, Math.ceil(payRows.length/PER));
     if(PAY_PAGE<1) PAY_PAGE=1; if(PAY_PAGE>totalPages) PAY_PAGE=totalPages;
     const startI=(PAY_PAGE-1)*PER, endI=Math.min(startI+PER, payRows.length);
-    const label=`<div style="font-size:12.5px;color:var(--muted);margin-bottom:6px">총 ${payRows.length}건 중 <b>${startI+1}–${endI}</b>건 · ${PAY_PAGE}/${totalPages}페이지</div>`;
-    payAreaEl.innerHTML = label + payRows.slice(startI,endI).map(payblockHTML).join('') + pagerHTML(PAY_PAGE, totalPages);
+    const label=`<div style="font-size:12.5px;color:var(--muted);margin-bottom:6px">${_psq?`🔎 검색 `:'총 '}${payRows.length}건 중 <b>${startI+1}–${endI}</b>건 · ${PAY_PAGE}/${totalPages}페이지</div>`;
+    payAreaEl.innerHTML = paySearchSummary + label + payRows.slice(startI,endI).map(payblockHTML).join('') + pagerHTML(PAY_PAGE, totalPages);
   }
 
   // ❗ 재무팀 배지 (미이체 일당 + 오늘 납부 고정지출)
@@ -3813,6 +3825,9 @@ let PAY_RANGE='all';
 function setPayRange(r){ PAY_RANGE=r; render(); }
 let PAY_PAGE=1;
 function setPayPage(n){ PAY_PAGE=n; render(); const c=document.getElementById('payCard'); if(c) c.scrollIntoView({behavior:'smooth',block:'start'}); }
+let PAY_SEARCH='';   // 인건비 입력: 이름 검색 필터
+function setPaySearch(v){ PAY_SEARCH=String(v||''); PAY_PAGE=1; render(); }   // 입력창은 #payArea 바깥이라 포커스 유지됨
+function clearPaySearch(){ PAY_SEARCH=''; const el=document.getElementById('paySearch'); if(el){ el.value=''; el.focus(); } PAY_PAGE=1; render(); }
 let SETTLE_PAGE=1;
 function setSettlePage(n){ SETTLE_PAGE=n; render(); const el=document.getElementById('settleHistRows'); if(el){ const card=el.closest('.card'); if(card) card.scrollIntoView({behavior:'smooth',block:'start'}); } }
 function settleSearch(){ SETTLE_PAGE=1; render(); }
