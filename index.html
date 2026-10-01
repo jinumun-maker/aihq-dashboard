@@ -829,8 +829,9 @@
     </div>
     <div id="payrollHead" style="margin:10px 0 14px"></div>
     <div style="overflow-x:auto"><table>
-      <thead><tr><th>이름</th><th>직책</th><th>소속</th><th>구분</th><th class="num">월급</th><th class="num">일당·시급</th><th class="num">공제</th><th class="num">실지급</th><th>명세서</th></tr></thead>
+      <thead><tr><th>이름</th><th>직책</th><th>소속</th><th>구분</th><th class="num">월급</th><th class="num">일당·시급</th><th class="num">수당</th><th class="num">공제</th><th class="num">실지급</th><th>명세서</th></tr></thead>
       <tbody id="payrollRows"></tbody></table></div>
+    <div id="payrollEdit"></div>
     <div style="margin-top:14px;text-align:right"><button class="primary" onclick="downloadAllPayslips()">📄 전체 명세서 다운로드</button></div>
     <div style="font-size:12px;color:var(--muted);margin-top:8px">💡 <b>월급</b>은 인사팀 → 팀원 명단에서 등록해요. <b>일당·시급</b>은 운영팀 일일결산에 쌓인 금액을 사람별로 자동 합산합니다(명세서에 날짜별 현장 내역까지 들어갑니다). 공제(4대보험·소득세 등)는 아는 경우만 ✏️로 입력하면 실지급액에 반영되고, <b>그 달에만</b> 적용됩니다.</div>
   </div>
@@ -3479,36 +3480,89 @@ function _payrollYM(){
   return realToday().slice(0,7);
 }
 /* 공제: 그 달 · 그 사람 기준 (없으면 팀원 명단의 기본 공제) */
-function _dedOf(d,ym,name){
+/* ===== 수당·공제 항목 (근로기준법 시행령 제27조의2 필수 기재사항) ===== */
+var PAY_ALLOW_H=[   // 시간으로 계산하는 수당 — 명세서에 '시간 수'를 반드시 적어야 함
+  {k:'night', t:'야간근로수당', mult:1.5, hint:'22시~06시'},
+  {k:'ot',    t:'연장근로수당', mult:1.5, hint:'소정근로 초과'},
+  {k:'hol',   t:'휴일근로수당', mult:1.5, hint:'휴일 근로'}
+];
+var PAY_ALLOW_A=[   // 금액으로 넣는 수당
+  {k:'weekly', t:'주휴수당'},
+  {k:'meal',   t:'식대'},
+  {k:'etc',    t:'기타수당'}
+];
+var PAY_DED=[
+  {k:'np',  t:'국민연금'},   {k:'hi',  t:'건강보험'},
+  {k:'ltc', t:'장기요양보험'},{k:'ei',  t:'고용보험'},
+  {k:'it',  t:'소득세'},     {k:'lit', t:'지방소득세'},
+  {k:'etc', t:'기타공제'}
+];
+function _payExtra(d,ym,name){
+  var e=(d.payExtra&&d.payExtra[ym]&&d.payExtra[ym][name])||{};
+  return {hourly:+e.hourly||0, h:(e.h||{}), a:(e.a||{}), ded:(e.ded||{})};
+}
+/* 통상시급: 일당제 = 평균일당 ÷ 8시간 · 월급제 = 월급 ÷ 209시간 */
+function _defaultHourly(r){
+  if(!r) return 0;
+  if(r.days>0) return Math.round((r.dayPay/r.days)/8);
+  if(r.salary>0) return Math.round(r.salary/209);
+  return 0;
+}
+function _allowOf(d,ym,name,r){
+  var ex=_payExtra(d,ym,name);
+  var hourly=ex.hourly||_defaultHourly(r);
+  var out=[], tot=0;
+  PAY_ALLOW_H.forEach(function(x){
+    var h=+ex.h[x.k]||0; if(h<=0) return;
+    var amt=Math.round(hourly*x.mult*h);
+    out.push({t:x.t, how:h+'시간 × '+_won(hourly)+'원 × '+x.mult, amt:amt});
+    tot+=amt;
+  });
+  PAY_ALLOW_A.forEach(function(x){
+    var v=+ex.a[x.k]||0; if(v<=0) return;
+    out.push({t:x.t, how:'', amt:v}); tot+=v;
+  });
+  return {list:out, total:tot, hourly:hourly, custom:(ex.hourly>0)};
+}
+/* 예전 '공제 한 줄' 데이터 (payDeduct / team.deduct) — 항목별 입력 전까지 유지 */
+function _legacyDed(d,ym,name){
   var byMonth=(d.payDeduct&&d.payDeduct[ym]&&d.payDeduct[ym][name]);
   if(byMonth!=null) return +byMonth||0;
   var t=(d.team||[]).filter(function(x){return x.name===name;})[0];
   return t?(+t.deduct||0):0;
 }
-/* 월급(팀원 명단) + 일당·시급(일일결산)을 사람별로 합산 */
+function _dedOf(d,ym,name){
+  var ex=_payExtra(d,ym,name); var out=[], tot=0, any=false;
+  PAY_DED.forEach(function(x){ var v=+ex.ded[x.k]||0; if(v>0){ out.push({t:x.t, amt:v}); tot+=v; any=true; } });
+  if(!any){
+    var lg=_legacyDed(d,ym,name);
+    if(lg>0){ out.push({t:'공제 (항목 미분류)', amt:lg, warn:true}); tot=lg; }
+  }
+  return {list:out, total:tot, itemized:any};
+}
+/* 월급(팀원 명단) + 일당·시급(일일결산) + 수당 − 공제 */
 function _payrollList(d,ym){
   var map={};
-  var pick=function(name,src,co){
+  var pick=function(name,co){
     if(!map[name]){
       var t=(d.team||[]).filter(function(x){return x.name===name;})[0];
       map[name]={name:name, role:(t&&t.role)||'', co:(t&&t.co)||co||'공통',
-                 salary:(t&&+t.salary)||0, lines:[]};
+                 birth:(t&&t.birth)||'', salary:(t&&+t.salary)||0, lines:[]};
     }
     return map[name];
   };
-  (d.team||[]).forEach(function(t){ if((+t.salary||0)>0 && t.name) pick(t.name,'team',t.co); });
+  (d.team||[]).forEach(function(t){ if((+t.salary||0)>0 && t.name) pick(t.name,t.co); });
   (d.settlements||[]).forEach(function(s){
     if((s.date||'').slice(0,7)!==ym) return;
     crewList(s).forEach(function(p){
       if(!p.name || !(+p.pay>0)) return;
-      pick(p.name,'settle',s.co).lines.push({date:s.date, site:s.site||'', amt:+p.pay||0, co:s.co,
+      pick(p.name,s.co).lines.push({date:s.date, site:s.site||'', amt:+p.pay||0, co:s.co,
         mode:(p.mode==='시급'?'시급':'일당'), hours:p.hours, rate:p.rate});
     });
   });
   return Object.keys(map).map(function(k){
     var r=map[k];
-    // 소속이 '공통'이면 그 달에 실제로 많이 일한 회사로 (명세서에 회사명이 찍혀야 함)
-    if(r.co!=='limit' && r.co!=='daman' && r.lines.length){
+    if(r.co!=='limit' && r.co!=='daman' && r.lines.length){   // '공통'이면 그 달 실제 일한 회사로
       var cnt={}; r.lines.forEach(function(x){ if(x.co) cnt[x.co]=(cnt[x.co]||0)+1; });
       var top=Object.keys(cnt).sort(function(a,b){ return cnt[b]-cnt[a]; })[0];
       if(top) r.co=top;
@@ -3516,68 +3570,100 @@ function _payrollList(d,ym){
     r.lines.sort(function(a,b){ return (a.date||'').localeCompare(b.date||''); });
     r.dayPay=r.lines.reduce(function(a,x){ return a+x.amt; },0);
     r.days=r.lines.length;
-    r.gross=r.salary+r.dayPay;
-    r.deduct=_dedOf(d,ym,r.name);
+    r.allow=_allowOf(d,ym,r.name,r);
+    r.gross=r.salary+r.dayPay+r.allow.total;        // 임금 총액 (공제 전)
+    r.dedInfo=_dedOf(d,ym,r.name);
+    r.deduct=r.dedInfo.total;
     r.net=r.gross-r.deduct;
     r.kind = r.salary>0 ? (r.dayPay>0?'월급+일당':'월급') : '일당·시급';
+    r.ready = r.dedInfo.itemized || r.deduct===0;   // 공제가 항목별로 적혔는지
     return r;
   }).filter(function(r){ return r.gross>0; })
     .sort(function(a,b){ return b.gross-a.gross; });
 }
+/* ===== 명세서 (법정 6항목: 근로자특정·지급일·총액·구성항목별 금액·계산방법·공제) ===== */
+function _psRow(label,amt,how,strong){
+  return '<tr>'
+    +'<td style="padding:6px 5px;'+(strong?'font-weight:700;':'color:#555;')+'">'+label
+    +(how?('<div style="color:#999;font-size:11px;font-weight:400;margin-top:1px">'+how+'</div>'):'')+'</td>'
+    +'<td style="padding:6px 5px;text-align:right;white-space:nowrap;'+(strong?'font-weight:700;':'')+'">'+_won(amt)+' 원</td></tr>';
+}
+function _payslipLines(t){
+  var L=(t&&t.lines)||[]; if(!L.length) return '';
+  var rows=L.map(function(x){
+    var how=(x.mode==='시급' && x.rate!=null && x.hours!=null)
+      ? (_won(x.rate)+'원 × '+x.hours+'시간') : '일당';
+    return '<tr>'
+      +'<td style="padding:4px;border-bottom:1px solid #eee;white-space:nowrap">'+(x.date||'').slice(5)+'</td>'
+      +'<td style="padding:4px;border-bottom:1px solid #eee">'+(x.site||'-')+'</td>'
+      +'<td style="padding:4px;border-bottom:1px solid #eee;color:#888;font-size:11px;white-space:nowrap">'+how+'</td>'
+      +'<td style="padding:4px;border-bottom:1px solid #eee;text-align:right;white-space:nowrap">'+_won(x.amt)+'</td></tr>';
+  }).join('');
+  return '<div style="margin-top:16px;font-size:12px;font-weight:700;color:#444">근무 내역 <span style="font-weight:400;color:#999">(기본급 계산 근거)</span></div>'
+    +'<table style="width:100%;font-size:12px;border-collapse:collapse;margin-top:5px">'
+    +'<tr style="color:#888;font-size:11px"><td style="padding:3px 4px;border-bottom:1.5px solid #999">날짜</td>'
+    +'<td style="padding:3px 4px;border-bottom:1.5px solid #999">현장</td>'
+    +'<td style="padding:3px 4px;border-bottom:1.5px solid #999">계산</td>'
+    +'<td style="padding:3px 4px;border-bottom:1.5px solid #999;text-align:right">금액</td></tr>'
+    +rows
+    +'<tr><td colspan="2" style="padding:6px 4px;font-weight:700">근무일수 '+L.length+'일</td>'
+    +'<td colspan="2" style="padding:6px 4px;text-align:right;font-weight:700">'+_won(t.dayPay)+' 원</td></tr>'
+    +'</table>';
+}
 function _payslipCard(t,y,m,d){
   var payDate=_lastMondayOfMonth(y,m);
-  var sal=+t.salary||0, ded=+t.deduct||0, net=(t.net!=null)?t.net:(sal-ded);
+  var sal=+t.salary||0, dayPay=+t.dayPay||0;
+  var allow=t.allow||{list:[],total:0,hourly:0};
+  var dedI=t.dedInfo||{list:[],total:0,itemized:true};
+  var gross=sal+dayPay+allow.total, net=gross-dedI.total;
   var co=(t.co==='limit'||t.co==='daman')?t.co:null;
   var qc=(d.quoteCfg&&co&&d.quoteCfg[co])||null;
   var coNm=(qc&&qc.name)?qc.name:coName(t.co);
   var biz=(qc&&qc.bizNo)?('사업자등록번호 '+qc.bizNo):'';
-  return '<div style="max-width:520px;margin:20px auto;border:1px solid #ccc;border-radius:10px;padding:24px;font-family:\'Malgun Gothic\',sans-serif;color:#111;background:#fff">'
-    +'<h2 style="text-align:center;margin:0 0 4px">급여명세서</h2>'
-    +'<div style="text-align:center;color:#666;font-size:13px;margin-bottom:16px">'+y+'년 '+(m+1)+'월분 · 지급일 '+payDate+' (월)</div>'
-    +'<table style="width:100%;font-size:13.5px;border-collapse:collapse">'
-    +'<tr><td style="padding:5px;color:#666;width:70px">회사</td><td style="padding:5px;font-weight:700">'+coNm+(biz?(' <span style="font-weight:400;color:#888;font-size:12px">'+biz+'</span>'):'')+'</td></tr>'
-    +'<tr><td style="padding:5px;color:#666">성명</td><td style="padding:5px;font-weight:700">'+(t.name||'')+'</td></tr>'
-    +'<tr><td style="padding:5px;color:#666">직책</td><td style="padding:5px">'+(t.role||'-')+'</td></tr>'
-    +'<tr><td style="padding:5px;color:#666">구분</td><td style="padding:5px">'+(t.kind||'월급')+'</td></tr>'
+  var daily=t.days>0?Math.round(dayPay/t.days):0;
+
+  var pay=''
+    +(sal?_psRow('기본급 (월급)',sal,''):'')
+    +(dayPay?_psRow('기본급 (일당·시급)',dayPay,t.days+'일 × 평균 '+_won(daily)+'원'):'')
+    +allow.list.map(function(a){ return _psRow(a.t,a.amt,a.how); }).join('');
+
+  var ded=dedI.list.length
+    ? dedI.list.map(function(x){ return _psRow(x.t,x.amt,x.warn?'항목별로 나눠 적어야 합니다':''); }).join('')
+    : '<tr><td colspan="2" style="padding:6px 5px;color:#999">공제 없음</td></tr>';
+
+  return '<div style="max-width:540px;margin:20px auto;border:1px solid #ccc;border-radius:10px;padding:24px;font-family:\'Malgun Gothic\',sans-serif;color:#111;background:#fff">'
+    +'<h2 style="text-align:center;margin:0 0 4px;font-size:21px">임금명세서</h2>'
+    +'<div style="text-align:center;color:#666;font-size:12.5px;margin-bottom:16px">'+y+'년 '+(m+1)+'월분 · 지급일 '+payDate+' (월)</div>'
+    +'<table style="width:100%;font-size:13px;border-collapse:collapse">'
+    +'<tr><td style="padding:4px;color:#666;width:64px">회사</td><td style="padding:4px;font-weight:700">'+coNm+(biz?(' <span style="font-weight:400;color:#888;font-size:11px">'+biz+'</span>'):'')+'</td></tr>'
+    +'<tr><td style="padding:4px;color:#666">성명</td><td style="padding:4px;font-weight:700">'+(t.name||'')
+      +(t.birth?(' <span style="font-weight:400;color:#888;font-size:11.5px">생년월일 '+t.birth+'</span>'):'')+'</td></tr>'
+    +'<tr><td style="padding:4px;color:#666">직책</td><td style="padding:4px">'+(t.role||'-')+' <span style="color:#888;font-size:11.5px">('+(t.kind||'')+')</span></td></tr>'
     +'</table>'
     +_payslipLines(t)
-    +'<table style="width:100%;font-size:14px;border-collapse:collapse;margin-top:14px;border-top:2px solid #111">'
-    +(sal?('<tr><td style="padding:8px 5px;color:#666">기본급(월급)</td><td style="padding:8px 5px;text-align:right">'+_won(sal)+' 원</td></tr>'):'')
-    +((+t.dayPay||0)?('<tr><td style="padding:8px 5px;color:#666">일당·시급 ('+(t.days||0)+'일)</td><td style="padding:8px 5px;text-align:right">'+_won(t.dayPay)+' 원</td></tr>'):'')
-    +(ded?('<tr><td style="padding:8px 5px;color:#666">공제</td><td style="padding:8px 5px;text-align:right;color:#c00">-'+_won(ded)+' 원</td></tr>'):'')
-    +'<tr style="border-top:2px solid #111"><td style="padding:10px 5px;font-weight:800">실지급액</td><td style="padding:10px 5px;text-align:right;font-weight:800;font-size:16px">'+_won(net)+' 원</td></tr>'
+    +'<div style="margin-top:16px;font-size:12px;font-weight:700;color:#444">지급 내역</div>'
+    +'<table style="width:100%;font-size:13.5px;border-collapse:collapse;margin-top:5px;border-top:1.5px solid #999">'
+    +pay
+    +'<tr style="border-top:1.5px solid #999"><td style="padding:7px 5px;font-weight:800">임금 총액</td>'
+    +'<td style="padding:7px 5px;text-align:right;font-weight:800">'+_won(gross)+' 원</td></tr>'
     +'</table>'
-    +'<div style="text-align:right;color:#888;font-size:12px;margin-top:16px">발행일 '+realToday()+'</div>'
+    +'<div style="margin-top:16px;font-size:12px;font-weight:700;color:#444">공제 내역</div>'
+    +'<table style="width:100%;font-size:13.5px;border-collapse:collapse;margin-top:5px;border-top:1.5px solid #999">'
+    +ded
+    +'<tr style="border-top:1.5px solid #999"><td style="padding:7px 5px;font-weight:800">공제 합계</td>'
+    +'<td style="padding:7px 5px;text-align:right;font-weight:800;color:#c00">-'+_won(dedI.total)+' 원</td></tr>'
+    +'</table>'
+    +'<table style="width:100%;border-collapse:collapse;margin-top:14px;border-top:2.5px solid #111">'
+    +'<tr><td style="padding:12px 5px;font-weight:800;font-size:15px">실지급액</td>'
+    +'<td style="padding:12px 5px;text-align:right;font-weight:800;font-size:18px">'+_won(net)+' 원</td></tr>'
+    +'</table>'
+    +'<div style="text-align:right;color:#888;font-size:11.5px;margin-top:14px">발행일 '+realToday()+'</div>'
     +'</div>';
-}
-/* 일당·시급 날짜별 내역 (명세서 안에 들어가는 표) */
-function _payslipLines(t){
-  var L=(t&&t.lines)||[]; if(!L.length) return '';
-  var rows=L.map(function(x){
-    var how = (x.mode==='시급' && x.rate!=null && x.hours!=null)
-      ? (_won(x.rate)+'원 × '+x.hours+'시간') : '일당';
-    return '<tr>'
-      +'<td style="padding:5px 4px;border-bottom:1px solid #eee;white-space:nowrap">'+(x.date||'').slice(5)+'</td>'
-      +'<td style="padding:5px 4px;border-bottom:1px solid #eee">'+(x.site||'-')+'</td>'
-      +'<td style="padding:5px 4px;border-bottom:1px solid #eee;color:#888;font-size:11.5px;white-space:nowrap">'+how+'</td>'
-      +'<td style="padding:5px 4px;border-bottom:1px solid #eee;text-align:right;white-space:nowrap">'+_won(x.amt)+'</td></tr>';
-  }).join('');
-  return '<div style="margin-top:16px;font-size:12.5px;font-weight:700;color:#444">근무 내역</div>'
-    +'<table style="width:100%;font-size:12.5px;border-collapse:collapse;margin-top:6px">'
-    +'<tr style="color:#888;font-size:11.5px"><td style="padding:4px;border-bottom:1.5px solid #999">날짜</td>'
-    +'<td style="padding:4px;border-bottom:1.5px solid #999">현장</td>'
-    +'<td style="padding:4px;border-bottom:1.5px solid #999">계산</td>'
-    +'<td style="padding:4px;border-bottom:1.5px solid #999;text-align:right">금액</td></tr>'
-    +rows
-    +'<tr><td colspan="2" style="padding:7px 4px;font-weight:700">근무일수 '+L.length+'일</td>'
-    +'<td colspan="2" style="padding:7px 4px;text-align:right;font-weight:700">'+_won(t.dayPay)+' 원</td></tr>'
-    +'</table>';
 }
 function _payslipDoc(inner, title){ return '<!doctype html><html lang="ko"><head><meta charset="utf-8"><title>'+title+'</title></head><body style="margin:0;background:#f4f6fa">'+inner+'</body></html>'; }
 function renderPayroll(){
   var el=document.getElementById('payrollRows'); if(!el) return;
   var d=getData(); var today=realToday();
-  // 정산 월 선택칸 채우기 (결산이 있는 달 + 이번 달)
   var sel=document.getElementById('payrollMonth');
   if(sel){
     var ms={}; ms[today.slice(0,7)]=1;
@@ -3596,28 +3682,105 @@ function renderPayroll(){
   var rows=_payrollList(d,ym);
   var due=today>=payDate;
   var totalNet=rows.reduce(function(a,r){ return a+r.net; },0);
+  var notReady=rows.filter(function(r){ return !r.ready; }).length;
   var head=document.getElementById('payrollHead');
   if(head) head.innerHTML='<div style="font-size:13.5px">📅 <b>'+y+'년 '+(m+1)+'월분</b> · 지급일 <b>'+payDate+' (월)</b> '+(due?'<span class="pill p-good">지급일 도래 — 명세서 준비</span>':'<span class="pill">지급 예정</span>')+'</div>'
-    +'<div style="font-size:12px;color:var(--muted);margin-top:3px">대상 '+rows.length+'명 · 실지급 합계 <b>'+KRW(totalNet)+'</b></div>';
+    +'<div style="font-size:12px;color:var(--muted);margin-top:3px">대상 '+rows.length+'명 · 실지급 합계 <b>'+KRW(totalNet)+'</b>'
+    +(notReady?(' · <span style="color:var(--warn);font-weight:700">⚠️ 공제를 항목별로 안 적은 사람 '+notReady+'명</span>'):'')+'</div>';
   el.innerHTML = rows.length? rows.map(function(r){
     var nm=encodeURIComponent(r.name);
-    return '<tr><td>'+escHtml(r.name)+'</td><td>'+(r.role?escHtml(r.role):'-')+'</td>'
+    return '<tr'+(PAYROLL_EDIT===r.name?' style="background:rgba(37,99,235,.06)"':'')+'><td>'+escHtml(r.name)+'</td><td>'+(r.role?escHtml(r.role):'-')+'</td>'
       +'<td><span class="pill '+coPill(r.co)+'">'+coName(r.co)+'</span></td>'
       +'<td><span class="pill '+(r.salary>0?'p-limit':'p-daman')+'">'+r.kind+'</span></td>'
       +'<td class="num">'+(r.salary?KRW(r.salary):'<span style="color:var(--muted)">-</span>')+'</td>'
       +'<td class="num" style="white-space:nowrap">'+(r.dayPay?(KRW(r.dayPay)+' <span style="color:var(--muted);font-size:11px">'+r.days+'일</span>'):'<span style="color:var(--muted)">-</span>')+'</td>'
-      +'<td class="num" style="white-space:nowrap">'+(r.deduct?('-'+KRW(r.deduct)):'<span style="color:var(--muted)">0</span>')+' <button class="del" style="color:var(--muted);padding:2px 6px" onclick="setPayDeduct(\''+nm+'\')" title="공제 입력">✏️</button></td>'
+      +'<td class="num" style="white-space:nowrap">'+(r.allow.total?KRW(r.allow.total):'<span style="color:var(--muted)">-</span>')+'</td>'
+      +'<td class="num" style="white-space:nowrap">'+(r.deduct?((r.ready?'':'<span title="항목별로 안 적힘">⚠️ </span>')+'-'+KRW(r.deduct)):'<span style="color:var(--muted)">0</span>')+'</td>'
       +'<td class="num" style="font-weight:700">'+KRW(r.net)+'</td>'
-      +'<td><button class="del" style="color:var(--limit);border:1px solid var(--limit);border-radius:7px;padding:3px 9px" onclick="downloadPayslip(\''+nm+'\')">📄 받기</button></td></tr>';
-  }).join('') : '<tr><td colspan="9" style="color:var(--muted)">이 달에 지급할 급여가 없어요. 월급은 인사팀 → 팀원 명단에서, 일당은 운영팀 일일결산에서 들어옵니다.</td></tr>';
+      +'<td style="white-space:nowrap"><button class="del" style="color:var(--daman);border:1px solid var(--daman);border-radius:7px;padding:3px 8px" onclick="payEdit(\''+nm+'\')">✏️ 수당·공제</button> '
+      +'<button class="del" style="color:var(--limit);border:1px solid var(--limit);border-radius:7px;padding:3px 9px" onclick="downloadPayslip(\''+nm+'\')">📄 받기</button></td></tr>';
+  }).join('') : '<tr><td colspan="10" style="color:var(--muted)">이 달에 지급할 급여가 없어요. 월급은 인사팀 → 팀원 명단에서, 일당은 운영팀 일일결산에서 들어옵니다.</td></tr>';
+  renderPayEdit();
 }
-function setPayDeduct(nm){
-  var name=decodeURIComponent(nm); var d=getData(); var ym=_payrollYM();
-  var v=prompt(name+' — '+(+ym.slice(5))+'월 공제액(원)\n4대보험·소득세 등 (없으면 0):', _dedOf(d,ym,name));
-  if(v===null) return;
-  d.payDeduct=d.payDeduct||{}; d.payDeduct[ym]=d.payDeduct[ym]||{};
-  d.payDeduct[ym][name]=parseInt(String(v).replace(/[^0-9]/g,''),10)||0;
-  setData(d); render();
+/* ===== 수당·공제 입력 패널 ===== */
+var PAYROLL_EDIT=null;
+function payEdit(nm){
+  var name=decodeURIComponent(nm);
+  PAYROLL_EDIT=(PAYROLL_EDIT===name)?null:name;
+  render();
+  if(PAYROLL_EDIT){ var p=document.getElementById('payrollEdit'); if(p) p.scrollIntoView({behavior:'smooth',block:'start'}); }
+}
+function _pnum(id){ var e=document.getElementById(id); if(!e) return 0; return parseFloat(String(e.value).replace(/[^0-9.]/g,''))||0; }
+function renderPayEdit(){
+  var box=document.getElementById('payrollEdit'); if(!box) return;
+  if(!PAYROLL_EDIT){ box.innerHTML=''; return; }
+  var d=getData(), ym=_payrollYM(), name=PAYROLL_EDIT;
+  var r=_payrollList(d,ym).filter(function(x){ return x.name===name; })[0];
+  if(!r){ box.innerHTML=''; PAYROLL_EDIT=null; return; }
+  var ex=_payExtra(d,ym,name);
+  var hourly=ex.hourly||_defaultHourly(r);
+  var fh=function(x){
+    var h=+ex.h[x.k]||0;
+    return '<div class="fld"><label>'+x.t+' <span style="color:var(--muted);font-weight:400;font-size:10.5px">'+x.hint+' · '+x.mult+'배</span></label>'
+      +'<input type="number" step="0.5" min="0" id="pe_h_'+x.k+'" value="'+(h||'')+'" placeholder="시간" oninput="payEditPreview()"></div>';
+  };
+  var fa=function(x){
+    return '<div class="fld"><label>'+x.t+' (원)</label>'
+      +'<input type="number" id="pe_a_'+x.k+'" value="'+((+ex.a[x.k]||0)||'')+'" placeholder="0" oninput="payEditPreview()"></div>';
+  };
+  var fd=function(x){
+    return '<div class="fld"><label>'+x.t+' (원)</label>'
+      +'<input type="number" id="pe_d_'+x.k+'" value="'+((+ex.ded[x.k]||0)||'')+'" placeholder="0" oninput="payEditPreview()"></div>';
+  };
+  var legacy=_legacyDed(d,ym,name);
+  box.innerHTML='<div class="card entry2" style="margin-top:18px">'
+    +'<h2>✏️ '+escHtml(name)+' · '+(+ym.slice(5))+'월 수당·공제 '
+      +'<span style="font-weight:500;color:var(--muted);font-size:12px">명세서에 항목별로 찍힙니다</span>'
+      +'<button class="del" style="margin-left:auto" onclick="payEdit(\''+encodeURIComponent(name)+'\')">✕ 닫기</button></h2>'
+    +'<div style="font-size:12px;color:var(--muted);margin:4px 0 12px">기본급 '+KRW(r.salary+r.dayPay)+(r.days?(' ('+r.days+'일)'):'')+' — 일일결산에서 자동으로 들어온 금액입니다.</div>'
+    +'<div class="form-grid" style="grid-template-columns:1fr 1fr">'
+      +'<div class="fld"><label>통상시급 (원) <span style="color:var(--muted);font-weight:400;font-size:10.5px">비우면 '+(r.days>0?'평균일당÷8':'월급÷209')+' = '+_won(_defaultHourly(r))+'원</span></label>'
+      +'<input type="number" id="pe_hourly" value="'+(ex.hourly||'')+'" placeholder="'+_defaultHourly(r)+'" oninput="payEditPreview()"></div>'
+    +'</div>'
+    +'<div style="font-weight:700;font-size:13px;margin:16px 0 7px">⏰ 시간으로 계산하는 수당 <span style="font-weight:400;color:var(--muted);font-size:11.5px">시간만 넣으면 금액은 자동 계산</span></div>'
+    +'<div class="form-grid" style="grid-template-columns:repeat(3,1fr)">'+PAY_ALLOW_H.map(fh).join('')+'</div>'
+    +'<div style="font-weight:700;font-size:13px;margin:16px 0 7px">💰 금액으로 넣는 수당</div>'
+    +'<div class="form-grid" style="grid-template-columns:repeat(3,1fr)">'+PAY_ALLOW_A.map(fa).join('')+'</div>'
+    +'<div style="font-weight:700;font-size:13px;margin:16px 0 7px">➖ 공제 <span style="font-weight:400;color:var(--muted);font-size:11.5px">세무사님이 주신 숫자를 항목별로 넣어주세요</span></div>'
+    +(legacy&&!_dedOf(d,ym,name).itemized?('<div style="font-size:12px;color:var(--warn);margin-bottom:8px">⚠️ 지금은 공제가 '+KRW(legacy)+' 한 줄로만 적혀 있습니다. 아래에 항목별로 나눠 넣으면 그 값으로 바뀝니다.</div>'):'')
+    +'<div class="form-grid" style="grid-template-columns:repeat(4,1fr)">'+PAY_DED.map(fd).join('')+'</div>'
+    +'<div id="pePreview" style="margin-top:16px"></div>'
+    +'<div style="margin-top:14px;text-align:right"><button class="primary" onclick="payEditSave()">✔ 저장</button></div>'
+    +'</div>';
+  payEditPreview();
+}
+function payEditPreview(){
+  var box=document.getElementById('pePreview'); if(!box||!PAYROLL_EDIT) return;
+  var d=getData(), ym=_payrollYM();
+  var r=_payrollList(d,ym).filter(function(x){ return x.name===PAYROLL_EDIT; })[0]; if(!r) return;
+  var hourly=_pnum('pe_hourly')||_defaultHourly(r);
+  var aTot=0, parts=[];
+  PAY_ALLOW_H.forEach(function(x){ var h=_pnum('pe_h_'+x.k); if(h>0){ var amt=Math.round(hourly*x.mult*h); aTot+=amt; parts.push(x.t+' '+h+'h = '+KRW(amt)); } });
+  PAY_ALLOW_A.forEach(function(x){ var v=_pnum('pe_a_'+x.k); if(v>0){ aTot+=v; parts.push(x.t+' '+KRW(v)); } });
+  var dTot=0; PAY_DED.forEach(function(x){ dTot+=_pnum('pe_d_'+x.k); });
+  var base=r.salary+r.dayPay, gross=base+aTot, net=gross-dTot;
+  box.innerHTML='<div class="sumrow">'
+    +'<div class="sumtile"><div class="v">'+KRW(gross)+'</div><div class="l">임금 총액</div></div>'
+    +'<div class="sumtile"><div class="v" style="color:var(--warn)">-'+KRW(dTot)+'</div><div class="l">공제 합계</div></div>'
+    +'<div class="sumtile"><div class="v">'+KRW(net)+'</div><div class="l">실지급액</div></div></div>'
+    +(parts.length?('<div style="font-size:11.5px;color:var(--muted);margin-top:7px">수당: '+parts.join(' · ')+'</div>'):'');
+}
+function payEditSave(){
+  if(!PAYROLL_EDIT) return;
+  var d=getData(), ym=_payrollYM(), name=PAYROLL_EDIT;
+  var obj={hourly:_pnum('pe_hourly'), h:{}, a:{}, ded:{}};
+  PAY_ALLOW_H.forEach(function(x){ var v=_pnum('pe_h_'+x.k); if(v>0) obj.h[x.k]=v; });
+  PAY_ALLOW_A.forEach(function(x){ var v=_pnum('pe_a_'+x.k); if(v>0) obj.a[x.k]=v; });
+  PAY_DED.forEach(function(x){ var v=_pnum('pe_d_'+x.k); if(v>0) obj.ded[x.k]=v; });
+  d.payExtra=d.payExtra||{}; d.payExtra[ym]=d.payExtra[ym]||{};
+  d.payExtra[ym][name]=obj;
+  setData(d); PAYROLL_EDIT=null; render();
+  alert(name+' 님 '+(+ym.slice(5))+'월 수당·공제를 저장했어요.\n📄 받기를 누르면 명세서에 항목별로 들어갑니다.');
 }
 function downloadPayslip(nm){
   var name=decodeURIComponent(nm); var d=getData(); var ym=_payrollYM();
