@@ -224,6 +224,8 @@
   .bcol.c_hold{border-top-color:#9333ea} .bcol.c_review{border-top-color:#0891b2} .bcol.c_done{border-top-color:var(--good)}
   .bcolhd{display:flex;align-items:center;gap:6px;font-weight:800;font-size:12.5px;margin-bottom:9px;padding-bottom:7px;border-bottom:1.5px solid var(--line)}
   .bcolhd .bc{margin-left:auto;font-size:11px;font-weight:700;color:#fff;background:var(--muted);border-radius:10px;padding:1px 8px}
+  .bdone-toggle{text-align:center;font-size:11.5px;color:var(--limit);cursor:pointer;padding:6px;border:1px dashed var(--line);border-radius:8px;margin-top:2px;font-weight:700}
+  .bdone-clear{font-size:10.5px;padding:2px 7px;border:1px solid var(--line);border-radius:8px;background:var(--card);color:var(--muted);cursor:pointer;font-weight:700}
   .bcard{background:var(--card);border:1px solid var(--line);border-left:4px solid var(--muted);border-radius:9px;padding:9px 10px;margin-bottom:8px;box-shadow:var(--shadow)}
   .bcard.p_high{border-left-color:var(--warn)} .bcard.p_mid{border-left-color:var(--daman)} .bcard.p_low{border-left-color:var(--muted)}
   .bcard .btext{font-size:13px;white-space:pre-wrap;word-break:break-word}
@@ -3884,6 +3886,15 @@ function msgItemHTML(m,i,owner,showAll){
 var BOARD_TEAMS={ops:'운영팀',fin:'재무팀',mng:'경영관리팀',hr:'인사팀',mkt:'마케팅팀',biz:'기업지원팀'};
 var BOARD_COLS=[{k:'todo',t:'📝 할 일'},{k:'doing',t:'🔄 진행 중'},{k:'hold',t:'⏸️ 보류'},{k:'review',t:'🔎 검토 대기'},{k:'done',t:'✅ 완료'}];
 var BOARD_PRIO={high:{t:'🔴 높음',o:0},mid:{t:'🟡 보통',o:1},low:{t:'⚪ 낮음',o:2}};
+var BOARD_DONE_OPEN={};   // 팀별 완료 칸 펼침 여부(기본 접힘) — 화면 깔끔하게
+window.boardToggleDone=function(team){ BOARD_DONE_OPEN[team]=!BOARD_DONE_OPEN[team]; renderBoard(team); };
+window.boardClearDone=function(team){   // 완료 카드 비우기(우리 팀 완료만, 확인 후)
+  var d=getData(); var arr=_boardArr(d,team); var dn=arr.filter(function(c){return (c.status||'')==='done';});
+  if(!dn.length){ alert('비울 완료 항목이 없습니다.'); return; }
+  if(!confirm((BOARD_TEAMS[team]||'')+' 완료 '+dn.length+'건을 목록에서 비울까요?\n\n업무정리 카드라 결산·기록용 데이터가 아니며, 비우면 되돌릴 수 없습니다.')) return;
+  d.boards[team]=arr.filter(function(c){return (c.status||'')!=='done';});
+  setData(d); render();
+};
 function _besc(t){ return String(t==null?'':t).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
 function _boardArr(d,team){ d.boards=d.boards||{}; if(!Array.isArray(d.boards[team])) d.boards[team]=[]; return d.boards[team]; }
 function _teamOpts(sel){ return Object.keys(BOARD_TEAMS).map(function(k){ return '<option value="'+k+'"'+(k===sel?' selected':'')+'>'+(k===sel?'우리 팀':'→ '+BOARD_TEAMS[k])+'</option>'; }).join(''); }
@@ -4011,10 +4022,22 @@ function renderBoard(viewTeam){
   _boardArr(d,viewTeam).forEach(function(c){ list.push({c:c,home:viewTeam}); });                       // 우리 팀 카드
   Object.keys(BOARD_TEAMS).forEach(function(ot){ if(ot===viewTeam) return; ((d.boards&&d.boards[ot])||[]).forEach(function(c){ if(c.from===viewTeam) list.push({c:c,home:ot}); }); });  // 내가 다른 팀에 보낸 카드(진행상황 추적)
   list.sort(function(A,B){ var a=A.c,b=B.c; var pa=(BOARD_PRIO[a.prio]||BOARD_PRIO.mid).o, pb=(BOARD_PRIO[b.prio]||BOARD_PRIO.mid).o; if(pa!==pb) return pa-pb; var da=a.due||'9999-99-99', db=b.due||'9999-99-99'; if(da!==db) return da<db?-1:1; return (a.ts||'')<(b.ts||'')?-1:1; });
+  var SHOW_DONE=3;   // 완료 칸: 최근 3건만 기본 표시, 나머지는 접기
   var cols=BOARD_COLS.map(function(col){
     var items=list.filter(function(it){return (it.c.status||'todo')===col.k;});
-    var body=items.length?items.map(function(it){return _boardCard(it.home,it.c,viewTeam);}).join(''):'<div class="bempty">없음</div>';
-    return '<div class="bcol c_'+col.k+'"><div class="bcolhd">'+col.t+'<span class="bc">'+items.length+'</span></div>'+body+'</div>';
+    var hd=col.t+'<span class="bc">'+items.length+'</span>';
+    var body;
+    if(col.k==='done' && items.length){
+      items.sort(function(A,B){ var a=A.c.doneTs||'', b=B.c.doneTs||''; return a<b?1:(a>b?-1:0); });  // 최근 완료 먼저
+      var open=!!BOARD_DONE_OPEN[viewTeam];
+      var shown=(open||items.length<=SHOW_DONE)?items:items.slice(0,SHOW_DONE);
+      body=shown.map(function(it){return _boardCard(it.home,it.c,viewTeam);}).join('');
+      if(items.length>SHOW_DONE) body+='<div class="bdone-toggle" onclick="boardToggleDone(\''+viewTeam+'\')">'+(open?'▴ 접기':'▾ 지난 완료 '+(items.length-SHOW_DONE)+'건 더보기')+'</div>';
+      if(items.filter(function(it){return it.home===viewTeam;}).length) hd+='<button class="bdone-clear" onclick="boardClearDone(\''+viewTeam+'\')" title="완료 항목 비우기">🗑 비우기</button>';
+    } else {
+      body=items.length?items.map(function(it){return _boardCard(it.home,it.c,viewTeam);}).join(''):'<div class="bempty">없음</div>';
+    }
+    return '<div class="bcol c_'+col.k+'"><div class="bcolhd">'+hd+'</div>'+body+'</div>';
   }).join('');
   // 📌 할 일(미분류) 대기 알림 — 방치 방지, 빠른 상태 지정 유도
   var ownTodo=list.filter(function(it){ return it.home===viewTeam && (it.c.status||'todo')==='todo'; });
