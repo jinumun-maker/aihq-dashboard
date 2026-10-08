@@ -1526,11 +1526,9 @@ if(window.AIHQ_DATA){
     {date:"2026-10-15",co:"daman",site:"최희정 더써밋 9호 청소",work:"19:00 · 에어컨",crew:"",contact:"01056520449",quote:1100000,status:"예약"},
     {date:"2026-10-10",co:"daman",site:"달리 16평 식당 청소 (문산읍 삼곡리 588-18)",work:"",crew:"",contact:"",quote:0,status:"예약"},
     {date:"2026-10-10",co:"daman",site:"고미 사천엘크루 109동 204호",work:"17:00",crew:"",contact:"",quote:0,status:"예약"},
-    {date:"2026-10-14",co:"daman",site:"고미 남해 주은파크빌 가동 101호",work:"",crew:"",contact:"",quote:0,status:"예약"},
     {date:"2026-10-21",co:"daman",site:"고미 창녕 코아루 104동 1801호",work:"20:30",crew:"",contact:"",quote:0,status:"예약"},
     {date:"2026-10-27",co:"daman",site:"하동 청소소독·에어컨·줄눈 무연탄",work:"15:00",crew:"",contact:"01064775903",quote:1210000,status:"예약"},
     {date:"2026-10-30",co:"daman",site:"고미 동양카츠 경남대점",work:"08:30",crew:"",contact:"",quote:0,status:"예약"},
-    {date:"2026-11-10",co:"daman",site:"고미 남해 주은파크빌 가동 101호",work:"07:00",crew:"",contact:"",quote:0,status:"예약"},
     {date:"2026-11-13",co:"daman",site:"고미 초전푸르지오 1차 106동 501호",work:"08:30",crew:"",contact:"",quote:0,status:"예약"},
     {date:"2026-11-23",co:"daman",site:"고미 중흥 4단지 402동 1403호",work:"11:30",crew:"",contact:"",quote:0,status:"예약"},
     {date:"2026-12-04",co:"daman",site:"고미 금호석류아파트 115동 2001호",work:"12:30",crew:"",contact:"",quote:0,status:"예약"}
@@ -1569,7 +1567,11 @@ if(window.AIHQ_DATA){
     {date:"2027-01-28",time:"07:00",title:"지하상가 방역"},
     {date:"2027-02-04",time:"07:00",title:"지하상가 방역"}
   ];
-  window.AIHQ_DATA.calSync = "2026-10-08";
+  window.AIHQ_DATA.calSyncDel = [   // 캘린더에서 취소된 현장 — 최신화 때 영구 제거(배치인원 있어도)
+    {date:"2026-10-14",name:"고미 남해 주은파크빌 가동 101호"},
+    {date:"2026-11-10",name:"고미 남해 주은파크빌 가동 101호"}
+  ];
+  window.AIHQ_DATA.calSync = "2026-10-08b";
 }
 const KRW  = n => "₩" + Math.round(n||0).toLocaleString("ko-KR");
 const KRWm = n => (n/10000).toLocaleString("ko-KR",{maximumFractionDigits:0}) + "만";
@@ -1694,6 +1696,7 @@ function _applyCalSync(d){   // 구글 캘린더 최신화: calSync 값이 바�
   if(!cur || !cur.calSync || d._calSync===cur.calSync) return false;
   if(Array.isArray(cur.calendar)) d.calendar=JSON.parse(JSON.stringify(cur.calendar)); // 방역 등은 교체
   if(Array.isArray(cur.schedule)) d.schedule=_mergeSchedule(d.schedule, cur.schedule); // 배치는 병합(보존)
+  if(Array.isArray(cur.calSyncDel)){ d.deleted=d.deleted||{}; cur.calSyncDel.forEach(function(x){ if(x&&x.date&&x.name) d.deleted[x.date+'|'+_nkey(x.name)]=true; }); }  // 취소된 현장: 영구 제거(배치인원 있어도)
   _applyTombstones(d);   // 최신화로 다시 들어온 일정 중 사용자가 삭제한 건 제거
   d._calSync=cur.calSync;
   return true;
