@@ -2857,6 +2857,10 @@ function render(){
     const finTot=_finItems.length;
     const finDone=_finItems.filter(Boolean).length;
     const finPct=Math.round(finDone/finTot*100);
+    // 실질 순익(=수익구조 '월' 값과 동일): 현장순익 − 이번달 발주매입 − 이번달 고정지출
+    const _realBuyM=(d.orders||[]).filter(o=>(o.status==='주문완료'||o.status==='입고완료')&&(+o.amount>0)&&(((o.orderedDate||o.date)||'').slice(0,7)===ym)).reduce((s,o)=>s+(+o.amount||0),0);
+    const _realFixM=(d.fixedExpenses||[]).reduce((s,f)=>s+(+f.amount||0),0);
+    const _realProfitM=monthAgg.profit-_realBuyM-_realFixM;
     const finHTML=pctBar(finPct,finDone,finTot,'💰 재무팀 할 일 완료율')+[
       {v:KRW(recvTotal),l:`미수금 ${recv.length}건 (30일↑ ${recvLate})`,a:recvLate>0},
       {v:allUnpaid+'명',l:`미이체 일당 ${KRW(unpaidAmt)}`,a:allUnpaid>0},
@@ -2864,7 +2868,8 @@ function render(){
       {v:ordReqN+'건',l:'📦 발주 요청 (주문해야)',a:ordReqN>0},
       {v:allMiss+'명',l:'인건비 미입력',a:allMiss>0},
       {v:taxTargets.length+'건',l:'세금계산서 미발행',a:taxTargets.length>0},
-      {v:KRW(monthAgg.profit),l:'이번 달 현장순익 (고정비 전)',a:false}
+      {v:KRW(monthAgg.profit),l:'이번 달 현장순익 (고정비 전)',a:false},
+      {v:KRW(_realProfitM),l:'💡 이번 달 실질 순익 (고정비 반영)',a:_realProfitM<0}
     ].map(t=>`<div class="sumtile ${t.a?'alert':''}"><div class="v">${t.v}</div><div class="l">${t.l}</div></div>`).join('');
     ['finSummary','finSummary2'].forEach(id=>{ const el=document.getElementById(id); if(el) el.innerHTML=finHTML; });
   }
