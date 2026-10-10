@@ -2403,10 +2403,17 @@ function render(){
   renderPayReqs();
   renderCars();
 
+  // 💡 이번 달 실질 순익 = 현장순익 − 이번달 발주매입 − 이번달 '납부완료' 고정지출(월급 포함). 납부완료 누르면 반영됨
+  const paidFixM=(d.fixedExpenses||[]).filter(f=>f.paidMonth===ym).reduce((s,f)=>s+(+f.amount||0),0);
+  const unpaidFixM=(d.fixedExpenses||[]).filter(f=>f.paidMonth!==ym).reduce((s,f)=>s+(+f.amount||0),0);
+  const ordBuyM=(d.orders||[]).filter(o=>(o.status==='주문완료'||o.status==='입고완료')&&(+o.amount>0)&&(((o.orderedDate||o.date)||'').slice(0,7)===ym)).reduce((s,o)=>s+(+o.amount||0),0);
+  const realProfitM=monthAgg.profit-ordBuyM-paidFixM;
+
   // KPI
   document.getElementById("kpis").innerHTML=[
     {l:"이번 달 매출", v:KRW(curTotal), d:`전월 대비 ${growth>=0?'▲':'▼'} ${Math.abs(growth).toFixed(1)}%`, cls:growth>=0?'up':'down'},
-    {l:"이번 달 현장순익", v:KRW(monthAgg.profit), d:(mMiss>0?`⚠️ 인건비 ${mMiss}명 미입력 잠정`:`고정지출 반영 전 · 실질순익은 수익구조 참고`), cls:mMiss>0?'down':'up'},
+    {l:"이번 달 현장순익", v:KRW(monthAgg.profit), d:(mMiss>0?`⚠️ 인건비 ${mMiss}명 미입력 잠정`:`고정비 전 · 실질순익은 옆 →`), cls:mMiss>0?'down':'up'},
+    {l:"💡 이번 달 실질 순익", v:KRW(realProfitM), d:(unpaidFixM>0?`⏳ 미납 고정비 ${KRW(unpaidFixM)} 남음`:`✅ 고정비 모두 납부`), cls:realProfitM<0?'down':'up'},
     {l:"미수금 합계", v:KRW(recvTotal), d:`${recv.length}건`, cls:''},
     {l:"오늘 미지급 일당", v:KRW(unsentAmt), d:(unsent.length?`${unsent.length}명 이체 필요`:`모두 이체완료`), cls:unsent.length?'down':'up'}
   ].map(k=>`<div class="card kpi"><div class="label">${k.l}</div><div class="val">${k.v}</div>
@@ -2857,10 +2864,6 @@ function render(){
     const finTot=_finItems.length;
     const finDone=_finItems.filter(Boolean).length;
     const finPct=Math.round(finDone/finTot*100);
-    // 실질 순익(=수익구조 '월' 값과 동일): 현장순익 − 이번달 발주매입 − 이번달 고정지출
-    const _realBuyM=(d.orders||[]).filter(o=>(o.status==='주문완료'||o.status==='입고완료')&&(+o.amount>0)&&(((o.orderedDate||o.date)||'').slice(0,7)===ym)).reduce((s,o)=>s+(+o.amount||0),0);
-    const _realFixM=(d.fixedExpenses||[]).reduce((s,f)=>s+(+f.amount||0),0);
-    const _realProfitM=monthAgg.profit-_realBuyM-_realFixM;
     const finHTML=pctBar(finPct,finDone,finTot,'💰 재무팀 할 일 완료율')+[
       {v:KRW(recvTotal),l:`미수금 ${recv.length}건 (30일↑ ${recvLate})`,a:recvLate>0},
       {v:allUnpaid+'명',l:`미이체 일당 ${KRW(unpaidAmt)}`,a:allUnpaid>0},
@@ -2869,7 +2872,7 @@ function render(){
       {v:allMiss+'명',l:'인건비 미입력',a:allMiss>0},
       {v:taxTargets.length+'건',l:'세금계산서 미발행',a:taxTargets.length>0},
       {v:KRW(monthAgg.profit),l:'이번 달 현장순익 (고정비 전)',a:false},
-      {v:KRW(_realProfitM),l:'💡 이번 달 실질 순익 (고정비 반영)',a:_realProfitM<0}
+      {v:KRW(realProfitM),l:'💡 이번 달 실질 순익 (납부 고정비 반영)',a:realProfitM<0}
     ].map(t=>`<div class="sumtile ${t.a?'alert':''}"><div class="v">${t.v}</div><div class="l">${t.l}</div></div>`).join('');
     ['finSummary','finSummary2'].forEach(id=>{ const el=document.getElementById(id); if(el) el.innerHTML=finHTML; });
   }
@@ -3042,7 +3045,7 @@ function render(){
     // 고정지출(월세·보험·공과금 등): 이번 달=1개월분, 올해=데이터 개월수만큼
     const fixMonthly=(d.fixedExpenses||[]).reduce((s,f)=>s+(+f.amount||0),0);
     const monthsN=new Set((d.settlements||[]).map(s=>(s.date||'').slice(0,7))).size||1;
-    const fixed = brange==='month' ? fixMonthly : fixMonthly*monthsN;
+    const fixed = brange==='month' ? paidFixM : fixMonthly*monthsN;   // 월=납부완료된 고정지출만(재무요약·KPI와 동일), 올해=누적추정
     const prof = rev - lab - exp - fixed;   // 고정지출까지 뺀 실질 순익
     const denom=Math.max(rev, lab+exp+fixed, 1);
     const parts=[{v:Math.max(prof,0),c:'#16a34a'},{v:lab,c:'#2563eb'},{v:exp,c:'#f59e0b'},{v:fixed,c:'#9333ea'}];
@@ -3063,7 +3066,7 @@ function render(){
       <div><span class="dot" style="background:#2563eb"></span>인건비 <b>${pct(lab)}%</b> <span style="color:var(--muted);font-size:12px">${KRW(lab)}</span></div>
       <div><span class="dot" style="background:#f59e0b"></span>경비 <b>${pct(exp)}%</b> <span style="color:var(--muted);font-size:12px">${KRW(exp)}</span></div>
       <div><span class="dot" style="background:#9333ea"></span>고정지출 <b>${pct(fixed)}%</b> <span style="color:var(--muted);font-size:12px">${KRW(fixed)}</span></div>
-      <div style="color:var(--muted);font-size:11px;margin-top:3px">※ 경비=현장경비+발주 · 고정지출 반영</div>
+      <div style="color:var(--muted);font-size:11px;margin-top:3px">※ 경비=현장경비+발주 · 고정지출 반영 <span style="color:var(--limit)">(월 보기는 납부완료된 고정지출만)</span></div>
     </div>`;
     const bm=document.getElementById('balBtnMonth'), by=document.getElementById('balBtnYear');
     if(bm) bm.style.cssText='font-size:11.5px;padding:5px 11px;'+(brange==='month'?'background:var(--limit);color:#fff;border-color:var(--limit)':'');
