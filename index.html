@@ -4209,6 +4209,7 @@ window.boardAdd=function(fromTeam){
   var pe=document.getElementById('ba_'+fromTeam+'_prio'); if(pe) pe.value='mid';
   var tg=document.getElementById('ba_'+fromTeam+'_target'); if(tg) tg.value=fromTeam;
   refreshBoards(); if(el) el.focus();
+  toast(target===fromTeam ? '✅ 할 일을 추가했어요' : '✅ '+(BOARD_TEAMS[target]||target)+'에 할 일을 보냈어요');   // 생성·대상 즉시 확인
 };
 window.boardStatus=function(team,id,st){ var d=getData(); var c=_boardArr(d,team).filter(function(x){return x.id===id;})[0]; if(!c) return; c.status=st; c.doneTs=(st==='done'?realToday():''); setData(d); refreshBoards(); };
 window.boardPrio=function(team,id,p){ var d=getData(); var c=_boardArr(d,team).filter(function(x){return x.id===id;})[0]; if(!c) return; c.prio=p; setData(d); refreshBoards(); };
@@ -4328,6 +4329,17 @@ function refreshBoards(){   // 📋 보드 조작 전용 경량 렌더: 전체 r
   setBadge('opsBadge',(_boardTaskCache.ops||0)+_bo('ops'));
   setBadge('hrBadge',(_boardTaskCache.hr||0)+_bo('hr'));
   setBadge('mktBadge',_bo('mkt'));
+}
+function toast(msg, ms){   // 간단 토스트(비차단 확인 표시)
+  try{
+    var t=document.getElementById('_toast');
+    if(!t){ t=document.createElement('div'); t.id='_toast';
+      t.style.cssText='position:fixed;left:50%;bottom:84px;transform:translateX(-50%);z-index:1400;background:#16a34a;color:#fff;font-size:13.5px;font-weight:700;padding:11px 18px;border-radius:12px;box-shadow:0 4px 18px rgba(0,0,0,.3);opacity:0;transition:opacity .2s;pointer-events:none;max-width:88vw;text-align:center';
+      document.body.appendChild(t);
+    }
+    t.textContent=msg; t.style.opacity='1';
+    clearTimeout(t._tm); t._tm=setTimeout(function(){ t.style.opacity='0'; }, ms||2200);
+  }catch(e){}
 }
 function renderBoard(viewTeam){
   var mount=document.getElementById('brd_'+viewTeam); if(!mount) return;
