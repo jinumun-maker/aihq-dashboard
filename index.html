@@ -1587,7 +1587,7 @@ function bankTag(bank){ if(!bank) return '';
   return `<span class="pill" style="background:rgba(37,99,235,.10);color:var(--limit);font-size:10.5px;margin-left:5px;font-weight:600">${ico} ${label}</span>`; }
 
 // ═══ 데이터 계층: 클라우드(Firestore 실시간) / 오프라인(localStorage) 이중 ═══
-let CLOUD_MODE=false, CLOUD_D=null, _saveTimer=null;
+let CLOUD_MODE=false, CLOUD_D=null, _saveTimer=null, _pendingLocal=false;   // _pendingLocal: 아직 클라우드에 안 올라간 로컬 편집(인원 등) 보호용
 function _rawSource(){
   const cur=window.AIHQ_DATA;
   let data=null;
@@ -1701,6 +1701,8 @@ function _applyCalSync(d){   // 구글 캘린더 최신화: calSync 값이 바�
   if(Array.isArray(cur.schedule)) d.schedule=_mergeSchedule(d.schedule, cur.schedule); // 배치는 병합(보존)
   if(Array.isArray(cur.calSyncDel)){ d.deleted=d.deleted||{}; cur.calSyncDel.forEach(function(x){ if(x&&x.date&&x.name) d.deleted[x.date+'|'+_nkey(x.name)]=true; }); }  // 취소된 현장: 영구 제거(배치인원 있어도)
   _applyTombstones(d);   // 최신화로 다시 들어온 일정 중 사용자가 삭제한 건 제거
+  // 🛡️ 병합 뒤 crewMap 재부착: _seed의 재부착은 병합 '전'에 끝나므로, 병합 결과 항목(같은 날짜+현장)에 배치 인원 다시 붙여 손실 방지
+  if(d.crewMap) (d.schedule||[]).forEach(function(s){ if(s){ var k=s.date+'|'+s.site; if((!s.crew||!String(s.crew).trim()) && d.crewMap[k]) s.crew=d.crewMap[k]; } });
   d._calSync=cur.calSync;
   return true;
 }
@@ -1711,9 +1713,12 @@ function getData(){
 function _clean(d){ const c=JSON.parse(JSON.stringify(d)); delete c._ver; return c; }
 function _cloudSave(d){
   if(!fbDB) return;
+  _pendingLocal=true;   // 로컬 편집 발생 → 클라우드 저장 완료 전까진 서버 스냅샷이 덮지 않게
   clearTimeout(_saveTimer);
   const snapshot=_clean(d);
-  _saveTimer=setTimeout(function(){ fbDB.collection('app').doc('state').set(snapshot).catch(function(e){ console.error('클라우드 저장 실패', e); }); }, 400);
+  _saveTimer=setTimeout(function(){ fbDB.collection('app').doc('state').set(snapshot)
+    .then(function(){ _pendingLocal=false; })
+    .catch(function(e){ _pendingLocal=false; console.error('클라우드 저장 실패', e); }); }, 400);
 }
 function setData(d){
   if(CLOUD_MODE){ CLOUD_D=d; _cloudSave(d); return; }
@@ -1724,6 +1729,9 @@ function startCloudSync(){
   if(!fbDB) return;
   fbDB.collection('app').doc('state').onSnapshot(function(snap){
     if(!snap.exists){ fbDB.collection('app').doc('state').set(_clean(_seed(_merge(_rawSource())))).catch(function(e){ console.error('클라우드 초기화 실패', e); }); return; }
+    // 🛡️ 내가 방금 바꾼(아직 클라우드 저장 전) 편집을, 서버발 스냅샷이 덮어써서 날리지 않게 보호.
+    //    hasPendingWrites=true 면 내 로컬 쓰기 echo(내 편집 포함)라 안전. false면 서버/다른기기 변경 → 저장 대기 중이면 무시.
+    if(_pendingLocal && !(snap.metadata && snap.metadata.hasPendingWrites)) return;
     CLOUD_D=_seed(snap.data());
     if(_applyCalSync(CLOUD_D)){ _cloudSave(CLOUD_D); }   // 구글 캘린더 최신화 1회 반영
     render();
