@@ -112,6 +112,56 @@
   html[data-theme="dark"] .p-daman{color:#fbbf24}
   .p-late{background:rgba(220,38,38,.14);color:var(--warn)}
   .p-good{background:rgba(22,163,74,.14);color:var(--good)}
+  /* ── 📈 영업 프로젝트 (견적→수금) ── */
+  .pp-mute{background:var(--bg);color:var(--muted);border:1px solid var(--line)}
+  .sgroup{margin-bottom:20px}
+  .sgroup:last-child{margin-bottom:0}
+  .shead{display:flex;align-items:center;gap:9px;margin-bottom:9px}
+  .shead .sdot{width:12px;height:12px;border-radius:50%;flex:none}
+  .shead .sname{font-size:13px;font-weight:800;letter-spacing:-.3px;flex:none}
+  .shead .sdesc{font-size:11px;color:var(--muted);flex:none}
+  .shead .scnt{font-size:11.5px;color:var(--muted);font-weight:700;font-variant-numeric:tabular-nums;flex:none}
+  .shead .sline{flex:1;height:1px;background:var(--line);min-width:10px}
+  @media(max-width:600px){ .shead .sdesc{display:none} }
+  .stagebadge{font-size:11.5px;font-weight:800;padding:3px 10px;border-radius:7px;color:#fff;white-space:nowrap;letter-spacing:-.2px}
+  .plist{display:flex;flex-direction:column;gap:12px}
+  .proj{border:1px solid var(--line);border-left-width:5px;border-radius:12px;background:var(--bg);overflow:hidden}
+  .proj.late{border-color:var(--warn);box-shadow:0 0 0 2px rgba(220,38,38,.10)}
+  .proj.dead{opacity:.6}
+  .phead{display:flex;align-items:flex-start;gap:9px;padding:13px 14px 0;flex-wrap:wrap}
+  .ptitle{flex:1;min-width:150px}
+  .ptitle .pn{font-size:14.5px;font-weight:700;letter-spacing:-.2px}
+  .ptitle .pm{font-size:11.5px;color:var(--muted);margin-top:2px}
+  .pamt{font-size:16px;font-weight:800;font-variant-numeric:tabular-nums;white-space:nowrap}
+  .steps{display:flex;gap:3px;padding:12px 14px 6px}
+  .step{flex:1;height:7px;border-radius:4px;background:var(--line)}
+  .step.done{opacity:.45}
+  .stepnames{display:flex;gap:3px;padding:0 14px 10px}
+  .stepnames span{flex:1;font-size:9.5px;color:var(--muted);text-align:center;letter-spacing:-.4px}
+  .stepnames span.cur{font-weight:800}
+  @media(max-width:600px){ .stepnames span{font-size:8.5px} }
+  .pnext{display:flex;align-items:center;gap:8px;padding:10px 14px;background:var(--card);border-top:1px solid var(--line);flex-wrap:wrap;font-size:12.5px}
+  .pnext .lbl{color:var(--muted);font-weight:600;flex:none}
+  .pnext input.nx{flex:1;min-width:120px;font-family:inherit;font-size:12.5px;padding:6px 8px;border:1px solid var(--line);border-radius:7px;background:var(--bg);color:var(--ink)}
+  .pnext input.dt{font-family:inherit;font-size:12.5px;padding:6px 8px;border:1px solid var(--line);border-radius:7px;background:var(--bg);color:var(--ink);flex:none;width:140px}
+  .pacts{display:flex;gap:6px;padding:10px 14px;border-top:1px solid var(--line);flex-wrap:wrap;align-items:center}
+  .pacts .grow{flex:1}
+  button.go{background:var(--good);color:#fff;border-color:var(--good);font-weight:700}
+  button.tiny{font-size:11.5px;padding:5px 9px}
+  .plog{padding:0 14px 12px;font-size:11.5px;color:var(--muted);line-height:1.7}
+  .plog b{color:var(--ink);font-weight:600}
+  .pfilters{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:14px}
+  .pfilters button.on{background:var(--limit);color:#fff;border-color:var(--limit);font-weight:700}
+  .alertrow{display:flex;align-items:center;gap:10px;padding:10px 12px;border:1px solid var(--line);border-radius:10px;background:var(--bg);margin-bottom:8px;font-size:13px;flex-wrap:wrap}
+  .alertrow.hot{border-color:var(--warn);background:rgba(220,38,38,.06)}
+  .alertrow .grow{flex:1;min-width:140px}
+  .funnel{display:flex;flex-direction:column;gap:7px}
+  .frow{display:flex;align-items:center;gap:10px;font-size:12.5px}
+  .frow .fname{width:76px;color:var(--muted);font-weight:600;flex:none}
+  .frow .ftrack{flex:1;height:22px;background:var(--bg);border-radius:6px;overflow:hidden;border:1px solid var(--line)}
+  .frow .ftrack>i{display:block;height:100%;border-radius:5px;transition:width .3s}
+  .frow .fcnt{width:118px;text-align:right;font-variant-numeric:tabular-nums;font-size:12px;flex:none}
+  .pempty{color:var(--muted);font-size:13px;padding:18px 4px;text-align:center}
   .bar{height:8px;border-radius:6px;background:var(--line);overflow:hidden}
   .bar>i{display:block;height:100%;border-radius:6px}
   .lead-row{display:flex;align-items:center;gap:10px;margin:9px 0;font-size:13px}
@@ -1385,6 +1435,48 @@
       <tbody id="salesRows"></tbody>
     </table></div>
   </div>
+
+  <!-- ── 📈 영업 프로젝트 (견적 제출 → 수금) ── -->
+  <div class="card" style="margin-top:26px;border-top:3px solid var(--limit)">
+    <h2>📈 영업 프로젝트 <span style="font-weight:500;color:var(--muted);font-size:12px">견적서 낸 뒤부터 돈 받을 때까지</span></h2>
+    <div class="banner" style="background:rgba(37,99,235,.08);border-color:rgba(37,99,235,.30);margin:0 0 18px">
+      위 <b>영업처 목록</b>은 계약까지만 봅니다. 견적서를 낸 건은 여기로 옮겨서 <b>작업 → 수금</b>까지 따라갑니다.
+    </div>
+    <div class="sumrow" id="pipeMoney"></div>
+  </div>
+
+  <div class="card" style="margin-top:18px">
+    <h2>⚠️ 지금 챙겨야 할 것 <span id="pipeAlertCount" style="font-weight:500;color:var(--muted);font-size:12px"></span></h2>
+    <div id="pipeAlerts"></div>
+  </div>
+
+  <div class="card" style="margin-top:18px">
+    <h2>📊 단계별 현황 <span style="font-weight:500;color:var(--muted);font-size:12px">어디에 돈이 묶여 있나</span></h2>
+    <div class="funnel" id="pipeFunnel"></div>
+  </div>
+
+  <div class="card entry" style="margin-top:18px">
+    <h2>＋ 견적 낸 건 등록</h2>
+    <div class="form-grid">
+      <div class="fld"><label>회사</label><select id="pp_co"><option value="limit">리미트 (청소)</option><option value="daman">다만산업 (폴리싱)</option></select></div>
+      <div class="fld wide"><label>고객·현장</label><input id="pp_name" placeholder="예: 초전 힐스테이트 관리사무소"></div>
+      <div class="fld"><label>지역</label><input id="pp_area" placeholder="예: 초전동"></div>
+      <div class="fld wide"><label>작업 내용</label><input id="pp_work" placeholder="예: 입주청소 34평 / 바닥 폴리싱 120㎡"></div>
+      <div class="fld"><label>견적 금액 (원)</label><input id="pp_amt" type="number" inputmode="numeric" placeholder="891000"></div>
+      <div class="fld"><label>견적일</label><input id="pp_qd" type="date"></div>
+      <div class="fld wide"><label>다음 할 일</label><input id="pp_next" placeholder="예: 3일 뒤 전화로 확인"></div>
+      <div class="fld"><label>언제까지</label><input id="pp_due" type="date"></div>
+      <div class="fld"><label>담당</label><select id="pp_owner"><option>대표</option><option>소이 팀장</option></select></div>
+    </div>
+    <div style="text-align:right;margin-top:12px"><button class="primary" onclick="addPipe()" style="padding:11px 20px;border-radius:10px">＋ 프로젝트로 등록</button></div>
+  </div>
+
+  <div class="card" style="margin-top:18px">
+    <h2>📋 진행 중인 건 <span id="pipeCount" style="font-weight:500;color:var(--muted);font-size:12px"></span></h2>
+    <div class="pfilters" id="pipeFilters"></div>
+    <div id="pipeList"></div>
+  </div>
+
   </div><!-- /영업팀 -->
 
   <!-- ================= 개발팀 ================= -->
@@ -1623,6 +1715,8 @@ function _seed(data){    // 메시지·지원사업 시드/마이그레이션 (�
     {area:'초전동', name:'○○신축아파트', biz:'청소', point:'곧 입주 예정(추정)', contact:'관리사무소', status:'후보', next:'입주시기 확인'},
     {area:'상대동', name:'△△카페', biz:'폴리싱', point:'바닥 노후', contact:'방문/전화', status:'후보', next:'견적 제안'}
   ];
+  // 📈 영업 프로젝트 (견적 제출 → 수금까지) [{id,co,name,area,work,amt,qd,stage,dead,next,due,owner,log:[{d,t}]}]
+  if(!Array.isArray(data.pipeline)) data.pipeline=[];
   if(!Array.isArray(data.vehicles)) data.vehicles=['G80','카니발','스타렉스(검정)','스타리아(흰색)','봉고탑차'];
   if(!Array.isArray(data.carLogs)) data.carLogs=[];   // 차량 정비/점검 기록 [{car,type,date,next,note,cost}]
   // ── 👷 인사팀 ──
@@ -2409,6 +2503,7 @@ function render(){
   renderAlbaSlots();
   renderUnsettled();
   renderSales();
+  renderPipeline();
   renderDev();
   renderPurchases();
   renderPayReqs();
@@ -4477,9 +4572,248 @@ function renderSales(){
       <td style="font-size:12px">${escHtml(x.contact)}</td>
       <td><select onchange="setSaleStatus(${i},this.value)" style="padding:5px 7px;border:1px solid var(--line);border-radius:7px;background:var(--bg);color:var(--ink);font-family:inherit;font-size:12.5px">${opt}</select></td>
       <td><input value="${escHtml(x.next)}" onchange="setSaleNext(${i},this.value)" placeholder="다음 액션" style="width:130px;padding:5px 7px;border:1px solid var(--line);border-radius:7px;background:var(--bg);color:var(--ink);font-family:inherit;font-size:12.5px"></td>
-      <td><button class="del" onclick="delSale(${i})">✕</button></td>
+      <td style="white-space:nowrap"><button class="tiny" onclick="saleToPipe(${i})" title="견적 낸 건이면 영업 프로젝트로 넘깁니다" style="margin-right:4px">→ 프로젝트</button><button class="del" onclick="delSale(${i})">✕</button></td>
     </tr>`;
   }).join('') : `<tr><td colspan="8" style="color:var(--muted);font-size:13px;padding:14px">등록된 영업처가 없어요. 위에서 ＋ 추가하세요.</td></tr>`;
+}
+
+/* ── 📈 영업 프로젝트 (견적 제출 → 수금) ── */
+const PSTAGES=[
+  {n:'①', k:'견적제출', d:'견적서 보냄, 답 기다리는 중',   c:'#94a3b8'},
+  {n:'②', k:'협의중',   d:'고객 검토 중 · 금액/일정 조율', c:'#f59e0b'},
+  {n:'③', k:'계약',     d:'하기로 확정됨',                 c:'#2563eb'},
+  {n:'④', k:'작업예정', d:'작업 날짜 잡힘',                c:'#0891b2'},
+  {n:'⑤', k:'작업완료', d:'작업 끝 · 돈 받을 차례',        c:'#7c3aed'},
+  {n:'⑥', k:'수금완료', d:'입금 확인 · 종료',              c:'#16a34a'}
+];
+let PIPE_FILTER='전체';
+function _pdays(a,b){ if(!a||!b) return 0; return Math.round((new Date(b)-new Date(a))/86400000); }
+function _pkdate(s){ if(!s) return ''; const p=String(s).split('-'); return (+p[1])+'/'+(+p[2]); }
+function _pwon(n){ return (Math.round(+n||0)).toLocaleString('ko-KR')+'원'; }
+function _pman(n){
+  n=Math.round(+n||0);
+  if(n>=100000000) return (n/100000000).toFixed(n%100000000?1:0).replace(/\.0$/,'')+'억';
+  if(n>=10000) return Math.round(n/10000).toLocaleString('ko-KR')+'만';
+  return n.toLocaleString('ko-KR')+'원';
+}
+function _plive(p){ return !p.dead && p.stage<5; }
+function _ptouch(p){ return (p.log&&p.log.length)? p.log[p.log.length-1].d : p.qd; }
+function _pfind(id){ const L=getData().pipeline||[]; for(let i=0;i<L.length;i++) if(L[i].id===id) return L[i]; return null; }
+
+function pipeAlerts(){
+  const L=getData().pipeline||[], t=realToday(), out=[];
+  L.forEach(p=>{
+    if(p.dead) return;
+    if(p.stage===4){
+      const w=_pdays(_ptouch(p),t);
+      out.push({p,hot:w>=10,why:w>=10?('작업 끝난 지 '+w+'일 — 돈 아직 안 들어왔어요'):'작업 완료 — 수금할 차례'});
+      return;
+    }
+    if(p.stage>=5) return;
+    if(p.due){
+      const dd=_pdays(t,p.due);
+      if(dd<0){ out.push({p,hot:true,why:'기한 '+(-dd)+'일 지났어요 — '+(p.next||'다음 할 일 없음')}); return; }
+      if(dd<=2){ out.push({p,hot:false,why:(dd===0?'오늘':dd+'일 뒤')+' — '+(p.next||'다음 할 일 없음')}); return; }
+    }
+    const q=_pdays(_ptouch(p),t);
+    if(q>=10) out.push({p,hot:false,why:q+'일째 아무 움직임 없음 — 한 번 연락해 보세요'});
+  });
+  out.sort((a,b)=>(b.hot?1:0)-(a.hot?1:0));
+  return out;
+}
+function pipeVisible(f){
+  const L=getData().pipeline||[]; f=f||PIPE_FILTER;
+  return L.filter(p=>{
+    if(f==='진행중')  return _plive(p);
+    if(f==='끝난 건') return !_plive(p);
+    if(f==='리미트')  return p.co==='limit';
+    if(f==='다만산업') return p.co==='daman';
+    return true;
+  });
+}
+function setPipeFilter(f){ PIPE_FILTER=f; renderPipeline(); }
+
+function pipeCard(p){
+  const t=realToday();
+  const waited=_pdays(_ptouch(p),t);
+  const overdue=!p.dead && p.stage<4 && p.due && _pdays(t,p.due)<0;
+  const slowPay=!p.dead && p.stage===4 && waited>=10;
+  const isLate=overdue||slowPay;
+  const SC=p.dead?'#9ca3af':PSTAGES[p.stage].c;
+  const steps=PSTAGES.map((s,i)=>'<span class="step'+(i<p.stage?' done':'')+'"'+(i<=p.stage?' style="background:'+SC+'"':'')+'></span>').join('');
+  const names=PSTAGES.map((s,i)=>'<span class="'+(i===p.stage?'cur':'')+'"'+(i===p.stage?' style="color:'+SC+'"':'')+'>'+s.k+'</span>').join('');
+  let badge='';
+  if(slowPay)      badge='<span class="pill p-late">💸 수금 '+waited+'일째</span>';
+  else if(overdue) badge='<span class="pill p-late">⏰ 기한 지남</span>';
+  const logs=(p.log||[]).slice(-3).reverse().map(l=>'<div>· '+_pkdate(l.d)+' <b>'+escHtml(l.t)+'</b></div>').join('');
+  const stagePill=p.dead
+    ? '<span class="stagebadge" style="background:#9ca3af">✖ '+escHtml(p.dead)+'</span>'
+    : '<span class="stagebadge" style="background:'+SC+'">'+PSTAGES[p.stage].n+' '+PSTAGES[p.stage].k+'</span>';
+  let acts;
+  if(p.dead) acts='<button class="tiny" onclick="revivePipe(\''+p.id+'\')">↩ 되살리기</button>';
+  else if(p.stage>=5) acts='<span style="font-size:12px;color:var(--good);font-weight:700">🏦 입금까지 끝났습니다</span>';
+  else acts='<button class="tiny go" onclick="advPipe(\''+p.id+'\')" title="'+escHtml(PSTAGES[p.stage+1].d)+'">→ '+PSTAGES[p.stage+1].k+'</button>'+
+            '<button class="tiny" onclick="backPipe(\''+p.id+'\')">← 되돌리기</button>'+
+            '<button class="tiny" onclick="killPipe(\''+p.id+'\',\'보류\')">보류</button>'+
+            '<button class="tiny" onclick="killPipe(\''+p.id+'\',\'실주\')">실주</button>';
+  return '<div class="proj'+(isLate?' late':'')+(p.dead?' dead':'')+'" style="border-left-color:'+SC+'">'+
+    '<div class="phead">'+stagePill+
+      '<span class="pill '+(p.co==='limit'?'p-limit':'p-daman')+'">'+(p.co==='limit'?'리미트':'다만산업')+'</span>'+
+      '<span class="ptitle"><div class="pn">'+escHtml(p.name)+' '+badge+'</div>'+
+        '<div class="pm">'+escHtml(p.area)+' · '+escHtml(p.work)+' · 견적 '+_pkdate(p.qd)+' · '+escHtml(p.owner||'')+'</div></span>'+
+      '<span class="pamt">'+_pwon(p.amt)+'</span></div>'+
+    '<div class="steps">'+steps+'</div><div class="stepnames">'+names+'</div>'+
+    (p.dead?'':'<div class="pnext"><span class="lbl">다음 할 일</span>'+
+      '<input class="nx" value="'+escHtml(p.next)+'" placeholder="예: 전화해서 확답받기" onchange="setPipeNext(\''+p.id+'\',this.value)">'+
+      '<input class="dt" type="date" value="'+escHtml(p.due)+'" onchange="setPipeDue(\''+p.id+'\',this.value)"></div>')+
+    '<div class="pacts">'+acts+'<span class="grow"></span>'+
+      '<button class="tiny" onclick="delPipe(\''+p.id+'\')" style="color:var(--warn)">삭제</button></div>'+
+    (logs?'<div class="plog">'+logs+'</div>':'')+'</div>';
+}
+
+function renderPipeline(){
+  const L=getData().pipeline||[];
+  const qdEl=document.getElementById('pp_qd'); if(qdEl && !qdEl.value) qdEl.value=realToday();
+  // 돈 요약
+  let pipe=0,won_=0,wait=0,got=0;
+  L.forEach(p=>{ if(p.dead) return; const a=+p.amt||0;
+    if(p.stage<=1) pipe+=a; if(p.stage>=2) won_+=a; if(p.stage===4) wait+=a; if(p.stage===5) got+=a; });
+  const mEl=document.getElementById('pipeMoney');
+  if(mEl) mEl.innerHTML=[
+    {v:_pman(pipe),l:'🤞 아직 모름 (견적·협의)',c:''},
+    {v:_pman(won_),l:'✅ 따낸 일 (계약 이상)',c:''},
+    {v:_pman(wait),l:'💸 받을 돈 (작업완료)',c:wait>0?'alert':''},
+    {v:_pman(got), l:'🏦 들어온 돈 (수금완료)',c:''}
+  ].map(x=>'<div class="sumtile '+x.c+'"><div class="v">'+x.v+'</div><div class="l">'+x.l+'</div></div>').join('');
+
+  // 경고
+  const A=pipeAlerts(), aEl=document.getElementById('pipeAlerts');
+  const acEl=document.getElementById('pipeAlertCount'); if(acEl) acEl.textContent=A.length?('· '+A.length+'건'):'';
+  if(aEl) aEl.innerHTML = A.length ? A.map(a=>{
+    const p=a.p;
+    return '<div class="alertrow '+(a.hot?'hot':'')+'">'+
+      '<span class="pill '+(p.co==='limit'?'p-limit':'p-daman')+'">'+(p.co==='limit'?'리미트':'다만')+'</span>'+
+      '<span class="grow"><b>'+escHtml(p.name)+'</b> <span style="color:var(--muted)">· '+escHtml(a.why)+'</span></span>'+
+      '<span style="font-variant-numeric:tabular-nums;font-weight:700">'+_pman(p.amt)+'</span>'+
+      '<button class="tiny go" onclick="advPipe(\''+p.id+'\')" title="다음 단계로 넘깁니다">'+(p.stage<5?('→ '+PSTAGES[p.stage+1].k):'완료')+'</button></div>';
+  }).join('') : (L.length?'<div class="pempty">👍 지금 급한 건 없습니다.</div>':'<div class="pempty">아직 등록된 프로젝트가 없어요. 아래에서 ＋ 등록하세요.</div>');
+
+  // 깔때기 (금액 기준)
+  const cnt=[],amt=[]; let max=0;
+  PSTAGES.forEach((_,i)=>{ cnt[i]=0; amt[i]=0; });
+  L.forEach(p=>{ if(p.dead) return; cnt[p.stage]++; amt[p.stage]+=(+p.amt||0); });
+  amt.forEach(a=>{ if(a>max) max=a; }); if(!max) max=1;
+  const fEl=document.getElementById('pipeFunnel');
+  if(fEl) fEl.innerHTML=PSTAGES.map((s,i)=>{
+    const w=Math.round(amt[i]/max*100);
+    const col = i>=4?'var(--good)':(i>=2?'var(--limit)':'var(--daman)');
+    return '<div class="frow"><span class="fname">'+s.k+'</span>'+
+      '<span class="ftrack"><i style="width:'+(cnt[i]?Math.max(w,5):0)+'%;background:'+col+'"></i></span>'+
+      '<span class="fcnt">'+(cnt[i]?('<b>'+cnt[i]+'건</b> · '+_pman(amt[i])):'<span style="color:var(--muted)">없음</span>')+'</span></div>';
+  }).join('');
+
+  // 필터
+  const filEl=document.getElementById('pipeFilters');
+  if(filEl) filEl.innerHTML=['전체','진행중','리미트','다만산업','끝난 건'].map(f=>
+    '<button class="'+(PIPE_FILTER===f?'on':'')+'" onclick="setPipeFilter(\''+f+'\')">'+f+
+    ' <span style="opacity:.65;font-weight:600">'+pipeVisible(f).length+'</span></button>').join('');
+
+  // 목록 (단계별 그룹)
+  const V=pipeVisible(), box=document.getElementById('pipeList');
+  const cEl=document.getElementById('pipeCount'); if(cEl) cEl.textContent='· '+V.length+'건';
+  if(!box) return;
+  if(!V.length){ box.innerHTML='<div class="pempty">'+(L.length?'해당하는 건이 없어요.':'아직 등록된 프로젝트가 없어요.')+'</div>'; return; }
+  let html='';
+  PSTAGES.forEach((s,i)=>{
+    const g=V.filter(p=>!p.dead && p.stage===i); if(!g.length) return;
+    let a=0; g.forEach(p=>a+=(+p.amt||0));
+    html+='<div class="sgroup"><div class="shead">'+
+      '<span class="sdot" style="background:'+s.c+'"></span>'+
+      '<span class="sname" style="color:'+s.c+'">'+s.n+' '+s.k+'</span>'+
+      '<span class="sdesc">'+escHtml(s.d)+'</span><span class="sline"></span>'+
+      '<span class="scnt">'+g.length+'건 · '+_pman(a)+'</span></div>'+
+      '<div class="plist">'+g.map(pipeCard).join('')+'</div></div>';
+  });
+  const dead=V.filter(p=>p.dead);
+  if(dead.length){
+    let da=0; dead.forEach(p=>da+=(+p.amt||0));
+    html+='<div class="sgroup"><div class="shead">'+
+      '<span class="sdot" style="background:var(--muted)"></span>'+
+      '<span class="sname" style="color:var(--muted)">✖ 끝난 건</span>'+
+      '<span class="sdesc">보류 · 실주</span><span class="sline"></span>'+
+      '<span class="scnt">'+dead.length+'건 · '+_pman(da)+'</span></div>'+
+      '<div class="plist">'+dead.map(pipeCard).join('')+'</div></div>';
+  }
+  box.innerHTML=html;
+}
+
+function advPipe(id){
+  const d=getData(); const p=(d.pipeline||[]).find(x=>x.id===id);
+  if(!p||p.dead||p.stage>=5) return;
+  p.stage++; p.log=p.log||[]; p.log.push({d:realToday(),t:PSTAGES[p.stage].k+' — '+PSTAGES[p.stage].d});
+  if(p.stage===5){ p.next=''; p.due=''; }
+  setData(d); render();
+}
+function backPipe(id){
+  const d=getData(); const p=(d.pipeline||[]).find(x=>x.id===id);
+  if(!p||p.stage<=0) return;
+  p.stage--; p.log=p.log||[]; p.log.push({d:realToday(),t:'되돌림 → '+PSTAGES[p.stage].k});
+  setData(d); render();
+}
+function killPipe(id,why){
+  if(!confirm('이 건을 "'+why+'"으로 둘까요?')) return;
+  const d=getData(); const p=(d.pipeline||[]).find(x=>x.id===id); if(!p) return;
+  p.dead=why; p.next=''; p.due=''; p.log=p.log||[]; p.log.push({d:realToday(),t:why});
+  setData(d); render();
+}
+function revivePipe(id){
+  const d=getData(); const p=(d.pipeline||[]).find(x=>x.id===id); if(!p) return;
+  p.dead=null; p.log=p.log||[]; p.log.push({d:realToday(),t:'다시 진행'});
+  setData(d); render();
+}
+function setPipeNext(id,v){ const d=getData(); const p=(d.pipeline||[]).find(x=>x.id===id); if(!p) return; p.next=v.trim(); setData(d); render(); }
+function setPipeDue(id,v){ const d=getData(); const p=(d.pipeline||[]).find(x=>x.id===id); if(!p) return; p.due=v; setData(d); render(); }
+function delPipe(id){
+  if(!confirm('이 건을 목록에서 지울까요?')) return;
+  const d=getData(); d.pipeline=(d.pipeline||[]).filter(x=>x.id!==id); setData(d); render();
+}
+function addPipe(){
+  const g=id=>document.getElementById(id);
+  const name=g('pp_name').value.trim();
+  if(!name){ alert('고객·현장을 입력하세요.'); g('pp_name').focus(); return; }
+  const amt=+g('pp_amt').value||0;
+  const qd=g('pp_qd').value||realToday();
+  const d=getData(); d.pipeline=d.pipeline||[];
+  d.pipeline.unshift({
+    id:'p'+Date.now(), co:g('pp_co').value, name, area:g('pp_area').value.trim(),
+    work:g('pp_work').value.trim(), amt, qd, stage:0, dead:null,
+    next:g('pp_next').value.trim(), due:g('pp_due').value, owner:g('pp_owner').value,
+    log:[{d:qd,t:'견적서 제출'+(amt?(' ('+_pwon(amt)+')'):'')}]
+  });
+  setData(d);
+  ['pp_name','pp_area','pp_work','pp_amt','pp_next'].forEach(i=>g(i).value='');
+  g('pp_due').value=''; g('pp_qd').value=realToday();
+  PIPE_FILTER='전체'; render(); g('pp_name').focus();
+}
+// 영업처 목록 → 프로젝트로 넘기기
+function saleToPipe(i){
+  const d=getData(); const s=(d.sales||[])[i]; if(!s) return;
+  if((d.pipeline||[]).some(p=>p.name===s.name && !p.dead)){
+    if(!confirm('"'+s.name+'" 은(는) 이미 프로젝트에 있어요. 그래도 또 넣을까요?')) return;
+  }
+  const amtStr=prompt('"'+s.name+'" 견적 금액을 넣으세요 (숫자만, 몰라도 비워두고 확인)','');
+  if(amtStr===null) return;
+  const amt=+String(amtStr).replace(/[^0-9]/g,'')||0;
+  d.pipeline=d.pipeline||[];
+  d.pipeline.unshift({
+    id:'p'+Date.now(), co:(s.biz==='폴리싱'?'daman':'limit'), name:s.name, area:s.area||'',
+    work:s.biz||'', amt, qd:realToday(), stage:0, dead:null,
+    next:s.next||'', due:'', owner:'대표',
+    log:[{d:realToday(),t:'영업처 목록에서 넘어옴'+(amt?(' ('+_pwon(amt)+')'):'')}]
+  });
+  s.status='견적';
+  setData(d); PIPE_FILTER='전체'; render();
+  alert('"'+s.name+'" 을(를) 영업 프로젝트에 넣었습니다. 아래 📈 영업 프로젝트에서 보세요.');
 }
 
 /* ── 개발팀 (월간 점검·결정) ── */
