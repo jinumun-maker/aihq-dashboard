@@ -417,7 +417,7 @@
     <button class="tab" data-tab="인사" onclick="showPage('인사')">👷 인사팀 <span id="hrBadge" class="tabbadge"></span></button>
     <button class="tab" data-tab="마케팅팀" onclick="showPage('마케팅팀')">📣 마케팅팀 <span id="mktBadge" class="tabbadge"></span></button>
     <button class="tab" data-tab="기업지원" onclick="showPage('기업지원')">🏛️ 기업지원사업팀 <span id="bizMsgBadge" class="tabbadge"></span></button>
-    <button class="tab" data-tab="영업팀" onclick="showPage('영업팀')">📈 영업팀</button>
+    <button class="tab" data-tab="영업팀" onclick="showPage('영업팀')">📈 영업팀 <span id="salesTabBadge" class="tabbadge"></span></button>
     <button class="tab" data-tab="개발팀" onclick="showPage('개발팀')">🛠️ 개발팀 <span id="devBadge" class="tabbadge"></span></button>
   </div>
 
@@ -1407,12 +1407,16 @@
     📈 <b>영업팀</b> — 근무 지역(진주시·현장 인근)에서 <b>영업할 곳</b>을 찾아 정리·추적합니다.
     청소(입주·정기) · 폴리싱(카페·물류창고 바닥). <b>실제 연락·방문은 대표님·소이 팀장이</b>, 영업팀은 정리·제안까지.
   </div>
-  <div class="card" style="margin-top:14px">
-    <h2 style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">🧾 현장 견적서 만들기 <span style="font-weight:500;color:var(--muted);font-size:12px">폰에서 견적 입력 → 이미지 저장·카톡 전송</span> <a href="quote.html" target="_blank" rel="noopener" style="margin-left:auto;text-decoration:none;font-size:12.5px;color:var(--limit);font-weight:700">↗ 전체화면(새 창)</a></h2>
-    <iframe src="quote.html" title="현장 견적서" style="width:100%;max-width:560px;height:80vh;border:1px solid var(--line);border-radius:12px;display:block;margin:6px auto 0;background:#fff"></iframe>
+  <div class="subtabs">
+    <button class="subtab" data-subtab="영업프로젝트" onclick="showSub('영업프로젝트')">📈 영업 프로젝트 <span id="pipeSubBadge" class="tabbadge"></span></button>
+    <button class="subtab" data-subtab="영업처" onclick="showSub('영업처')">📇 영업처 찾기</button>
+    <button class="subtab" data-subtab="영업견적서" onclick="showSub('영업견적서')">🧾 견적서 만들기</button>
   </div>
-  <div class="card" style="margin-top:22px">
-    <h2>📊 영업 현황</h2>
+
+  <!-- ① 📇 영업처 찾기 -->
+  <div class="subpg" data-subpg="영업처">
+  <div class="card" style="margin-top:14px">
+    <h2>📊 영업 현황 <span style="font-weight:500;color:var(--muted);font-size:12px">후보 → 연락 → 견적 → 계약</span></h2>
     <div class="sumrow" id="salesSummary"></div>
   </div>
   <div class="card entry" style="margin-top:22px">
@@ -1435,12 +1439,15 @@
       <tbody id="salesRows"></tbody>
     </table></div>
   </div>
+  </div><!-- /영업처 -->
 
-  <!-- ── 📈 영업 프로젝트 (견적 제출 → 수금) ── -->
-  <div class="card" style="margin-top:26px;border-top:3px solid var(--limit)">
-    <h2>📈 영업 프로젝트 <span style="font-weight:500;color:var(--muted);font-size:12px">견적서 낸 뒤부터 돈 받을 때까지</span></h2>
+  <!-- ② 📈 영업 프로젝트 (견적 제출 → 수금) -->
+  <div class="subpg" data-subpg="영업프로젝트">
+  <div class="card" style="margin-top:14px;border-top:3px solid var(--limit)">
+    <h2>💰 돈이 어디까지 왔나 <span style="font-weight:500;color:var(--muted);font-size:12px">견적서 낸 뒤부터 돈 받을 때까지</span></h2>
     <div class="banner" style="background:rgba(37,99,235,.08);border-color:rgba(37,99,235,.30);margin:0 0 18px">
-      위 <b>영업처 목록</b>은 계약까지만 봅니다. 견적서를 낸 건은 여기로 옮겨서 <b>작업 → 수금</b>까지 따라갑니다.
+      <b>📇 영업처 찾기</b> 탭은 계약까지만 봅니다. 견적서를 낸 건은 여기서 <b>작업 → 수금</b>까지 따라갑니다.
+      영업처 목록의 <b>→ 프로젝트</b> 버튼으로 넘기면 됩니다.
     </div>
     <div class="sumrow" id="pipeMoney"></div>
   </div>
@@ -1476,6 +1483,15 @@
     <div class="pfilters" id="pipeFilters"></div>
     <div id="pipeList"></div>
   </div>
+  </div><!-- /영업프로젝트 -->
+
+  <!-- ③ 🧾 견적서 만들기 -->
+  <div class="subpg" data-subpg="영업견적서">
+  <div class="card" style="margin-top:14px">
+    <h2 style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">🧾 현장 견적서 만들기 <span style="font-weight:500;color:var(--muted);font-size:12px">폰에서 견적 입력 → 이미지 저장·카톡 전송</span> <a href="quote.html" target="_blank" rel="noopener" style="margin-left:auto;text-decoration:none;font-size:12.5px;color:var(--limit);font-weight:700">↗ 전체화면(새 창)</a></h2>
+    <iframe src="quote.html" title="현장 견적서" style="width:100%;max-width:560px;height:80vh;border:1px solid var(--line);border-radius:12px;display:block;margin:6px auto 0;background:#fff"></iframe>
+  </div>
+  </div><!-- /영업견적서 -->
 
   </div><!-- /영업팀 -->
 
@@ -4689,6 +4705,13 @@ function renderPipeline(){
   // 경고
   const A=pipeAlerts(), aEl=document.getElementById('pipeAlerts');
   const acEl=document.getElementById('pipeAlertCount'); if(acEl) acEl.textContent=A.length?('· '+A.length+'건'):'';
+  // 배지 — 급한 것(기한 지남·수금 밀림)만 숫자로
+  const hot=A.filter(a=>a.hot).length;
+  [['pipeSubBadge'],['salesTabBadge']].forEach(([bid])=>{
+    const b=document.getElementById(bid); if(!b) return;
+    b.textContent = hot>0?('❗'+hot):'';
+    b.className='tabbadge'+(hot>0?' on':'');
+  });
   if(aEl) aEl.innerHTML = A.length ? A.map(a=>{
     const p=a.p;
     return '<div class="alertrow '+(a.hot?'hot':'')+'">'+
@@ -5056,6 +5079,7 @@ showSub('분석조회');    // 분석팀 기본 하위탭 = 결산 조회
 showSub('재무달력');    // 재무팀 기본 하위탭 = 일정 달력
 showSub('기업달력');    // 기업지원사업팀 기본 하위탭 = 모집 캘린더
 showSub('인사업무');    // 인사팀 기본 하위탭 = 업무정리
+showSub('영업프로젝트'); // 영업팀 기본 하위탭 = 영업 프로젝트(돈·할 일)
 // ═══ 로그인 초기화 ═══
 (function(){
   const ls=document.getElementById('loginScreen');
