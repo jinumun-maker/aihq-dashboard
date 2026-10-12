@@ -4089,7 +4089,7 @@ function delLead(i){ const d=getData(); d.marketing.splice(i,1); setData(d); ren
 const ROLE_INFO={
   '대표':{name:'문진우 대표', icon:'👑', all:true},
   '혜란':{name:'혜란 이사', icon:'💼', all:true},
-  '소이':{name:'소이 부장', icon:'🧹', tabs:['운영팀']}   // 운영팀만 사용, 나머지는 보기만(잠김)
+  '소이':{name:'소이 부장', icon:'🧹', tabs:['운영팀','영업팀']}   // 운영팀 + 영업팀 사용, 나머지는 잠김
 };
 let CURRENT_ROLE=null;
 // 이메일 → 역할 매핑 (클라우드 로그인). 혜란·소이 이메일 알려주시면 여기에 추가합니다.
