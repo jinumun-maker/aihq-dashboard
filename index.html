@@ -2922,6 +2922,7 @@ function render(){
     const _hrTasks=pending+rcNew+rcItv+hdWait+missing.length;
     setBadge('hrBadge', _hrTasks+_bo('hr'));
     setBadge('mktBadge', _bo('mkt'));
+    _boardTaskCache={fin:_finTasks, ops:_opsTasks, hr:_hrTasks};   // refreshBoards(경량)에서 통합배지 계산에 재사용
   }
 
   // 🏛️ 기업지원사업팀 (지원사업 관리)
@@ -4190,7 +4191,7 @@ window.boardClearDone=function(team){   // 완료 카드 비우기(우리 팀 �
   if(!dn.length){ alert('비울 완료 항목이 없습니다.'); return; }
   if(!confirm((BOARD_TEAMS[team]||'')+' 완료 '+dn.length+'건을 목록에서 비울까요?\n\n업무정리 카드라 결산·기록용 데이터가 아니며, 비우면 되돌릴 수 없습니다.')) return;
   d.boards[team]=arr.filter(function(c){return (c.status||'')!=='done';});
-  setData(d); render();
+  setData(d); refreshBoards();
 };
 function _besc(t){ return String(t==null?'':t).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
 function _boardArr(d,team){ d.boards=d.boards||{}; if(!Array.isArray(d.boards[team])) d.boards[team]=[]; return d.boards[team]; }
@@ -4207,24 +4208,24 @@ window.boardAdd=function(fromTeam){
   var mg=document.getElementById('ba_'+fromTeam+'_mgr'); if(mg) mg.value='';
   var pe=document.getElementById('ba_'+fromTeam+'_prio'); if(pe) pe.value='mid';
   var tg=document.getElementById('ba_'+fromTeam+'_target'); if(tg) tg.value=fromTeam;
-  render(); if(el) el.focus();
+  refreshBoards(); if(el) el.focus();
 };
-window.boardStatus=function(team,id,st){ var d=getData(); var c=_boardArr(d,team).filter(function(x){return x.id===id;})[0]; if(!c) return; c.status=st; c.doneTs=(st==='done'?realToday():''); setData(d); render(); };
-window.boardPrio=function(team,id,p){ var d=getData(); var c=_boardArr(d,team).filter(function(x){return x.id===id;})[0]; if(!c) return; c.prio=p; setData(d); render(); };
+window.boardStatus=function(team,id,st){ var d=getData(); var c=_boardArr(d,team).filter(function(x){return x.id===id;})[0]; if(!c) return; c.status=st; c.doneTs=(st==='done'?realToday():''); setData(d); refreshBoards(); };
+window.boardPrio=function(team,id,p){ var d=getData(); var c=_boardArr(d,team).filter(function(x){return x.id===id;})[0]; if(!c) return; c.prio=p; setData(d); refreshBoards(); };
 window.boardTarget=function(owner,id,dest){   // 카드를 다른 팀 보드로 보내기
   if(!dest||dest===owner) return;
   var d=getData(); var arr=_boardArr(d,owner); var i=-1; arr.forEach(function(x,ix){ if(x.id===id) i=ix; });
   if(i<0) return; var c=arr.splice(i,1)[0]; c.from=owner; _boardArr(d,dest).push(c);
-  setData(d); render();
+  setData(d); refreshBoards();
 };
 window.boardEdit=function(team,id){
   var d=getData(); var c=_boardArr(d,team).filter(function(x){return x.id===id;})[0]; if(!c) return;
   var v=prompt('내용 수정:', c.text); if(v===null) return; v=v.trim(); if(!v) return; c.text=v;
   var m=prompt('담당자(비우면 없음):', c.mgr||''); if(m!==null) c.mgr=m.trim();
   var du=prompt('마감일 YYYY-MM-DD (비우면 없음):', c.due||''); if(du!==null){ du=du.trim(); c.due=/^\d{4}-\d{2}-\d{2}$/.test(du)?du:''; }
-  setData(d); render();
+  setData(d); refreshBoards();
 };
-window.boardDel=function(team,id){ var d=getData(); var c=_boardArr(d,team).filter(function(x){return x.id===id;})[0]; if(!c) return; if(!confirm('이 항목을 삭제할까요?\n\n'+c.text)) return; d.boards[team]=_boardArr(d,team).filter(function(x){return x.id!==id;}); setData(d); render(); };
+window.boardDel=function(team,id){ var d=getData(); var c=_boardArr(d,team).filter(function(x){return x.id===id;})[0]; if(!c) return; if(!confirm('이 항목을 삭제할까요?\n\n'+c.text)) return; d.boards[team]=_boardArr(d,team).filter(function(x){return x.id!==id;}); setData(d); refreshBoards(); };
 function _boardCard(storedTeam,c,viewTeam){
   var over=c.due && c.status!=='done' && c.due<realToday();
   var st='<select onchange="boardStatus(\''+storedTeam+'\',\''+c.id+'\',this.value)" title="단계 이동">'+BOARD_COLS.map(function(col){return '<option value="'+col.k+'"'+(col.k===(c.status||'todo')?' selected':'')+'>'+col.t+'</option>';}).join('')+'</select>';
@@ -4281,7 +4282,7 @@ window.boardChatToggle=function(id,viewTeam){
   var willOpen=!BOARD_CHAT_OPEN[id];
   if(willOpen){ BOARD_CHAT_OPEN[id]=true; _markChatSeen(id,viewTeam); }
   else { delete BOARD_CHAT_OPEN[id]; delete BOARD_CHAT_FRESH[id]; }
-  render();
+  refreshBoards();
   if(willOpen) setTimeout(function(){
     var boxes=document.querySelectorAll('[id$="_'+id+'_list"]');
     boxes.forEach(function(b){ b.scrollTop=b.scrollHeight; });
@@ -4307,12 +4308,27 @@ window.boardChatSend=function(storedTeam,id,viewTeam){
   c.chat.push({who:_whoName(), team:viewTeam, text:t, ts:_nowStamp()});
   c.chatSeen=c.chatSeen||{}; c.chatSeen[viewTeam]=c.chat.length;   // 보낸 팀은 전부 읽은 상태
   setData(d); if(el) el.value='';
-  BOARD_CHAT_OPEN[id]=true; render();
+  BOARD_CHAT_OPEN[id]=true; refreshBoards();
   setTimeout(function(){
     var box=document.getElementById('bch_'+viewTeam+'_'+id+'_list'); if(box) box.scrollTop=box.scrollHeight;
     var inp=document.getElementById('bch_'+viewTeam+'_'+id); if(inp) inp.focus();
   },30);
 };
+function setBadge(id,n){ var b=document.getElementById(id); if(b){ b.textContent=n>0?('❗'+n):''; b.className='tabbadge'+(n>0?' on':''); } }
+var _boardTaskCache={fin:0,ops:0,hr:0};   // 전체 render가 갱신 → refreshBoards가 통합배지 계산에 재사용
+function refreshBoards(){   // 📋 보드 조작 전용 경량 렌더: 전체 render(폰에서 무거움) 대신 보드+배지만 갱신
+  renderAllBoards();
+  var d=getData();
+  var _chatU=function(t){ var n=0; Object.keys(BOARD_TEAMS).forEach(function(ot){ ((d.boards&&d.boards[ot])||[]).forEach(function(c){ if(ot===t||c.from===t) n+=_chatUnread(c,t); }); }); return n; };
+  var _bo=function(t){ var a=(d.boards&&d.boards[t])||[]; return a.filter(function(c){return c.status!=='done';}).length + _chatU(t); };
+  setBadge('msgBadge',_bo('mng')); setBadge('dashMsgBadge',_bo('mng'));
+  setBadge('finMsgBadge',_bo('fin')); setBadge('opsMsgBadge',_bo('ops'));
+  setBadge('mktMsgBadge',_bo('mkt')); setBadge('hrMsgBadge',_bo('hr')); setBadge('bizMsgBadge',_bo('biz'));
+  setBadge('finBadge',(_boardTaskCache.fin||0)+_bo('fin'));
+  setBadge('opsBadge',(_boardTaskCache.ops||0)+_bo('ops'));
+  setBadge('hrBadge',(_boardTaskCache.hr||0)+_bo('hr'));
+  setBadge('mktBadge',_bo('mkt'));
+}
 function renderBoard(viewTeam){
   var mount=document.getElementById('brd_'+viewTeam); if(!mount) return;
   var d=getData(); var list=[];
