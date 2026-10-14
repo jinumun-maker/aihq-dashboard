@@ -840,7 +840,7 @@
     <h2>＋ 고정지출 등록/수정</h2>
     <div class="form-grid">
       <div class="fld"><label>항목명</label><input id="fx_name" placeholder="예: 사무실 월세"></div>
-      <div class="fld"><label>금액 (원)</label><input type="number" id="fx_amount" placeholder="0"></div>
+      <div class="fld"><label>기본 금액 (원)</label><input type="number" id="fx_amount" placeholder="0"></div>
       <div class="fld"><label>납부일 (매월 며칠)</label><input type="number" id="fx_dueDay" min="1" max="31" placeholder="1~31"></div>
       <div class="fld"><label>분류</label><select id="fx_category"><option>임대료</option><option>차량</option><option>공과금</option><option>보험</option><option>금융</option><option>통신</option><option>세무</option><option>기타</option></select></div>
       <div class="fld"><label>결제수단</label><input id="fx_method" placeholder="예: 자동이체 / 카드"></div>
@@ -1741,6 +1741,7 @@ function _seed(data){    // 메시지·지원사업 시드/마이그레이션 (�
   if(!Array.isArray(data.hrDocs))   data.hrDocs=[];     // 입·퇴사 서류 [{name,type,date,status,note}]
   if(!Array.isArray(data.trainings))data.trainings=[];  // 교육 이력 [{name,type,date,hours,by,note}]
   if(!data.boards || typeof data.boards!=='object') data.boards={};   // 📋 팀별 업무정리 보드 {ops:[..],fin:[..],...}
+  if(!data.fixedByMonth || typeof data.fixedByMonth!=='object') data.fixedByMonth={};   // 💳 고정지출 월별 금액 조정 {월:{이름:금액}}
   if(!data.devReview) data.devReview={ month:'2026-08', summary:'뼈대(일일결산 단일입력→자동집계, 재무 인건비·미수금)는 탄탄합니다. 지금 가장 큰 시간낭비는 <b>구글캘린더 수동 최신화</b>와 <b>팀 리마인더 수동</b> — 이 둘을 자동화하면 손이 확 줄어요. (중복 입력은 거의 없음 👍)', decisions:[ {text:'구글캘린더 자동 최신화 (매일 자동, 캘린더=원본으로 덮어씀)', done:false}, {text:'카톡 방장봇 리마인더 (5시 운영팀·6시 재무팀)', done:false} ] };
   data.asOf = realToday();   // 기준일 = 항상 실제 오늘 (예전 고정 날짜가 클라우드에 굳는 문제 방지)
   // ── 배치 인원 보호(crewMap): 캘린더 최신화가 절대 못 건드리는 durable 저장소 + 결산으로 복구 ──
@@ -2526,8 +2527,8 @@ function render(){
   renderCars();
 
   // 💡 이번 달 실질 순익 = 현장순익 − 이번달 발주매입 − 이번달 '납부완료' 고정지출(월급 포함). 납부완료 누르면 반영됨
-  const paidFixM=(d.fixedExpenses||[]).filter(f=>f.paidMonth===ym).reduce((s,f)=>s+(+f.amount||0),0);
-  const unpaidFixM=(d.fixedExpenses||[]).filter(f=>f.paidMonth!==ym).reduce((s,f)=>s+(+f.amount||0),0);
+  const paidFixM=(d.fixedExpenses||[]).filter(f=>f.paidMonth===ym).reduce((s,f)=>s+fxAmt(d,f,ym),0);
+  const unpaidFixM=(d.fixedExpenses||[]).filter(f=>f.paidMonth!==ym).reduce((s,f)=>s+fxAmt(d,f,ym),0);
   const ordBuyM=(d.orders||[]).filter(o=>(o.status==='주문완료'||o.status==='입고완료')&&(+o.amount>0)&&(((o.orderedDate||o.date)||'').slice(0,7)===ym)).reduce((s,o)=>s+(+o.amount||0),0);
   const realProfitM=monthAgg.profit-ordBuyM-paidFixM;
 
@@ -2972,7 +2973,7 @@ function render(){
   {
     let unpaidAmt=0; (d.settlements||[]).forEach(s=>crewList(s).forEach(p=>{ if(+p.pay>0 && !p.sent) unpaidAmt+=(+p.pay||0); }));
     const recvLate=recv.filter(r=>r.days!=null&&r.days>30).length;
-    const fxDueAmt=fxDueToday.reduce((a,f)=>a+(+f.amount||0),0);
+    const fxDueAmt=fxDueToday.reduce((a,f)=>a+fxAmt(d,f,_curM),0);
     // 재무팀 할 일 완료율: 남아있는 처리 항목 기준(밀린 일 포함 · 이번 달 국한 X)
     // 각 항목이 0이면 완료 → 미발행·미이체 등 밀린 게 있으면 100%가 되지 않음
     const _finItems=[
@@ -3166,7 +3167,7 @@ function render(){
     const ordBuyBal=(d.orders||[]).filter(o=>(o.status==='주문완료'||o.status==='입고완료')&&(+o.amount>0)&&(brange==='month'?((o.orderedDate||o.date)||'').slice(0,7)===ym:true)).reduce((s,o)=>s+(+o.amount||0),0);
     const exp=siteExp+ordBuyBal;
     // 고정지출(월세·보험·공과금 등): 이번 달=1개월분, 올해=데이터 개월수만큼
-    const fixMonthly=(d.fixedExpenses||[]).reduce((s,f)=>s+(+f.amount||0),0);
+    const fixMonthly=(d.fixedExpenses||[]).reduce((s,f)=>s+fxAmt(d,f,ym),0);
     const monthsN=new Set((d.settlements||[]).map(s=>(s.date||'').slice(0,7))).size||1;
     const fixed = brange==='month' ? paidFixM : fixMonthly*monthsN;   // 월=납부완료된 고정지출만(재무요약·KPI와 동일), 올해=누적추정
     const prof = rev - lab - exp - fixed;   // 고정지출까지 뺀 실질 순익
@@ -3228,10 +3229,10 @@ function render(){
   if(fxSumEl){
     const fx=d.fixedExpenses||[];
     const curM=realToday().slice(0,7), today=realToday();
-    const monthlyTotal=fx.reduce((a,f)=>a+(+f.amount||0),0);
+    const monthlyTotal=fx.reduce((a,f)=>a+fxAmt(d,f,curM),0);
     const paidN=fx.filter(f=>f.paidMonth===curM).length;
     const unpaid=fx.filter(f=>f.paidMonth!==curM);
-    const unpaidAmt=unpaid.reduce((a,f)=>a+(+f.amount||0),0);
+    const unpaidAmt=unpaid.reduce((a,f)=>a+fxAmt(d,f,curM),0);
     const fml=document.getElementById('fxMonthLabel'); if(fml) fml.textContent='· '+parseInt(curM.slice(5),10)+'월 기준';
     fxSumEl.innerHTML=[
       {v:KRW(monthlyTotal),l:'월 고정지출 합계'},
@@ -3242,14 +3243,15 @@ function render(){
     const sorted=fx.map((f,i)=>({f,i})).sort((a,b)=>(+a.f.dueDay||99)-(+b.f.dueDay||99));
     document.getElementById('fxRows').innerHTML = sorted.length? sorted.map(({f,i})=>{
       const paid=f.paidMonth===curM;
+      const amt=fxAmt(d,f,curM), over=fxIsMonthSet(d,f,curM);
       return `<tr>
         <td>${fxCatIcon(f.category)} ${f.name}${f.note?` <span style="color:var(--muted);font-size:11px">${f.note}</span>`:''}</td>
         <td><span class="pill">${f.category||'기타'}</span></td>
-        <td class="num">${KRW(f.amount)}</td>
+        <td class="num" style="white-space:nowrap">${KRW(amt)}${over?` <span style="color:var(--limit);font-size:10px">이번달</span>`:''} <button class="del" style="color:var(--muted);padding:2px 6px" onclick="setFixedMonthAmt(${i})" title="이번 달 금액 조정(월별 기록)">✏️</button></td>
         <td>매월 ${f.dueDay?f.dueDay+'일':'-'}</td>
         <td style="font-size:12px">${f.method||'-'}</td>
         <td><span class="pill ${paid?'p-good':'p-late'}" style="cursor:pointer" onclick="toggleFixedPaid(${i})">${paid?'✓ 납부완료':'⬜ 미납'}</span></td>
-        <td style="white-space:nowrap"><button class="del" style="color:var(--limit)" onclick="editFixed(${i})" title="수정">✏️</button><button class="del" onclick="delFixed(${i})" title="삭제">✕</button></td></tr>`;
+        <td style="white-space:nowrap"><button class="del" style="color:var(--limit)" onclick="editFixed(${i})" title="항목·기본금액 수정">✏️</button><button class="del" onclick="delFixed(${i})" title="삭제">✕</button></td></tr>`;
     }).join('') : `<tr><td colspan="7" style="color:var(--muted)">고정지출이 없습니다. 위에서 등록하세요.</td></tr>`;
   }
 
@@ -4909,7 +4911,7 @@ function buildMonthCal(y,m,d,opts){
       items+=`<span class="ci done clk" onclick="calDoneInfo(${idx})" title="완료 현장 — 클릭해 인원 확인">✅ ${esc(s.site)}${cr?' ·'+esc(cr):''}</span>`; });
     (ev[ds]||[]).forEach(({e,ei})=>{ items+=`<span class="ci ev clk" draggable="true" data-dt="ev" data-di="${ei}" onclick="calEvInfo(${ei})" title="클릭=이동/삭제 · 끌어서 날짜 이동 (${esc(e.title)} ${esc(e.note)})">📌 ${e.time?esc(e.time)+' ':''}${esc(e.title)}</span>`; });
     (lv[ds]||[]).forEach(l=>{ items+=`<span class="ci lv" title="휴가(승인)">🏖️ ${esc(l.name)} ${esc(l.type)}</span>`; });
-    (fxByDay[dayNum]||[]).forEach(f=>{ items+=`<span class="ci fx" title="${esc(f.name)} ${KRW(f.amount)}">💳 ${esc(f.name)}</span>`; });
+    (fxByDay[dayNum]||[]).forEach(f=>{ items+=`<span class="ci fx" title="${esc(f.name)} ${KRW(fxAmt(d,f,ds.slice(0,7)))}">💳 ${esc(f.name)}</span>`; });
     if(opts.revenue&&rev[ds])items+=`<span class="ci rev" title="이 날 매출 ${KRW(rev[ds])}">💰 ${KRWm(rev[ds])}</span>`;
     if(opts.grants){
       (gStart[ds]||[]).forEach(g=>{ items+=`<span class="ci gopen" title="${esc(g.name)} 모집 시작">🟢 ${esc(g.name)} 시작</span>`; });
@@ -5053,6 +5055,23 @@ function editFixed(i){ const d=getData(); const f=(d.fixedExpenses||[])[i]; if(!
 }
 function delFixed(i){ const d=getData(); d.fixedExpenses.splice(i,1); if(EDIT_FX===i){EDIT_FX=-1;document.getElementById('fx_btn').textContent='＋ 등록';} setData(d); render(); }
 function toggleFixedPaid(i){ const d=getData(); const f=(d.fixedExpenses||[])[i]; if(!f) return; const m=realToday().slice(0,7); f.paidMonth=(f.paidMonth===m)?'':m; setData(d); render(); }
+function fxAmt(d,f,ym){   // 고정지출 '그 달' 금액: 월별 조정값(d.fixedByMonth[월][이름]) 있으면 그걸, 없으면 기본 금액(f.amount)
+  var m=d&&d.fixedByMonth&&d.fixedByMonth[ym]; var v=m?m[f.name]:undefined;
+  return (v!=null&&v!=='')?(+v||0):(+f.amount||0);
+}
+function fxIsMonthSet(d,f,ym){ return !!(d&&d.fixedByMonth&&d.fixedByMonth[ym]&&d.fixedByMonth[ym][f.name]!=null); }
+function setFixedMonthAmt(i){   // 이번 달 금액만 조정(월별 기록 — 다른 달 금액은 그대로 유지)
+  var d=getData(); var f=(d.fixedExpenses||[])[i]; if(!f) return;
+  var ym=realToday().slice(0,7), mName=parseInt(ym.slice(5),10)+'월';
+  var cur=fxAmt(d,f,ym);
+  var v=prompt(f.name+' — '+mName+' 금액(원)\n이번 달에만 적용돼요. 비우면 기본금액('+KRW(+f.amount||0)+') 사용.', cur);
+  if(v===null) return;
+  v=String(v).replace(/[^0-9.]/g,'');
+  d.fixedByMonth=d.fixedByMonth||{}; d.fixedByMonth[ym]=d.fixedByMonth[ym]||{};
+  if(v==='') delete d.fixedByMonth[ym][f.name];   // 비우면 기본금액으로 되돌림
+  else d.fixedByMonth[ym][f.name]=Math.round(+v||0);
+  setData(d); render();
+}
 function applyQuery(){ render(); }
 
 function toggleTheme(){
