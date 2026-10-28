@@ -2721,9 +2721,15 @@ function render(){
   const recvTotal=recv.reduce((a,r)=>a+r.amt,0);
 
   // 인건비 입력 (재무팀)
-  document.getElementById("payMiss").innerHTML = allMiss>0
+  // 💸 아직 '이체확인' 안 누른 일당 총액(전체 결산 기준) — 모두입력 체크 옆에 표시
+  let payUnsentN=0, payUnsentAmt=0;
+  S.forEach(s=>crewList(s).forEach(p=>{ if(+p.pay>0 && !p.sent){ payUnsentN++; payUnsentAmt+=(+p.pay||0); } }));
+  const payUnsentPill = payUnsentAmt>0
+    ? `<span class="pill p-late" title="아직 이체확인을 안 누른 일당 합계">💸 미이체 ${payUnsentN}명 ${KRW(payUnsentAmt)}</span>`
+    : `<span class="pill p-good">💸 이체 완료</span>`;
+  document.getElementById("payMiss").innerHTML = (allMiss>0
     ? `<span class="pill p-late">🔴 미입력 ${allMiss}명</span>`
-    : `<span class="pill p-good">✅ 모두 입력됨</span>`;
+    : `<span class="pill p-good">✅ 모두 입력됨</span>`) + ' ' + payUnsentPill;
   const _psq=_nkey(PAY_SEARCH);   // 이름 검색(정규화: 띄어쓰기·기호 무시)
   let payRows=S.map((s,i)=>({s,i})).filter(x=>crewList(x.s).length)
     .sort((a,b)=>(laborMissing(b.s)-laborMissing(a.s))||b.s.date.localeCompare(a.s.date));  // 미입력 먼저 → 최신순
