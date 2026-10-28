@@ -144,6 +144,11 @@
   .pnext .lbl{color:var(--muted);font-weight:600;flex:none}
   .pnext input.nx{flex:1;min-width:120px;font-family:inherit;font-size:12.5px;padding:6px 8px;border:1px solid var(--line);border-radius:7px;background:var(--bg);color:var(--ink)}
   .pnext input.dt{font-family:inherit;font-size:12.5px;padding:6px 8px;border:1px solid var(--line);border-radius:7px;background:var(--bg);color:var(--ink);flex:none;width:140px}
+  .pamt.edit{cursor:pointer;border-radius:7px;padding:1px 4px;transition:background .12s}
+  .pamt.edit:hover{background:var(--card)}
+  .pmemo{display:flex;align-items:flex-start;gap:8px;padding:10px 14px;background:var(--card);border-top:1px solid var(--line);font-size:12.5px}
+  .pmemo .lbl{color:var(--muted);font-weight:600;flex:none;padding-top:6px}
+  .pmemo textarea.mx{flex:1;min-width:120px;font-family:inherit;font-size:12.5px;padding:6px 8px;border:1px solid var(--line);border-radius:7px;background:var(--bg);color:var(--ink);resize:vertical;line-height:1.5}
   .pacts{display:flex;gap:6px;padding:10px 14px;border-top:1px solid var(--line);flex-wrap:wrap;align-items:center}
   .pacts .grow{flex:1}
   button.go{background:var(--good);color:#fff;border-color:var(--good);font-weight:700}
@@ -5019,11 +5024,13 @@ function pipeCard(p){
       '<span class="pill '+(p.co==='limit'?'p-limit':'p-daman')+'">'+(p.co==='limit'?'리미트':'다만산업')+'</span>'+
       '<span class="ptitle"><div class="pn">'+escHtml(p.name)+' '+badge+'</div>'+
         '<div class="pm">'+escHtml(p.area)+' · '+escHtml(p.work)+' · 견적 '+_pkdate(p.qd)+' · '+escHtml(p.owner||'')+'</div></span>'+
-      '<span class="pamt">'+_pwon(p.amt)+'</span></div>'+
+      '<span class="pamt edit" onclick="editPipeAmt(\''+p.id+'\')" title="클릭하면 금액을 수정합니다">'+_pwon(p.amt)+' <span style="font-size:11px;opacity:.55">✏️</span></span></div>'+
     '<div class="steps">'+steps+'</div><div class="stepnames">'+names+'</div>'+
     (p.dead?'':'<div class="pnext"><span class="lbl">다음 할 일</span>'+
       '<input class="nx" value="'+escHtml(p.next)+'" placeholder="예: 전화해서 확답받기" onchange="setPipeNext(\''+p.id+'\',this.value)">'+
       '<input class="dt" type="date" value="'+escHtml(p.due)+'" onchange="setPipeDue(\''+p.id+'\',this.value)"></div>')+
+    '<div class="pmemo"><span class="lbl">메모</span>'+
+      '<textarea class="mx" rows="2" placeholder="메모 — 통화·협의 내용, 참고사항 등 (예: 사장님 다음주 재통화, 금액 깎아달라 함)" onchange="setPipeMemo(\''+p.id+'\',this.value)">'+escHtml(p.memo)+'</textarea></div>'+
     '<div class="pacts">'+acts+'<span class="grow"></span>'+
       '<button class="tiny" onclick="delPipe(\''+p.id+'\')" style="color:var(--warn)">삭제</button></div>'+
     (logs?'<div class="plog">'+logs+'</div>':'')+'</div>';
@@ -5138,6 +5145,14 @@ function revivePipe(id){
 }
 function setPipeNext(id,v){ const d=getData(); const p=(d.pipeline||[]).find(x=>x.id===id); if(!p) return; p.next=v.trim(); setData(d); render(); }
 function setPipeDue(id,v){ const d=getData(); const p=(d.pipeline||[]).find(x=>x.id===id); if(!p) return; p.due=v; setData(d); render(); }
+function editPipeAmt(id){
+  const d=getData(); const p=(d.pipeline||[]).find(x=>x.id===id); if(!p) return;
+  const v=prompt((p.name||'프로젝트')+' — 금액(원) 수정\n숫자만 입력하세요 (예: 1500000)', (+p.amt||0));
+  if(v===null) return;                                   // 취소
+  const n=Math.round(parseFloat(String(v).replace(/[^0-9.]/g,''))||0);
+  p.amt=n<0?0:n; setData(d); render();
+}
+function setPipeMemo(id,v){ const d=getData(); const p=(d.pipeline||[]).find(x=>x.id===id); if(!p) return; p.memo=String(v||''); setData(d); render(); }
 function delPipe(id){
   if(!confirm('이 건을 목록에서 지울까요?')) return;
   const d=getData(); d.pipeline=(d.pipeline||[]).filter(x=>x.id!==id); setData(d); render();
