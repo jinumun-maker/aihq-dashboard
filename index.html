@@ -2462,6 +2462,7 @@ function addSettlement(){
     .forEach(id=>document.getElementById(id).value="");
   window.ALBA_SEL=[]; renderAlbaSlots();
   updateSettleBtn();
+  document.getElementById('f_co').value='limit';   // 회사는 항상 리미트부터 (대표 요청)
   calcLive();
   if(editing){ alert('결산이 수정되었습니다.'); }
   document.getElementById('f_site').focus();
@@ -3837,6 +3838,7 @@ function cancelSettleEdit(){
     .forEach(id=>document.getElementById(id).value="");
   window.ALBA_SEL=[]; renderAlbaSlots();
   updateSettleBtn();
+  document.getElementById('f_co').value='limit';   // 회사는 항상 리미트부터 (대표 요청)
   calcLive();
   showSub('배치');   // 배치표로 복귀
 }
