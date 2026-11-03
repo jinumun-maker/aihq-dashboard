@@ -956,6 +956,7 @@
     <button class="subtab" data-subtab="개요재무" onclick="showSub('개요재무')">💰 재무 요약</button>
     <button class="subtab" data-subtab="개요업무" onclick="showSub('개요업무')">✅ 업무 요약 <span id="dashTaskBadge" class="tabbadge"></span></button>
     <button class="subtab" data-subtab="개요결제" onclick="showSub('개요결제')">💳 결제요청 <span id="payReqMgBadge" class="tabbadge"></span></button>
+    <button class="subtab" data-subtab="보관함" onclick="showSub('보관함')">🔐 로그인 보관함</button>
   </div>
 
   <!-- ① 💰 재무 요약 -->
@@ -1072,6 +1073,46 @@
   </div><!-- /개요업무 -->
 
   <!-- 업무정리 보드는 일정 달력(개요일정) 상단으로 이동됨 -->
+
+  <div class="subpg" data-subpg="보관함" style="display:none">
+    <div class="card" style="margin-top:22px">
+      <h2>🔐 로그인 보관함 <span style="font-weight:500;color:var(--muted);font-size:12px">홈택스·나라장터·정부24 등 · PIN으로 암호화 저장 · 모든 기기 공유</span></h2>
+      <div class="vault-warn">🔒 비밀번호는 <b>PIN으로 암호화</b>되어 저장돼요. PIN은 어디에도 저장되지 않으니 <b>절대 잊지 마세요</b> — 잊으면 저장된 비번은 복구할 수 없어요. PIN은 믿을 수 있는 사람에게만 알려주세요.</div>
+
+      <div id="vaultSetup" style="display:none">
+        <div class="vault-box">
+          <div class="vault-box-t">처음 사용 — 보관함 PIN을 정하세요</div>
+          <input id="vp_new1" type="password" inputmode="numeric" placeholder="새 PIN (숫자 4자리 이상 권장)" autocomplete="new-password" class="vault-inp">
+          <input id="vp_new2" type="password" inputmode="numeric" placeholder="PIN 다시 입력" autocomplete="new-password" class="vault-inp" onkeydown="if(event.key==='Enter')vaultSetPin()">
+          <button class="primary" onclick="vaultSetPin()" style="width:100%">🔐 PIN 만들고 시작</button>
+        </div>
+      </div>
+
+      <div id="vaultLocked" style="display:none">
+        <div class="vault-box">
+          <div class="vault-box-t">🔒 잠겨 있어요 <span id="vaultLockedCount" style="color:var(--muted);font-weight:500;font-size:12.5px"></span></div>
+          <input id="vp_pin" type="password" inputmode="numeric" placeholder="PIN 입력" autocomplete="off" class="vault-inp" onkeydown="if(event.key==='Enter')vaultUnlock()">
+          <div id="vaultMsg" style="color:var(--warn);font-size:12.5px;min-height:16px;margin:0 0 8px"></div>
+          <button class="primary" onclick="vaultUnlock()" style="width:100%">열기</button>
+          <div style="text-align:center;margin-top:12px"><button onclick="vaultResetAsk()" style="background:none;border:none;color:var(--muted);font-size:12px;text-decoration:underline;cursor:pointer">PIN을 잊으셨나요?</button></div>
+        </div>
+      </div>
+
+      <div id="vaultUnlocked" style="display:none">
+        <div class="vault-add">
+          <input id="ve_site" class="vault-inp" placeholder="사이트 이름 (예: 홈택스)" list="vaultSites" autocomplete="off">
+          <datalist id="vaultSites"><option value="홈택스"></option><option value="나라장터"></option><option value="정부24"></option><option value="위택스"></option><option value="4대사회보험 정보연계센터"></option><option value="고용·산재보험 토탈서비스"></option><option value="인터넷등기소"></option><option value="국민연금 EDI"></option></datalist>
+          <input id="ve_id" class="vault-inp" placeholder="아이디" autocomplete="off">
+          <input id="ve_pw" class="vault-inp" placeholder="비밀번호" autocomplete="off">
+          <input id="ve_url" class="vault-inp" placeholder="사이트 주소 (선택 · 예: hometax.go.kr)" autocomplete="off">
+          <input id="ve_memo" class="vault-inp" placeholder="메모 (선택 · 예: 사업자용 / 공동인증서 위치)" autocomplete="off">
+          <button class="primary" onclick="vaultAdd()">＋ 저장</button>
+        </div>
+        <div id="vaultList"></div>
+        <div style="text-align:center;margin-top:14px"><button onclick="vaultLock()" style="padding:9px 18px;border:1px solid var(--line);border-radius:9px;background:var(--bg);color:var(--ink);cursor:pointer;font-weight:600">🔒 다시 잠그기</button></div>
+      </div>
+    </div>
+  </div>
 
   </div><!-- /대시보드 -->
 
@@ -1383,7 +1424,6 @@
   <div class="subtabs">
     <button class="subtab" data-subtab="기업달력" onclick="showSub('기업달력')">📅 모집 캘린더</button>
     <button class="subtab" data-subtab="기업관리" onclick="showSub('기업관리')">📋 지원사업 관리</button>
-    <button class="subtab" data-subtab="보관함" onclick="showSub('보관함')">🔐 로그인 보관함</button>
   </div>
 
   <div class="subpg" data-subpg="기업달력">
@@ -1459,46 +1499,6 @@
       <tbody id="grantRows"></tbody></table></div>
   </div>
   </div><!-- /기업관리 -->
-
-  <div class="subpg" data-subpg="보관함" style="display:none">
-    <div class="card" style="margin-top:22px">
-      <h2>🔐 로그인 보관함 <span style="font-weight:500;color:var(--muted);font-size:12px">홈택스·나라장터·정부24 등 · PIN으로 암호화 저장 · 모든 기기 공유</span></h2>
-      <div class="vault-warn">🔒 비밀번호는 <b>PIN으로 암호화</b>되어 저장돼요. PIN은 어디에도 저장되지 않으니 <b>절대 잊지 마세요</b> — 잊으면 저장된 비번은 복구할 수 없어요. PIN은 믿을 수 있는 사람에게만 알려주세요.</div>
-
-      <div id="vaultSetup" style="display:none">
-        <div class="vault-box">
-          <div class="vault-box-t">처음 사용 — 보관함 PIN을 정하세요</div>
-          <input id="vp_new1" type="password" inputmode="numeric" placeholder="새 PIN (숫자 4자리 이상 권장)" autocomplete="new-password" class="vault-inp">
-          <input id="vp_new2" type="password" inputmode="numeric" placeholder="PIN 다시 입력" autocomplete="new-password" class="vault-inp" onkeydown="if(event.key==='Enter')vaultSetPin()">
-          <button class="primary" onclick="vaultSetPin()" style="width:100%">🔐 PIN 만들고 시작</button>
-        </div>
-      </div>
-
-      <div id="vaultLocked" style="display:none">
-        <div class="vault-box">
-          <div class="vault-box-t">🔒 잠겨 있어요 <span id="vaultLockedCount" style="color:var(--muted);font-weight:500;font-size:12.5px"></span></div>
-          <input id="vp_pin" type="password" inputmode="numeric" placeholder="PIN 입력" autocomplete="off" class="vault-inp" onkeydown="if(event.key==='Enter')vaultUnlock()">
-          <div id="vaultMsg" style="color:var(--warn);font-size:12.5px;min-height:16px;margin:0 0 8px"></div>
-          <button class="primary" onclick="vaultUnlock()" style="width:100%">열기</button>
-          <div style="text-align:center;margin-top:12px"><button onclick="vaultResetAsk()" style="background:none;border:none;color:var(--muted);font-size:12px;text-decoration:underline;cursor:pointer">PIN을 잊으셨나요?</button></div>
-        </div>
-      </div>
-
-      <div id="vaultUnlocked" style="display:none">
-        <div class="vault-add">
-          <input id="ve_site" class="vault-inp" placeholder="사이트 이름 (예: 홈택스)" list="vaultSites" autocomplete="off">
-          <datalist id="vaultSites"><option value="홈택스"></option><option value="나라장터"></option><option value="정부24"></option><option value="위택스"></option><option value="4대사회보험 정보연계센터"></option><option value="고용·산재보험 토탈서비스"></option><option value="인터넷등기소"></option><option value="국민연금 EDI"></option></datalist>
-          <input id="ve_id" class="vault-inp" placeholder="아이디" autocomplete="off">
-          <input id="ve_pw" class="vault-inp" placeholder="비밀번호" autocomplete="off">
-          <input id="ve_url" class="vault-inp" placeholder="사이트 주소 (선택 · 예: hometax.go.kr)" autocomplete="off">
-          <input id="ve_memo" class="vault-inp" placeholder="메모 (선택 · 예: 사업자용 / 공동인증서 위치)" autocomplete="off">
-          <button class="primary" onclick="vaultAdd()">＋ 저장</button>
-        </div>
-        <div id="vaultList"></div>
-        <div style="text-align:center;margin-top:14px"><button onclick="vaultLock()" style="padding:9px 18px;border:1px solid var(--line);border-radius:9px;background:var(--bg);color:var(--ink);cursor:pointer;font-weight:600">🔒 다시 잠그기</button></div>
-      </div>
-    </div>
-  </div>
 
   <!-- 업무정리 보드는 모집 캘린더 상단으로 이동됨 -->
   </div><!-- /기업지원 -->
