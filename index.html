@@ -149,6 +149,27 @@
   .pmemo{display:flex;align-items:flex-start;gap:8px;padding:10px 14px;background:var(--card);border-top:1px solid var(--line);font-size:12.5px}
   .pmemo .lbl{color:var(--muted);font-weight:600;flex:none;padding-top:6px}
   .pmemo textarea.mx{flex:1;min-width:120px;font-family:inherit;font-size:12.5px;padding:6px 8px;border:1px solid var(--line);border-radius:7px;background:var(--bg);color:var(--ink);resize:vertical;line-height:1.5}
+  /* 🔐 로그인 보관함 */
+  .vault-warn{background:rgba(245,158,11,.12);border:1px solid rgba(245,158,11,.4);color:var(--ink);border-radius:10px;padding:11px 14px;font-size:12.8px;line-height:1.6;margin:14px 0 16px}
+  .vault-box{max-width:420px;margin:0 auto;background:var(--card);border:1px solid var(--line);border-radius:12px;padding:18px}
+  .vault-box-t{font-weight:800;font-size:14px;margin-bottom:12px}
+  .vault-inp{width:100%;box-sizing:border-box;padding:11px 13px;border:1px solid var(--line);border-radius:9px;background:var(--bg);color:var(--ink);font-size:14px;margin-bottom:9px;font-family:inherit}
+  .vault-add{display:grid;grid-template-columns:1fr 1fr;gap:9px;align-items:center;background:var(--card);border:1px solid var(--line);border-radius:12px;padding:14px;margin-bottom:16px}
+  .vault-add .vault-inp{margin-bottom:0}
+  .vault-add button{grid-column:1/-1;padding:11px;border-radius:9px}
+  .vrow{display:flex;gap:10px;align-items:flex-start;background:var(--card);border:1px solid var(--line);border-radius:11px;padding:13px 15px;margin-bottom:10px}
+  .vrow-main{flex:1;min-width:0}
+  .vsite{font-weight:800;font-size:14.5px;margin-bottom:8px}
+  .vfield{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin:3px 0}
+  .vlabel{font-size:11.5px;color:var(--muted);font-weight:700;min-width:34px}
+  .vval{font-size:13.5px;font-family:ui-monospace,Menlo,Consolas,monospace;word-break:break-all;background:var(--bg);padding:3px 8px;border-radius:6px;border:1px solid var(--line)}
+  .vcopy{font-size:11.5px;padding:4px 9px;border:1px solid var(--line);border-radius:7px;background:var(--bg);color:var(--ink);cursor:pointer}
+  .vcopy:hover{background:var(--line)}
+  .vmemo{font-size:12.5px;color:var(--muted);margin-top:7px}
+  .vrow-act button{background:none;border:none;font-size:16px;cursor:pointer;opacity:.6;padding:4px}
+  .vrow-act button:hover{opacity:1}
+  .vempty{text-align:center;color:var(--muted);font-size:13px;padding:24px}
+  @media(max-width:560px){ .vault-add{grid-template-columns:1fr} }
   .pacts{display:flex;gap:6px;padding:10px 14px;border-top:1px solid var(--line);flex-wrap:wrap;align-items:center}
   .pacts .grow{flex:1}
   button.go{background:var(--good);color:#fff;border-color:var(--good);font-weight:700}
@@ -1362,6 +1383,7 @@
   <div class="subtabs">
     <button class="subtab" data-subtab="기업달력" onclick="showSub('기업달력')">📅 모집 캘린더</button>
     <button class="subtab" data-subtab="기업관리" onclick="showSub('기업관리')">📋 지원사업 관리</button>
+    <button class="subtab" data-subtab="보관함" onclick="showSub('보관함')">🔐 로그인 보관함</button>
   </div>
 
   <div class="subpg" data-subpg="기업달력">
@@ -1437,6 +1459,46 @@
       <tbody id="grantRows"></tbody></table></div>
   </div>
   </div><!-- /기업관리 -->
+
+  <div class="subpg" data-subpg="보관함" style="display:none">
+    <div class="card" style="margin-top:22px">
+      <h2>🔐 로그인 보관함 <span style="font-weight:500;color:var(--muted);font-size:12px">홈택스·나라장터·정부24 등 · PIN으로 암호화 저장 · 모든 기기 공유</span></h2>
+      <div class="vault-warn">🔒 비밀번호는 <b>PIN으로 암호화</b>되어 저장돼요. PIN은 어디에도 저장되지 않으니 <b>절대 잊지 마세요</b> — 잊으면 저장된 비번은 복구할 수 없어요. PIN은 믿을 수 있는 사람에게만 알려주세요.</div>
+
+      <div id="vaultSetup" style="display:none">
+        <div class="vault-box">
+          <div class="vault-box-t">처음 사용 — 보관함 PIN을 정하세요</div>
+          <input id="vp_new1" type="password" inputmode="numeric" placeholder="새 PIN (숫자 4자리 이상 권장)" autocomplete="new-password" class="vault-inp">
+          <input id="vp_new2" type="password" inputmode="numeric" placeholder="PIN 다시 입력" autocomplete="new-password" class="vault-inp" onkeydown="if(event.key==='Enter')vaultSetPin()">
+          <button class="primary" onclick="vaultSetPin()" style="width:100%">🔐 PIN 만들고 시작</button>
+        </div>
+      </div>
+
+      <div id="vaultLocked" style="display:none">
+        <div class="vault-box">
+          <div class="vault-box-t">🔒 잠겨 있어요 <span id="vaultLockedCount" style="color:var(--muted);font-weight:500;font-size:12.5px"></span></div>
+          <input id="vp_pin" type="password" inputmode="numeric" placeholder="PIN 입력" autocomplete="off" class="vault-inp" onkeydown="if(event.key==='Enter')vaultUnlock()">
+          <div id="vaultMsg" style="color:var(--warn);font-size:12.5px;min-height:16px;margin:0 0 8px"></div>
+          <button class="primary" onclick="vaultUnlock()" style="width:100%">열기</button>
+          <div style="text-align:center;margin-top:12px"><button onclick="vaultResetAsk()" style="background:none;border:none;color:var(--muted);font-size:12px;text-decoration:underline;cursor:pointer">PIN을 잊으셨나요?</button></div>
+        </div>
+      </div>
+
+      <div id="vaultUnlocked" style="display:none">
+        <div class="vault-add">
+          <input id="ve_site" class="vault-inp" placeholder="사이트 이름 (예: 홈택스)" list="vaultSites" autocomplete="off">
+          <datalist id="vaultSites"><option value="홈택스"></option><option value="나라장터"></option><option value="정부24"></option><option value="위택스"></option><option value="4대사회보험 정보연계센터"></option><option value="고용·산재보험 토탈서비스"></option><option value="인터넷등기소"></option><option value="국민연금 EDI"></option></datalist>
+          <input id="ve_id" class="vault-inp" placeholder="아이디" autocomplete="off">
+          <input id="ve_pw" class="vault-inp" placeholder="비밀번호" autocomplete="off">
+          <input id="ve_url" class="vault-inp" placeholder="사이트 주소 (선택 · 예: hometax.go.kr)" autocomplete="off">
+          <input id="ve_memo" class="vault-inp" placeholder="메모 (선택 · 예: 사업자용 / 공동인증서 위치)" autocomplete="off">
+          <button class="primary" onclick="vaultAdd()">＋ 저장</button>
+        </div>
+        <div id="vaultList"></div>
+        <div style="text-align:center;margin-top:14px"><button onclick="vaultLock()" style="padding:9px 18px;border:1px solid var(--line);border-radius:9px;background:var(--bg);color:var(--ink);cursor:pointer;font-weight:600">🔒 다시 잠그기</button></div>
+      </div>
+    </div>
+  </div>
 
   <!-- 업무정리 보드는 모집 캘린더 상단으로 이동됨 -->
   </div><!-- /기업지원 -->
@@ -2074,6 +2136,9 @@ function _seed(data){    // 메시지·지원사업 시드/마이그레이션 (�
   ];
   // 📈 영업 프로젝트 (견적 제출 → 수금까지) [{id,co,name,area,work,amt,qd,stage,dead,next,due,owner,log:[{d,t}]}]
   if(!Array.isArray(data.pipeline)) data.pipeline=[];
+  // 🔐 로그인 보관함 (PIN 암호화): {salt,iter,check:{iv,ct},items:[{id,site,url,memo,sec:{iv,ct}}]}
+  if(!data.vault || typeof data.vault!=='object' || Array.isArray(data.vault)) data.vault={items:[]};
+  if(!Array.isArray(data.vault.items)) data.vault.items=[];
   if(!Array.isArray(data.vehicles)) data.vehicles=['G80','카니발','스타렉스(검정)','스타리아(흰색)','봉고탑차'];
   if(!Array.isArray(data.carLogs)) data.carLogs=[];   // 차량 정비/점검 기록 [{car,type,date,next,note,cost}]
   // ── 👷 인사팀 ──
@@ -2871,6 +2936,7 @@ function render(){
   renderUnsettled();
   renderSales();
   renderPipeline();
+  if(typeof renderVault==='function') renderVault();
   renderDev();
   renderPurchases();
   renderPayReqs();
@@ -5163,6 +5229,130 @@ function editPipeAmt(id){
   p.amt=n<0?0:n; setData(d); render();
 }
 function setPipeMemo(id,v){ const d=getData(); const p=(d.pipeline||[]).find(x=>x.id===id); if(!p) return; p.memo=String(v||''); setData(d); render(); }
+
+/* ===== 🔐 로그인 보관함 (PIN 암호화 · Web Crypto AES-GCM + PBKDF2) ===== */
+let _vaultKey=null;      // PIN에서 파생한 키 — 세션 메모리에만 존재, 어디에도 저장 안 함
+let _vaultPlain={};      // 해제 중 복호화된 {id:{u,p}} — 잠그면 비움
+const _vTE=new TextEncoder(), _vTD=new TextDecoder();
+function _vB64(buf){ const b=new Uint8Array(buf); let s=''; for(let i=0;i<b.length;i++) s+=String.fromCharCode(b[i]); return btoa(s); }
+function _vUB64(str){ const s=atob(str); const b=new Uint8Array(s.length); for(let i=0;i<s.length;i++) b[i]=s.charCodeAt(i); return b; }
+function _vCryptoOK(){ return !!(window.crypto && window.crypto.subtle); }
+async function _vDerive(pin, saltB64, iter){
+  const base=await crypto.subtle.importKey('raw', _vTE.encode(String(pin)), 'PBKDF2', false, ['deriveKey']);
+  return crypto.subtle.deriveKey({name:'PBKDF2', salt:_vUB64(saltB64), iterations:iter||200000, hash:'SHA-256'},
+    base, {name:'AES-GCM', length:256}, false, ['encrypt','decrypt']);
+}
+async function _vEnc(key, obj){
+  const iv=crypto.getRandomValues(new Uint8Array(12));
+  const ct=await crypto.subtle.encrypt({name:'AES-GCM', iv}, key, _vTE.encode(JSON.stringify(obj)));
+  return {iv:_vB64(iv), ct:_vB64(ct)};
+}
+async function _vDec(key, blob){
+  const pt=await crypto.subtle.decrypt({name:'AES-GCM', iv:_vUB64(blob.iv)}, key, _vUB64(blob.ct));
+  return JSON.parse(_vTD.decode(pt));
+}
+async function vaultSetPin(){
+  if(!_vCryptoOK()){ alert('이 환경에서는 암호화를 쓸 수 없어요.\n배포된 주소(https://…github.io)에서 열어주세요.'); return; }
+  const p1=(document.getElementById('vp_new1')||{}).value||'', p2=(document.getElementById('vp_new2')||{}).value||'';
+  if(p1.length<4){ alert('PIN은 4자리 이상으로 정해주세요.'); return; }
+  if(p1!==p2){ alert('두 번 입력한 PIN이 서로 다릅니다.'); return; }
+  try{
+    const salt=_vB64(crypto.getRandomValues(new Uint8Array(16))), iter=200000;
+    const key=await _vDerive(p1, salt, iter);
+    const check=await _vEnc(key, {ok:'AIHQ-VAULT'});
+    const d=getData(); d.vault=d.vault||{items:[]}; d.vault.salt=salt; d.vault.iter=iter; d.vault.check=check; if(!Array.isArray(d.vault.items)) d.vault.items=[];
+    _vaultKey=key; setData(d);
+    const a=document.getElementById('vp_new1'), b=document.getElementById('vp_new2'); if(a)a.value=''; if(b)b.value='';
+    render(); showSub('보관함');
+  }catch(e){ alert('PIN 설정 중 오류가 났어요. 다시 시도해주세요.'); console.error(e); }
+}
+async function vaultUnlock(){
+  if(!_vCryptoOK()){ alert('이 환경에서는 암호화를 쓸 수 없어요.\n배포된 주소(https://…github.io)에서 열어주세요.'); return; }
+  const el=document.getElementById('vp_pin'); const pin=(el||{}).value||'';
+  const msg=document.getElementById('vaultMsg'); if(msg) msg.textContent='';
+  const d=getData(); const v=d.vault||{};
+  if(!v.salt||!v.check) return;
+  try{
+    const key=await _vDerive(pin, v.salt, v.iter||200000);
+    await _vDec(key, v.check);          // PIN 틀리면 여기서 throw
+    _vaultKey=key; if(el) el.value='';
+    render(); showSub('보관함');
+  }catch(e){ if(msg) msg.textContent='PIN이 올바르지 않습니다.'; }
+}
+function vaultLock(){ _vaultKey=null; _vaultPlain={}; render(); showSub('보관함'); }
+async function vaultAdd(){
+  if(!_vaultKey){ alert('먼저 PIN으로 잠금을 해제하세요.'); return; }
+  const g=id=>(document.getElementById(id)||{}).value||'';
+  const site=g('ve_site').trim();
+  if(!site){ alert('사이트 이름을 입력하세요 (예: 홈택스).'); return; }
+  try{
+    const sec=await _vEnc(_vaultKey, {u:g('ve_id'), p:g('ve_pw')});
+    const d=getData(); d.vault=d.vault||{items:[]}; d.vault.items=d.vault.items||[];
+    d.vault.items.push({id:'v'+Date.now()+Math.random().toString(36).slice(2,6), site, url:g('ve_url').trim(), memo:g('ve_memo').trim(), sec});
+    setData(d);
+    ['ve_site','ve_id','ve_pw','ve_url','ve_memo'].forEach(i=>{ const e=document.getElementById(i); if(e) e.value=''; });
+    render(); showSub('보관함');
+  }catch(e){ alert('저장 중 오류가 났어요. 다시 시도해주세요.'); console.error(e); }
+}
+function vaultDel(id){
+  const d=getData(); if(!d.vault||!Array.isArray(d.vault.items)) return;
+  const it=d.vault.items.find(x=>x.id===id); if(!it) return;
+  if(!confirm('"'+(it.site||'이 항목')+'" 로그인 정보를 삭제할까요?')) return;
+  d.vault.items=d.vault.items.filter(x=>x.id!==id); setData(d); render(); showSub('보관함');
+}
+function vaultResetAsk(){
+  if(!confirm('PIN을 잊으면 저장된 비밀번호는 암호화되어 있어 복구할 수 없어요.\n\n보관함을 초기화하고 새 PIN으로 다시 시작할까요?\n(지금 저장된 로그인 정보는 모두 삭제됩니다)')) return;
+  if(!confirm('정말 초기화할까요? 되돌릴 수 없습니다.')) return;
+  const d=getData(); d.vault={items:[]}; _vaultKey=null; _vaultPlain={}; setData(d); render(); showSub('보관함');
+}
+function vaultToggle(id){
+  const el=document.getElementById('vpw_'+id), btn=document.getElementById('vtog_'+id), rec=_vaultPlain[id];
+  if(!el||!rec) return;
+  if(el.dataset.shown==='1'){ el.textContent='••••••••'; el.dataset.shown=''; if(btn) btn.textContent='👁 보기'; }
+  else { el.textContent=(rec.p||'(비어있음)'); el.dataset.shown='1'; if(btn) btn.textContent='🙈 숨기기'; }
+}
+function vaultCopy(id, which, ev){
+  const rec=_vaultPlain[id]; if(!rec) return;
+  const txt=(which==='p'?rec.p:rec.u)||'';
+  const done=()=>{ const b=ev&&ev.target; if(b){ const o=b.textContent; b.textContent='✓ 복사'; setTimeout(()=>{ b.textContent=o; }, 900); } };
+  if(navigator.clipboard && navigator.clipboard.writeText){ navigator.clipboard.writeText(txt).then(done).catch(()=>{ if(typeof fallbackCopy==='function') fallbackCopy(txt,done); else done(); }); }
+  else if(typeof fallbackCopy==='function'){ fallbackCopy(txt,done); } else { done(); }
+}
+async function renderVault(){
+  const setup=document.getElementById('vaultSetup'), locked=document.getElementById('vaultLocked'), unl=document.getElementById('vaultUnlocked');
+  if(!setup||!locked||!unl) return;
+  const d=getData(); const v=d.vault||{};
+  const hasPin=!!(v.salt&&v.check), unlocked=!!_vaultKey;
+  setup.style.display = !hasPin ? 'block':'none';
+  locked.style.display = (hasPin&&!unlocked) ? 'block':'none';
+  unl.style.display = (hasPin&&unlocked) ? 'block':'none';
+  const cnt=document.getElementById('vaultLockedCount');
+  if(cnt) cnt.textContent = (v.items&&v.items.length)? ('· 저장된 로그인 '+v.items.length+'개') : '· 아직 저장된 항목 없음';
+  if(!(hasPin&&unlocked)) return;
+  const host=document.getElementById('vaultList'); if(!host) return;
+  const items=v.items||[]; _vaultPlain={};
+  if(!items.length){ host.innerHTML='<div class="vempty">아직 저장된 로그인이 없어요. 위에서 ＋ 저장으로 추가하세요.</div>'; return; }
+  try{
+    const parts=await Promise.all(items.map(async it=>{
+      try{ const o=await _vDec(_vaultKey, it.sec); _vaultPlain[it.id]={u:o.u||'', p:o.p||''}; return _vaultRowHTML(it); }
+      catch(e){ return '<div class="vrow"><div class="vrow-main"><div class="vsite">🔖 '+escHtml(it.site)+'</div><div style="color:var(--warn);font-size:12.5px">⚠️ 이 항목은 지금 PIN으로 열 수 없어요.</div></div><div class="vrow-act"><button title="삭제" onclick="vaultDel(\''+it.id+'\')">🗑</button></div></div>'; }
+    }));
+    host.innerHTML=parts.join('');
+  }catch(e){ host.innerHTML='<div class="vempty">목록을 불러오지 못했어요.</div>'; }
+}
+function _vaultRowHTML(it){
+  const rec=_vaultPlain[it.id]||{u:'',p:''};
+  let link='';
+  if(it.url){ let u=it.url; if(!/^https?:\/\//i.test(u)) u='https://'+u; link=' <a href="'+escHtml(u)+'" target="_blank" rel="noopener" style="font-size:12px;text-decoration:none;font-weight:600">↗ 열기</a>'; }
+  return '<div class="vrow"><div class="vrow-main">'
+    +'<div class="vsite">🔖 '+escHtml(it.site)+link+'</div>'
+    +'<div class="vfield"><span class="vlabel">아이디</span><span class="vval">'+escHtml(rec.u||'-')+'</span>'+(rec.u?'<button class="vcopy" onclick="vaultCopy(\''+it.id+'\',\'u\',event)">복사</button>':'')+'</div>'
+    +'<div class="vfield"><span class="vlabel">비번</span><span class="vval" id="vpw_'+it.id+'">••••••••</span>'
+      +'<button class="vcopy" id="vtog_'+it.id+'" onclick="vaultToggle(\''+it.id+'\')">👁 보기</button>'
+      +(rec.p?'<button class="vcopy" onclick="vaultCopy(\''+it.id+'\',\'p\',event)">복사</button>':'')+'</div>'
+    +(it.memo?'<div class="vmemo">📝 '+escHtml(it.memo)+'</div>':'')
+    +'</div><div class="vrow-act"><button title="삭제" onclick="vaultDel(\''+it.id+'\')">🗑</button></div></div>';
+}
 function delPipe(id){
   if(!confirm('이 건을 목록에서 지울까요?')) return;
   const d=getData(); d.pipeline=(d.pipeline||[]).filter(x=>x.id!==id); setData(d); render();
