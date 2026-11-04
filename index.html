@@ -172,6 +172,20 @@
   .vedit-grid{display:grid;grid-template-columns:auto 1fr;gap:9px 10px;align-items:center;margin-top:6px}
   .vedit-grid label{font-size:12px;color:var(--muted);font-weight:700}
   .vedit-grid .vault-inp{margin-bottom:0}
+  /* 🙋 개인 메모 (나만 보기) */
+  .pm-add{display:flex;gap:8px;margin:12px 0}
+  .pm-add input{flex:1;min-width:0;padding:9px 11px;border:1px solid var(--line);border-radius:8px;background:var(--bg);color:var(--ink);font-family:inherit;font-size:13.5px}
+  .pm-item{display:flex;align-items:center;gap:10px;padding:9px 11px;border:1px solid var(--line);border-radius:9px;margin-bottom:7px;background:var(--card)}
+  .pm-cb{width:18px;height:18px;border:2px solid var(--line);border-radius:5px;display:inline-flex;align-items:center;justify-content:center;font-size:12px;color:transparent;cursor:pointer;flex:none}
+  .pm-item.done .pm-cb{background:var(--good);border-color:var(--good);color:#fff}
+  .pm-tx{flex:1;font-size:13.5px;word-break:break-all}
+  .pm-item.done .pm-tx{text-decoration:line-through;color:var(--muted)}
+  .pm-del{background:none;border:none;color:var(--muted);cursor:pointer;font-size:14px;opacity:.55;flex:none}
+  .pm-del:hover{opacity:1}
+  .pm-empty{color:var(--muted);font-size:13px;padding:10px 2px}
+  .pm-memo-wrap{margin-top:14px}
+  .pm-memo-lbl{font-size:12px;color:var(--muted);font-weight:700;margin-bottom:6px}
+  #pm_memo{width:100%;box-sizing:border-box;padding:11px 13px;border:1px solid var(--line);border-radius:9px;background:var(--bg);color:var(--ink);font-family:inherit;font-size:13.5px;resize:vertical;line-height:1.6}
   @media(max-width:560px){ .vault-add{grid-template-columns:1fr} }
   .pacts{display:flex;gap:6px;padding:10px 14px;border-top:1px solid var(--line);flex-wrap:wrap;align-items:center}
   .pacts .grow{flex:1}
@@ -1037,6 +1051,18 @@
       </div>
       <div class="board" id="brd_mng"></div>
     </div>
+    <div class="card" id="pmCard" style="margin-top:22px">
+      <h2>🙋 나의 메모 <span style="font-weight:500;color:var(--muted);font-size:12px">나만 보기 · 다른 사람에겐 안 보여요 · 폰·PC 동기화</span></h2>
+      <div class="pm-add">
+        <input id="pm_todo" placeholder="할 일 입력 후 Enter (예: 세무사 통화)" onkeydown="if(event.key==='Enter')pmAddTodo()">
+        <button class="primary" onclick="pmAddTodo()">＋ 추가</button>
+      </div>
+      <div id="pm_list"></div>
+      <div class="pm-memo-wrap">
+        <div class="pm-memo-lbl">자유 메모</div>
+        <textarea id="pm_memo" rows="4" placeholder="자유롭게 메모하세요 (예: 폴리싱 단가 재검토, 다음주 세무사 미팅 준비물…)" oninput="pmSetMemo(this.value)"></textarea>
+      </div>
+    </div>
     <div class="card" style="margin-top:22px">
       <h2>📅 이번 달 일정 <span style="font-weight:500;color:var(--muted);font-size:12px">현장·미팅·고정지출 한눈에</span></h2>
       <div id="calGridDash"></div>
@@ -1846,7 +1872,7 @@ if(window.AIHQ_DATA){
     {date:"2026-11-06",name:"명석 폴리싱 (3/4일)"},
     {date:"2026-11-07",name:"명석 폴리싱 (4/4일)"}
   ];
-  window.AIHQ_DATA.calSync = "2026-11-04b";
+  window.AIHQ_DATA.calSync = "2026-11-04c";
 }
 /* 🏫 학교 영업 — 기록은 getData()/setData() 상태의 schools 필드에 저장되어 기존 클라우드 동기화로 팀 공유됩니다. */
 (function(){
@@ -2155,6 +2181,8 @@ function _seed(data){    // 메시지·지원사업 시드/마이그레이션 (�
   // 🔐 로그인 보관함 (PIN 암호화): {salt,iter,check:{iv,ct},items:[{id,site,url,memo,sec:{iv,ct}}]}
   if(!data.vault || typeof data.vault!=='object' || Array.isArray(data.vault)) data.vault={items:[]};
   if(!Array.isArray(data.vault.items)) data.vault.items=[];
+  // 🙋 개인 메모(나만 보기): {역할:{todos:[{id,text,done}], memo:""}}
+  if(!data.personal || typeof data.personal!=='object' || Array.isArray(data.personal)) data.personal={};
   if(!Array.isArray(data.vehicles)) data.vehicles=['G80','카니발','스타렉스(검정)','스타리아(흰색)','봉고탑차'];
   if(!Array.isArray(data.carLogs)) data.carLogs=[];   // 차량 정비/점검 기록 [{car,type,date,next,note,cost}]
   // ── 👷 인사팀 ──
@@ -2953,6 +2981,7 @@ function render(){
   renderSales();
   renderPipeline();
   if(typeof renderVault==='function') renderVault();
+  if(typeof renderPersonal==='function') renderPersonal();
   renderDev();
   renderPurchases();
   renderPayReqs();
@@ -5245,6 +5274,52 @@ function editPipeAmt(id){
   p.amt=n<0?0:n; setData(d); render();
 }
 function setPipeMemo(id,v){ const d=getData(); const p=(d.pipeline||[]).find(x=>x.id===id); if(!p) return; p.memo=String(v||''); setData(d); render(); }
+
+/* ===== 🙋 개인 메모 (나만 보기 · 로그인 역할별 저장) ===== */
+function _meKey(){ return (typeof CURRENT_ROLE!=='undefined' && CURRENT_ROLE) ? CURRENT_ROLE : 'me'; }
+function _myPersonal(d){
+  d.personal = d.personal || {};
+  var k=_meKey(), p=d.personal[k];
+  if(!p || typeof p!=='object'){ p={todos:[],memo:''}; d.personal[k]=p; }
+  if(!Array.isArray(p.todos)) p.todos=[];
+  if(typeof p.memo!=='string') p.memo='';
+  return p;
+}
+function pmAddTodo(){
+  var el=document.getElementById('pm_todo'); if(!el) return;
+  var t=(el.value||'').trim(); if(!t) return;
+  var d=getData(); _myPersonal(d).todos.push({id:'t'+Date.now()+Math.random().toString(36).slice(2,5), text:t, done:false});
+  setData(d); el.value=''; render();
+}
+function pmToggleTodo(id){
+  var d=getData(), todos=_myPersonal(d).todos, it=todos.find(function(x){return x.id===id;}); if(!it) return;
+  it.done=!it.done; setData(d); render();
+}
+function pmDelTodo(id){
+  var d=getData(), p=_myPersonal(d); p.todos=p.todos.filter(function(x){return x.id!==id;}); setData(d); render();
+}
+var _pmMemoTimer=null;
+function pmSetMemo(v){
+  clearTimeout(_pmMemoTimer);
+  _pmMemoTimer=setTimeout(function(){ var d=getData(); _myPersonal(d).memo=String(v||''); setData(d); }, 500);
+}
+function renderPersonal(){
+  var list=document.getElementById('pm_list'); if(!list) return;
+  var d=getData(), p=_myPersonal(d);
+  if(!p.todos.length){
+    list.innerHTML='<div class="pm-empty">아직 할 일이 없어요. 위에 입력하고 Enter.</div>';
+  } else {
+    list.innerHTML=p.todos.map(function(t){
+      return '<div class="pm-item'+(t.done?' done':'')+'">'
+        +'<span class="pm-cb" onclick="pmToggleTodo(\''+t.id+'\')" title="완료 표시">✓</span>'
+        +'<span class="pm-tx">'+escHtml(t.text)+'</span>'
+        +'<button class="pm-del" onclick="pmDelTodo(\''+t.id+'\')" title="삭제">✕</button>'
+        +'</div>';
+    }).join('');
+  }
+  var ta=document.getElementById('pm_memo');
+  if(ta && document.activeElement!==ta) ta.value=p.memo;   // 타이핑 중엔 안 건드림
+}
 
 /* ===== 🔐 로그인 보관함 (PIN 암호화 · Web Crypto AES-GCM + PBKDF2) ===== */
 let _vaultKey=null;      // PIN에서 파생한 키 — 세션 메모리에만 존재, 어디에도 저장 안 함
