@@ -1039,19 +1039,7 @@
 
   <!-- ② 📅 일정 달력 -->
   <div class="subpg" data-subpg="개요일정">
-    <div class="card" style="margin-top:14px">
-      <h2>📋 경영관리팀 업무정리 <span style="font-weight:500;color:var(--muted);font-size:12px">대표님 지시·전사 할 일을 카드로 · 모든 기기 공유</span></h2>
-      <div class="brdadd">
-        <input class="bt" id="ba_mng_text" placeholder="할 일·지시 입력 (예: 재무팀 - 미지급 일당 먼저 처리)" onkeydown="if(event.key==='Enter')boardAdd('mng')">
-        <select class="bm" id="ba_mng_target" title="대상 팀(보내기)"></select>
-        <input class="bm" id="ba_mng_mgr" placeholder="담당자(선택)">
-        <select id="ba_mng_prio"><option value="mid">🟡 보통</option><option value="high">🔴 높음</option><option value="low">⚪ 낮음</option></select>
-        <input id="ba_mng_due" type="date" title="마감일(선택)">
-        <button class="primary" onclick="boardAdd('mng')">＋ 추가</button>
-      </div>
-      <div class="board" id="brd_mng"></div>
-    </div>
-    <div class="card" id="pmCard" style="margin-top:22px">
+    <div class="card" id="pmCard" style="margin-top:14px">
       <h2>🙋 나의 메모 <span style="font-weight:500;color:var(--muted);font-size:12px">나만 보기 · 다른 사람에겐 안 보여요 · 폰·PC 동기화</span></h2>
       <div class="pm-add">
         <input id="pm_todo" placeholder="할 일 입력 후 Enter (예: 세무사 통화)" onkeydown="if(event.key==='Enter')pmAddTodo()">
@@ -1062,6 +1050,18 @@
         <div class="pm-memo-lbl">자유 메모</div>
         <textarea id="pm_memo" rows="4" placeholder="자유롭게 메모하세요 (예: 폴리싱 단가 재검토, 다음주 세무사 미팅 준비물…)" oninput="pmSetMemo(this.value)"></textarea>
       </div>
+    </div>
+    <div class="card" style="margin-top:22px">
+      <h2>📋 경영관리팀 업무정리 <span style="font-weight:500;color:var(--muted);font-size:12px">대표님 지시·전사 할 일을 카드로 · 모든 기기 공유</span></h2>
+      <div class="brdadd">
+        <input class="bt" id="ba_mng_text" placeholder="할 일·지시 입력 (예: 재무팀 - 미지급 일당 먼저 처리)" onkeydown="if(event.key==='Enter')boardAdd('mng')">
+        <select class="bm" id="ba_mng_target" title="대상 팀(보내기)"></select>
+        <input class="bm" id="ba_mng_mgr" placeholder="담당자(선택)">
+        <select id="ba_mng_prio"><option value="mid">🟡 보통</option><option value="high">🔴 높음</option><option value="low">⚪ 낮음</option></select>
+        <input id="ba_mng_due" type="date" title="마감일(선택)">
+        <button class="primary" onclick="boardAdd('mng')">＋ 추가</button>
+      </div>
+      <div class="board" id="brd_mng"></div>
     </div>
     <div class="card" style="margin-top:22px">
       <h2>📅 이번 달 일정 <span style="font-weight:500;color:var(--muted);font-size:12px">현장·미팅·고정지출 한눈에</span></h2>
@@ -1879,7 +1879,12 @@ if(window.AIHQ_DATA){
     {date:"2027-06-03",time:"07:00",title:"지하상가 방역"},
     {date:"2027-06-10",time:"07:00",title:"지하상가 방역"},
     {date:"2027-06-17",time:"07:00",title:"지하상가 방역"},
-    {date:"2027-06-24",time:"07:00",title:"지하상가 방역"}
+    {date:"2027-06-24",time:"07:00",title:"지하상가 방역"},
+    {date:"2027-07-01",time:"07:00",title:"지하상가 방역"},
+    {date:"2027-07-08",time:"07:00",title:"지하상가 방역"},
+    {date:"2027-07-15",time:"07:00",title:"지하상가 방역"},
+    {date:"2027-07-22",time:"07:00",title:"지하상가 방역"},
+    {date:"2027-07-29",time:"07:00",title:"지하상가 방역"}
   ];
   window.AIHQ_DATA.calSyncDel = [   // 캘린더에서 취소된 현장 — 최신화 때 영구 제거(배치인원 있어도)
     {date:"2026-10-14",name:"고미 남해 주은파크빌 가동 101호"},
@@ -1889,7 +1894,7 @@ if(window.AIHQ_DATA){
     {date:"2026-11-06",name:"명석 폴리싱 (3/4일)"},
     {date:"2026-11-07",name:"명석 폴리싱 (4/4일)"}
   ];
-  window.AIHQ_DATA.calSync = "2026-11-04d";
+  window.AIHQ_DATA.calSync = "2026-11-05";
 }
 /* 🏫 학교 영업 — 기록은 getData()/setData() 상태의 schools 필드에 저장되어 기존 클라우드 동기화로 팀 공유됩니다. */
 (function(){
