@@ -1894,7 +1894,7 @@ if(window.AIHQ_DATA){
     {date:"2026-11-06",name:"명석 폴리싱 (3/4일)"},
     {date:"2026-11-07",name:"명석 폴리싱 (4/4일)"}
   ];
-  window.AIHQ_DATA.calSync = "2026-11-09";
+  window.AIHQ_DATA.calSync = "2026-11-09b";
 }
 /* 🏫 학교 영업 — 기록은 getData()/setData() 상태의 schools 필드에 저장되어 기존 클라우드 동기화로 팀 공유됩니다. */
 (function(){
@@ -2162,7 +2162,7 @@ function bankTag(bank){ if(!bank) return '';
   return `<span class="pill" style="background:rgba(37,99,235,.10);color:var(--limit);font-size:10.5px;margin-left:5px;font-weight:600">${ico} ${label}</span>`; }
 
 // ═══ 데이터 계층: 클라우드(Firestore 실시간) / 오프라인(localStorage) 이중 ═══
-let CLOUD_MODE=false, CLOUD_D=null, _saveTimer=null, _pendingLocal=false;   // _pendingLocal: 아직 클라우드에 안 올라간 로컬 편집(인원 등) 보호용
+let CLOUD_MODE=false, CLOUD_D=null, _saveTimer=null, _pendingLocal=false, _lastCloud=null;   // _pendingLocal: 아직 클라우드에 안 올라간 로컬 편집(인원 등) 보호용 · _lastCloud: 마지막 동기화 상태(바뀐 필드만 저장하는 기준)
 function _rawSource(){
   const cur=window.AIHQ_DATA;
   let data=null;
@@ -2299,10 +2299,29 @@ function _cloudSave(d){
   if(!fbDB) return;
   _pendingLocal=true;   // 로컬 편집 발생 → 클라우드 저장 완료 전까진 서버 스냅샷이 덮지 않게
   clearTimeout(_saveTimer);
-  const snapshot=_clean(d);
-  _saveTimer=setTimeout(function(){ fbDB.collection('app').doc('state').set(snapshot)
-    .then(function(){ _pendingLocal=false; })
-    .catch(function(e){ _pendingLocal=false; console.error('클라우드 저장 실패', e); }); }, 400);
+  _saveTimer=setTimeout(function(){
+    const ref=fbDB.collection('app').doc('state');
+    const snapshot=_clean(d);
+    // 🛡️ 전체 덮어쓰기(set) 대신, 직전 동기화(_lastCloud) 대비 '바뀐 top-level 필드만' update.
+    //    → 다른 기기가 건드린 다른 필드(결산·발주 등)를 통째로 날리지 않음(동시입력 충돌 방지).
+    //    update가 막히거나 실패하면 기존 방식(전체 set)으로 자동 폴백 → 최악에도 지금과 동일.
+    let changed=null;
+    if(_lastCloud){
+      changed={};
+      Object.keys(snapshot).forEach(function(k){
+        if(JSON.stringify(snapshot[k])!==JSON.stringify(_lastCloud[k])) changed[k]=snapshot[k];
+      });
+    }
+    function ok(){ _lastCloud=snapshot; _pendingLocal=false; }
+    function fail(e){ _pendingLocal=false; console.error('클라우드 저장 실패', e); }
+    if(changed===null){                          // 기준 없음(최초 저장) → 전체 저장
+      ref.set(snapshot).then(ok).catch(fail);
+    } else if(Object.keys(changed).length===0){  // 바뀐 것 없음 → 저장 생략
+      _pendingLocal=false;
+    } else {                                      // 바뀐 필드만 저장(실패 시 전체 set 폴백)
+      ref.update(changed).then(ok).catch(function(){ ref.set(snapshot).then(ok).catch(fail); });
+    }
+  }, 400);
 }
 function setData(d){
   if(CLOUD_MODE){ CLOUD_D=d; _cloudSave(d); return; }
@@ -2317,7 +2336,8 @@ function startCloudSync(){
     //    hasPendingWrites=true 면 내 로컬 쓰기 echo(내 편집 포함)라 안전. false면 서버/다른기기 변경 → 저장 대기 중이면 무시.
     if(_pendingLocal && !(snap.metadata && snap.metadata.hasPendingWrites)) return;
     CLOUD_D=_seed(snap.data());
-    if(_applyCalSync(CLOUD_D)){ _cloudSave(CLOUD_D); }   // 구글 캘린더 최신화 1회 반영
+    _lastCloud=_clean(CLOUD_D);   // 저장 기준 갱신(서버 최신 상태) → 이후 _cloudSave는 '바뀐 필드'만 보냄
+    if(_applyCalSync(CLOUD_D)){ _cloudSave(CLOUD_D); }   // 구글 캘린더 최신화 1회 반영(바뀐 캘린더 필드만 저장)
     render();
   }, function(e){ console.error('클라우드 동기화 오류', e); });
 }
