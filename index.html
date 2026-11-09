@@ -1033,7 +1033,7 @@
       </div>
       <div style="margin:10px 0;text-align:right"><button class="primary" onclick="addPayReq()">＋ 결제 요청 보내기</button></div>
       <div id="payReqListMg"></div>
-      <div style="font-size:12px;color:var(--muted);margin-top:8px">💡 재무팀이 결제하면 <b>✅ 결제완료</b>로 여기에도 표시돼요.</div>
+      <div style="font-size:12px;color:var(--muted);margin-top:8px">💡 재무팀이 <b>✅ 결제완료</b> 하면 → 이 금액이 <b>지출·순이익에 자동 반영</b>돼요. (결산·발주에 이미 넣은 건 여기 또 올리면 이중계산되니 주의)</div>
     </div>
   </div><!-- /개요결제 -->
 
@@ -1894,7 +1894,7 @@ if(window.AIHQ_DATA){
     {date:"2026-11-06",name:"명석 폴리싱 (3/4일)"},
     {date:"2026-11-07",name:"명석 폴리싱 (4/4일)"}
   ];
-  window.AIHQ_DATA.calSync = "2026-11-05";
+  window.AIHQ_DATA.calSync = "2026-11-09";
 }
 /* 🏫 학교 영업 — 기록은 getData()/setData() 상태의 schools 필드에 저장되어 기존 클라우드 동기화로 팀 공유됩니다. */
 (function(){
@@ -3014,7 +3014,8 @@ function render(){
   const paidFixM=(d.fixedExpenses||[]).filter(f=>f.paidMonth===ym).reduce((s,f)=>s+fxAmt(d,f,ym),0);
   const unpaidFixM=(d.fixedExpenses||[]).filter(f=>f.paidMonth!==ym).reduce((s,f)=>s+fxAmt(d,f,ym),0);
   const ordBuyM=(d.orders||[]).filter(o=>(o.status==='주문완료'||o.status==='입고완료')&&(+o.amount>0)&&(((o.orderedDate||o.date)||'').slice(0,7)===ym)).reduce((s,o)=>s+(+o.amount||0),0);
-  const realProfitM=monthAgg.profit-ordBuyM-paidFixM;
+  const payReqM=(d.payReqs||[]).filter(p=>p.status==='완료'&&(+p.amount>0)&&(((p.doneDate||p.date)||'').slice(0,7)===ym)).reduce((s,p)=>s+(+p.amount||0),0);   // 💳 이번 달 결제완료된 결제요청 = 지출
+  const realProfitM=monthAgg.profit-ordBuyM-paidFixM-payReqM;
 
   // KPI
   document.getElementById("kpis").innerHTML=[
@@ -3594,7 +3595,8 @@ function render(){
     let fuel=0,meal=0,supply=0,etc=0;
     list.forEach(s=>{ fuel+=(+s.fuel||0); meal+=(+s.meal||0); supply+=(+s.supply||0); etc+=(+s.etc||0); });
     const ordBuy=(d.orders||[]).filter(o=>(o.status==='주문완료'||o.status==='입고완료')&&(+o.amount>0)&&(range==='month'?((o.orderedDate||o.date)||'').slice(0,7)===ym:true)).reduce((a2,o)=>a2+(+o.amount||0),0);
-    const total=fuel+meal+supply+etc+ordBuy;
+    const payReqExp=(d.payReqs||[]).filter(p=>p.status==='완료'&&(+p.amount>0)&&(range==='month'?(((p.doneDate||p.date)||'').slice(0,7)===ym):true)).reduce((a2,p)=>a2+(+p.amount||0),0);
+    const total=fuel+meal+supply+etc+ordBuy+payReqExp;
     const pct=v=>total?Math.round(v/total*100):0;
     const rl=document.getElementById('expRangeLabel'); if(rl) rl.textContent = range==='month'?('· '+parseInt(ym.slice(5),10)+'월'):'· 전체 기간';
     const mBtn=document.getElementById('expBtnMonth'), aBtn=document.getElementById('expBtnAll');
@@ -3606,10 +3608,11 @@ function render(){
       {v:KRW(meal),l:`🍚 식대 (${pct(meal)}%)`},
       {v:KRW(supply),l:`🧴 소모품 (${pct(supply)}%)`},
       {v:KRW(etc),l:`📦 기타 (${pct(etc)}%)`},
-      {v:KRW(ordBuy),l:`🛒 발주 (${pct(ordBuy)}%)`}
+      {v:KRW(ordBuy),l:`🛒 발주 (${pct(ordBuy)}%)`},
+      {v:KRW(payReqExp),l:`💳 결제요청 (${pct(payReqExp)}%)`}
     ].map(t=>`<div class="sumtile"><div class="v">${t.v}</div><div class="l">${t.l}</div></div>`).join('');
     // 항목별 비중 막대
-    const cats=[{k:'⛽ 주유',v:fuel,c:'#f59e0b'},{k:'🍚 식대',v:meal,c:'#2563eb'},{k:'🧴 소모품',v:supply,c:'#16a34a'},{k:'📦 기타',v:etc,c:'#9333ea'},{k:'🛒 발주',v:ordBuy,c:'#e11d48'}];
+    const cats=[{k:'⛽ 주유',v:fuel,c:'#f59e0b'},{k:'🍚 식대',v:meal,c:'#2563eb'},{k:'🧴 소모품',v:supply,c:'#16a34a'},{k:'📦 기타',v:etc,c:'#9333ea'},{k:'🛒 발주',v:ordBuy,c:'#e11d48'},{k:'💳 결제',v:payReqExp,c:'#0891b2'}];
     document.getElementById('expBreakdown').innerHTML = total? cats.map(c=>`<div class="lead-row">
       <span class="name" style="width:70px">${c.k}</span>
       <span class="track"><div class="bar"><i style="width:${total?c.v/total*100:0}%;background:${c.c}"></i></div></span>
