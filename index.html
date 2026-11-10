@@ -970,6 +970,10 @@
       <select id="wageXlsxYear" style="font-family:inherit;font-size:13px;padding:8px 11px;border:1px solid var(--line);border-radius:8px;background:var(--card);color:var(--ink)"></select>
       <button class="primary" id="wageXlsxBtn" onclick="exportWageExcel()">⬇️ 엑셀 다운로드</button>
     </div>
+    <label style="display:flex;gap:7px;align-items:flex-start;font-size:12.5px;color:var(--muted);margin:2px 0 10px;cursor:pointer;line-height:1.5">
+      <input type="checkbox" id="wageInclRRN" style="width:16px;height:16px;margin-top:1px;flex:none">
+      <span><b>주민번호 포함</b> (신고용 시트 추가) — ⚠️ 민감정보라 <b>PIN 해제</b> 필요하고, 만든 파일은 <b>회계사에 안전하게</b> 전달하세요. 주민번호는 <b>인사팀 → 일용직 인적사항</b>에서 등록해요.</span>
+    </label>
     <div style="font-size:12px;color:var(--muted);line-height:1.75">
       💡 엑셀에 시트 3개: <b>상세내역</b>(날짜·소속·현장·성명·지급액·이체) · <b>월별 집계</b>(사람×월) · <b>분기별 집계</b>(사람×분기). 회계사무소에 그대로 보내면 돼요.<br>
       · 운영팀 <b>일일결산에 입력된 일당(인력 임금)</b> 기준이에요. 월급 직원은 빠져 있어요(필요하면 넣어드려요).<br>
@@ -1204,6 +1208,12 @@
     </div>
     <div style="margin:12px 0;text-align:right"><button class="primary" id="tf_btn" onclick="addTeam()">＋ 팀원 추가</button></div>
     <div style="overflow-x:auto"><table><thead><tr><th>이름</th><th>역할</th><th>소속</th><th>연락처</th><th>입사일</th><th class="num">월급</th><th></th></tr></thead><tbody id="teamRows"></tbody></table></div>
+  </div>
+
+  <!-- 🪪 일용직 인적사항(명부) — 주민번호 PIN 암호화 -->
+  <div class="card" id="laborerCard" style="margin-top:22px">
+    <h2 style="display:flex;align-items:center;flex-wrap:wrap;gap:6px">🪪 일용직 인적사항 (명부) <span style="font-weight:500;color:var(--muted);font-size:12px">회계사 신고용 · 주민번호 PIN 암호화(로그인 보관함과 같은 PIN)</span> <span id="lbLockState" style="font-weight:600;font-size:12px;margin-left:auto"></span></h2>
+    <div id="lbArea"></div>
   </div>
 
   <!-- 휴가·부재 -->
@@ -1907,7 +1917,7 @@ if(window.AIHQ_DATA){
     {date:"2026-11-06",name:"명석 폴리싱 (3/4일)"},
     {date:"2026-11-07",name:"명석 폴리싱 (4/4일)"}
   ];
-  window.AIHQ_DATA.calSync = "2026-11-10b";
+  window.AIHQ_DATA.calSync = "2026-11-10c";
 }
 /* 🏫 학교 영업 — 기록은 getData()/setData() 상태의 schools 필드에 저장되어 기존 클라우드 동기화로 팀 공유됩니다. */
 (function(){
@@ -2218,6 +2228,7 @@ function _seed(data){    // 메시지·지원사업 시드/마이그레이션 (�
   if(!Array.isArray(data.vault.items)) data.vault.items=[];
   // 🙋 개인 메모(나만 보기): {역할:{todos:[{id,text,done}], memo:""}}
   if(!data.personal || typeof data.personal!=='object' || Array.isArray(data.personal)) data.personal={};
+  if(!Array.isArray(data.laborers)) data.laborers=[];   // 🪪 일용직 인적사항(주민번호는 암호화 저장)
   if(!Array.isArray(data.vehicles)) data.vehicles=['G80','카니발','스타렉스(검정)','스타리아(흰색)','봉고탑차'];
   if(!Array.isArray(data.carLogs)) data.carLogs=[];   // 차량 정비/점검 기록 [{car,type,date,next,note,cost}]
   // ── 👷 인사팀 ──
@@ -3037,6 +3048,7 @@ function render(){
   renderPipeline();
   if(typeof renderVault==='function') renderVault();
   if(typeof renderPersonal==='function') renderPersonal();
+  if(typeof renderLaborers==='function') renderLaborers();
   renderDev();
   renderPurchases();
   renderPayReqs();
@@ -4323,6 +4335,112 @@ function _payslipCard(t,y,m,d){
     +'</div>';
 }
 function _payslipDoc(inner, title){ return '<!doctype html><html lang="ko"><head><meta charset="utf-8"><title>'+title+'</title></head><body style="margin:0;background:#f4f6fa">'+inner+'</body></html>'; }
+/* ===== 🪪 일용직 인적사항(명부) — 주민번호는 로그인 보관함과 같은 PIN으로 암호화 ===== */
+function _lbEsc(s){ return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+function _lbMask(digits){ var g=String(digits||'').replace(/\D/g,''); if(g.length<7) return '등록됨'; return g.slice(0,6)+'-'+g.slice(6,7)+'******'; }
+var _lbEditId=null;
+async function laborerUnlock(){
+  if(!_vCryptoOK()){ alert('이 환경에선 암호화를 쓸 수 없어요. 배포 주소(https://…github.io)에서 열어주세요.'); return; }
+  var el=document.getElementById('lb_pin'); var pin=(el||{}).value||'';
+  var msg=document.getElementById('lbMsg'); if(msg) msg.textContent='';
+  var d=getData(); var v=d.vault||{}; if(!v.salt||!v.check){ alert('먼저 경영관리팀 → 🔐 로그인 보관함에서 PIN을 정해주세요. (같은 PIN을 씁니다)'); return; }
+  try{ var key=await _vDerive(pin, v.salt, v.iter||200000); await _vDec(key, v.check); _vaultKey=key; if(el) el.value=''; render(); }
+  catch(e){ if(msg) msg.textContent='PIN이 올바르지 않습니다.'; }
+}
+function laborerLock(){ _vaultKey=null; _vaultPlain={}; _lbEditId=null; render(); }
+function _lbExistingNames(d){
+  var reg={}; (d.laborers||[]).forEach(function(l){ if(l.name) reg[l.name.trim()]=1; });
+  var cnt={};
+  (d.settlements||[]).forEach(function(s){ crewList(s).forEach(function(p){ var n=(p.name||'').trim(); if(n && !reg[n]) cnt[n]=(cnt[n]||0)+1; }); });
+  return Object.keys(cnt).sort(function(a,b){ return cnt[b]-cnt[a]; });
+}
+function lbPrefill(n){ var e=document.getElementById('lb_name'); if(e) e.value=n; var r=document.getElementById('lb_rrn'); if(r) r.focus(); }
+function _lbFormHTML(d){
+  var ed=_lbEditId?(d.laborers||[]).filter(function(x){return x.id===_lbEditId;})[0]:null;
+  var nm=ed?_lbEsc(ed.name):'', ct=ed?_lbEsc(ed.contact):'', ac=ed?_lbEsc(ed.account):'';
+  var btn=ed?'<button class="primary" onclick="laborerAdd()">💾 수정 저장</button> <button class="del" onclick="lbEditCancel()">취소</button>':'<button class="primary" onclick="laborerAdd()">＋ 등록</button>';
+  var rrnPh=ed?'바꿀 때만 새로 입력 (비우면 유지)':'901231-1234567';
+  var chips=_lbExistingNames(d).slice(0,40).map(function(n){ return '<button type="button" data-n="'+_lbEsc(n)+'" onclick="lbPrefill(this.getAttribute(\'data-n\'))" style="font-size:12px;padding:5px 10px;border:1px solid var(--line);border-radius:14px;background:var(--bg);color:var(--ink);cursor:pointer;margin:0 5px 6px 0">＋ '+_lbEsc(n)+'</button>'; }).join('');
+  return (ed?'<div style="font-size:12px;color:var(--daman);margin-bottom:6px">✏️ <b>'+nm+'</b> 수정 중</div>':'')
+    +'<div class="form-grid">'
+    +'<div class="fld"><label>성명 *</label><input id="lb_name" placeholder="결산 배치인원 이름과 동일하게" value="'+nm+'"></div>'
+    +'<div class="fld"><label>🪪 주민번호'+(ed?'':' *')+'</label><input id="lb_rrn" inputmode="numeric" autocomplete="off" placeholder="'+rrnPh+'"></div>'
+    +'<div class="fld"><label>📞 연락처</label><input id="lb_contact" placeholder="010-0000-0000 (선택)" value="'+ct+'"></div>'
+    +'<div class="fld"><label>🏦 계좌 (선택)</label><input id="lb_account" placeholder="은행·계좌번호" value="'+ac+'"></div>'
+    +'</div>'
+    +'<div style="margin:10px 0;text-align:right">'+btn+'</div>'
+    +((chips&&!ed)?'<div style="font-size:12px;color:var(--muted);margin:2px 0 6px">💡 결산에 일당 받았는데 아직 등록 안 된 사람 — 눌러서 이름 채우기:</div><div>'+chips+'</div>':'');
+}
+function _lbListHTML(d, unlocked){
+  var list=d.laborers||[];
+  if(!list.length) return '<div style="color:var(--muted);font-size:13px;margin-top:10px">아직 등록된 일용직이 없어요.</div>';
+  var rows=list.map(function(l){
+    var acts = unlocked
+      ? ((l.rrn?'<button class="del" style="padding:4px 8px" onclick="laborerReveal(\''+l.id+'\')">👁 전체</button> ':'')
+        +'<button class="del" style="padding:4px 8px" onclick="laborerEdit(\''+l.id+'\')">✏️</button> '
+        +'<button class="del" style="padding:4px 8px" onclick="laborerDel(\''+l.id+'\')">🗑️</button>')
+      : '<span style="color:var(--muted);font-size:11px">🔒 해제 후</span>';
+    return '<tr><td>'+_lbEsc(l.name)+'</td><td style="font-family:monospace">'+_lbEsc(l.rrnMask||(l.rrn?'등록됨':'—'))+'</td><td>'+_lbEsc(l.contact)+'</td><td>'+_lbEsc(l.account)+'</td><td style="white-space:nowrap;text-align:right">'+acts+'</td></tr>';
+  }).join('');
+  return '<div style="overflow-x:auto;margin-top:12px"><table><thead><tr><th>성명</th><th>주민번호</th><th>연락처</th><th>계좌</th><th></th></tr></thead><tbody>'+rows+'</tbody></table></div>'
+    +'<div style="font-size:11.5px;color:var(--muted);margin-top:6px">🔐 주민번호는 암호화 저장돼요. 화면엔 마스킹(901231-1******), 전체는 PIN 해제 후 👁으로만 확인됩니다.</div>';
+}
+function renderLaborers(){
+  var el=document.getElementById('lbArea'); if(!el) return;
+  var d=getData(); var v=d.vault||{};
+  var hasPin=!!(v.salt&&v.check), unlocked=!!_vaultKey;
+  var st=document.getElementById('lbLockState');
+  if(st) st.innerHTML = !hasPin?'<span style="color:var(--warn)">PIN 미설정</span>':(unlocked?'<span style="color:var(--good)">🔓 해제됨</span>':'<span style="color:var(--muted)">🔒 잠김</span>');
+  if(!_vCryptoOK()){ el.innerHTML='<div style="color:var(--warn);font-size:13px">이 환경에선 암호화를 쓸 수 없어요. 배포 주소에서 열어주세요.</div>'; return; }
+  if(!hasPin){ el.innerHTML='<div style="font-size:13px;line-height:1.75;color:var(--muted)">주민번호 암호화를 위해 <b>PIN</b>이 필요해요.<br><b>경영관리팀 → 🔐 로그인 보관함</b>에서 PIN을 먼저 정해주세요. 여기도 <b>같은 PIN</b>을 씁니다.</div>'; return; }
+  if(!unlocked){
+    el.innerHTML='<div style="background:var(--bg);border:1px solid var(--line);border-radius:10px;padding:12px">'
+      +'<div style="font-size:13px;margin-bottom:8px">🔒 주민번호는 잠겨 있어요. PIN을 입력하면 등록·열람할 수 있어요. <span style="color:var(--muted)">(로그인 보관함과 같은 PIN)</span></div>'
+      +'<div style="display:flex;gap:8px;max-width:360px"><input id="lb_pin" type="password" inputmode="numeric" placeholder="PIN" onkeydown="if(event.key===\'Enter\')laborerUnlock()" style="flex:1;padding:9px 12px;border:1px solid var(--line);border-radius:9px;background:var(--card);color:var(--ink);font-family:inherit;font-size:14px">'
+      +'<button class="primary" onclick="laborerUnlock()">🔓 해제</button></div>'
+      +'<div id="lbMsg" style="color:var(--warn);font-size:12px;margin-top:6px"></div></div>'
+      + _lbListHTML(d, false);
+    return;
+  }
+  el.innerHTML = '<div style="text-align:right;margin-bottom:4px"><button class="del" style="padding:4px 10px;font-size:12px" onclick="laborerLock()">🔒 잠그기</button></div>' + _lbFormHTML(d) + _lbListHTML(d, true);
+}
+async function laborerAdd(){
+  if(!_vaultKey){ alert('먼저 PIN으로 잠금을 해제하세요.'); return; }
+  var g=function(id){ return (document.getElementById(id)||{}).value||''; };
+  var name=g('lb_name').trim(); if(!name){ alert('성명을 입력하세요.'); return; }
+  var rrnRaw=g('lb_rrn').replace(/\D/g,'');
+  if(rrnRaw && rrnRaw.length!==13){ alert('주민번호는 13자리로 입력하세요. (하이픈은 자동 처리)'); return; }
+  var d=getData(); d.laborers=d.laborers||[];
+  try{
+    if(_lbEditId){
+      var l=d.laborers.filter(function(x){return x.id===_lbEditId;})[0];
+      if(l){ l.name=name; l.contact=g('lb_contact').trim(); l.account=g('lb_account').trim();
+        if(rrnRaw){ l.rrn=await _vEnc(_vaultKey,{rrn:rrnRaw}); l.rrnMask=_lbMask(rrnRaw); } }
+      _lbEditId=null;
+    } else {
+      if(d.laborers.some(function(x){return (x.name||'').trim()===name;})){ if(!confirm('같은 이름이 이미 있어요. 그래도 추가할까요?')) return; }
+      var rec={ id:'lb'+Date.now().toString(36)+Math.random().toString(36).slice(2,6), name:name, contact:g('lb_contact').trim(), account:g('lb_account').trim(), rrnMask:'', rrn:null };
+      if(rrnRaw){ rec.rrn=await _vEnc(_vaultKey,{rrn:rrnRaw}); rec.rrnMask=_lbMask(rrnRaw); }
+      d.laborers.push(rec);
+    }
+    setData(d);
+    ['lb_name','lb_rrn','lb_contact','lb_account'].forEach(function(id){ var e=document.getElementById(id); if(e) e.value=''; });
+    render();
+  }catch(e){ alert('저장 중 오류: '+((e&&e.message)||e)); }
+}
+function laborerEdit(id){ _lbEditId=id; render(); var e=document.getElementById('lb_name'); if(e&&e.scrollIntoView) e.scrollIntoView({block:'center'}); }
+function lbEditCancel(){ _lbEditId=null; render(); }
+function laborerDel(id){
+  var d=getData(); var l=(d.laborers||[]).filter(function(x){return x.id===id;})[0]; if(!l) return;
+  if(!confirm((l.name||'')+' 님 인적사항을 삭제할까요?\n(주민번호도 함께 삭제됩니다)')) return;
+  d.laborers=(d.laborers||[]).filter(function(x){return x.id!==id;}); _lbEditId=null; setData(d); render();
+}
+async function laborerReveal(id){
+  if(!_vaultKey){ alert('먼저 PIN으로 잠금을 해제하세요.'); return; }
+  var d=getData(); var l=(d.laborers||[]).filter(function(x){return x.id===id;})[0]; if(!l||!l.rrn) return;
+  try{ var o=await _vDec(_vaultKey,l.rrn); var gg=String(o.rrn||''); var fmt=(gg.length===13)?(gg.slice(0,6)+'-'+gg.slice(6)):gg; alert((l.name||'')+' 주민번호\n\n'+fmt+'\n\n⚠️ 확인 후 바로 닫아주세요.'); }
+  catch(e){ alert('복호화 실패: '+((e&&e.message)||e)); }
+}
 /* ===== 📊 회계사 제출용 — 인력 임금(일당) 엑셀 ===== */
 function _coLabel(co){ return co==='limit'?'리미트':(co==='daman'?'다만산업':'미지정'); }
 function fillWageYears(){
@@ -4400,6 +4518,8 @@ async function exportWageExcel(){
     if(!qp[x.name]) qp[x.name]={name:x.name, co:x.co, q:{}, total:0};
     qp[x.name].q[qof(m)]=(qp[x.name].q[qof(m)]||0)+x.amt; qp[x.name].total+=x.amt;
   });
+  var inclRRN=!!(document.getElementById('wageInclRRN')&&document.getElementById('wageInclRRN').checked);
+  if(inclRRN && !_vaultKey){ alert('주민번호를 포함하려면 먼저 PIN으로 잠금을 해제하세요.\n(인사팀 → 일용직 인적사항에서 🔓 해제)'); return; }
   try{
     if(btn){ btn.disabled=true; btn.textContent='엑셀 만드는 중…'; }
     var XLSX=await _loadXLSX();
@@ -4425,7 +4545,18 @@ async function exportWageExcel(){
     var ws3=_wageSheet(XLSX, year+'년 인력 임금 — 분기별 집계', sub, ['성명','소속','1분기','2분기','3분기','4분기','합계'], rows3, [2,3,4,5,6], false);
     ws3['!cols']=[{wch:12},{wch:10},{wch:12},{wch:12},{wch:12},{wch:12},{wch:14}];
     XLSX.utils.book_append_sheet(wb,ws3,'분기별 집계');
-    XLSX.writeFile(wb, '인력임금내역_'+year+'.xlsx');
+    if(inclRRN){
+      var rrnMap={}; var labs=(d.laborers||[]);
+      for(var li=0; li<labs.length; li++){ var l=labs[li]; if(l&&l.rrn){ try{ var o=await _vDec(_vaultKey,l.rrn); rrnMap[(l.name||'').trim()]=String(o.rrn||''); }catch(e){} } }
+      var rows4=Object.keys(qp).sort(function(a,b){return qp[b].total-qp[a].total;}).map(function(k){
+        var r=qp[k]; var fr=rrnMap[(r.name||'').trim()]||''; var fmt=(fr.length===13)?(fr.slice(0,6)+'-'+fr.slice(6)):fr;
+        return [r.name, fmt, r.co, r.q[1]||0, r.q[2]||0, r.q[3]||0, r.q[4]||0, r.total];
+      });
+      var ws4=_wageSheet(XLSX, year+'년 일용직 지급명세서 (신고용)', '⚠️ 민감정보(주민번호 포함) · 회계사에 안전하게 전달 · 생성일 '+realToday(), ['성명','주민번호','소속','1분기','2분기','3분기','4분기','총지급액'], rows4, [3,4,5,6,7], false);
+      ws4['!cols']=[{wch:12},{wch:16},{wch:10},{wch:12},{wch:12},{wch:12},{wch:12},{wch:14}];
+      XLSX.utils.book_append_sheet(wb,ws4,'신고용(주민번호)');
+    }
+    XLSX.writeFile(wb, '인력임금내역_'+year+(inclRRN?'_신고용':'')+'.xlsx');
   }catch(e){ alert('엑셀 생성 실패: '+((e&&e.message)||e)); }
   finally{ if(btn){ btn.disabled=false; btn.textContent='⬇️ 엑셀 다운로드'; } }
 }
