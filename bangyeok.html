@@ -196,9 +196,9 @@ td.nm{text-align:left;white-space:nowrap;font-weight:600}
 <div id="login">
   <div class="card">
     <h2>방역 관리</h2>
-    <p class="muted" style="margin-bottom:10px">이름을 고르고 PIN을 넣어주세요.</p><div id="connNote" class="tiny" style="margin-bottom:14px"></div>
-    <div class="field"><label for="luser">이름</label><select id="luser"></select></div>
-    <div class="field"><label for="lpin">PIN</label><input id="lpin" type="tel" inputmode="numeric" maxlength="6" placeholder="····"></div>
+    <p class="muted" style="margin-bottom:10px">이름과 PIN을 넣어주세요.</p><div id="connNote" class="tiny" style="margin-bottom:14px"></div>
+    <div class="field"><label for="luser">이름</label><input id="luser" autocomplete="username" placeholder="예: 홍길동"></div>
+    <div class="field"><label for="lpin">PIN (공단 담당자는 전화번호 뒤 4자리)</label><input id="lpin" type="tel" inputmode="numeric" maxlength="6" placeholder="····"></div>
     <button class="btn" id="lbtn">들어가기</button>
     <p class="tiny" id="lmsg" style="margin-top:10px"></p>
     <button class="btn ghost sm" id="lSetup" style="margin-top:10px">처음 설정 · PIN 잊었을 때 (관리자)</button>
@@ -433,6 +433,7 @@ window.BYRULE=(function(){
     return out.filter(function(v,i,arr){return arr.indexOf(v)===i});
   }
   function label(s){
+    if(s.schedMode==='manual')return '일정 직접 입력';
     var f=s.freq||'M', per=+(s.perMonth||1), txt='';
     if(f==='W')return '매주 '+['일','월','화','수','목','금','토'][+(s.dow||2)]+'요일';
     if(f==='M')txt='매월';
@@ -618,23 +619,60 @@ window.BYRULE=(function(){
  };
 
  function clean(u){return {id:u.id,name:u.name,role:u.role,sites:u.sites,phone:u.phone,active:u.active}}
- function snapOut(me){persist();return JSON.parse(JSON.stringify({
-   me:clean(me||DB._me||DB.users[0]),today:today,
-   sites:DB.sites,
-   users:DB.users.map(clean),
-   schedules:DB.schedules,records:DB.records,holidays:DB.holidays,company:DB.company,
+ function snapOut(me){persist();
+   var m=me||DB._me||DB.users[0],admin=m.role==='admin';
+   var mine=function(x){return admin||can(m,x.siteId)};
+   return JSON.parse(JSON.stringify({
+   me:clean(m),today:today,
+   sites:admin?DB.sites:DB.sites.filter(function(s){return can(m,s.id)}),
+   users:admin?DB.users.map(clean):[clean(m)],
+   schedules:DB.schedules.filter(mine),records:DB.records.filter(mine),holidays:DB.holidays,company:DB.company,
    cloud:CLOUD}))}
  function err(m){throw new Error(m)}
  function meOf(t){var p=String(t).split('|'),id=p[0];
    if(p[1]!=='v2')err('다시 로그인해 주세요.');
    for(var i=0;i<DB.users.length;i++)if(DB.users[i].id===id)return DB.users[i];err('로그인이 필요해요.')}
- function can(u,sid){if(u.role==='admin')return true;if(!u.sites)return true;
+ function can(u,sid){if(u.role==='admin'||u.role==='staff')return true;if(!u.sites)return false;
    return u.sites.split(',').map(function(x){return x.trim()}).indexOf(sid)>=0}
  var uidN=0;
  function uid(p){return p+Date.now().toString(36)+(++uidN)+Math.floor(Math.random()*900+100)}
- function newSch(u,b,date){var mgr=u.role!=='admin';
+ function newSch(u,b,date){var mgr=u.role==='manager';
    return {id:uid('sc'),siteId:b.siteId,date:date,time:b.time||'',status:mgr?'확정':'예정',note:b.note||'',
      createdBy:u.name,createdAt:today,confirmBy:mgr?u.name:'',confirmAt:mgr?today:'',requested:mgr,ackBy:'',ackAt:''}}
+ function digitsOf(v){return String(v||'').replace(/[^0-9]/g,'')}
+ function userById(id){return DB.users.filter(function(u){return u.id===id})[0]||null}
+ function siteList(u){return String(u.sites||'').split(',').map(function(x){return x.trim()}).filter(Boolean)}
+ function detachMgr(st){
+   var u=st.mgrUserId?userById(st.mgrUserId):null;
+   st.mgrUserId='';
+   if(!u)return;
+   var L=siteList(u).filter(function(id){return id!==st.id});
+   u.sites=L.join(',');
+   if(!L.length&&u.autoMgr)DB.users=DB.users.filter(function(x){return x.id!==u.id});
+ }
+ /* 현장의 담당자 이름·연락처로 로그인 계정을 맞춥니다 (아이디=이름, PIN=전화번호 뒤 4자리) */
+ function syncSiteMgr(st){
+   var name=String(st.mgrName||'').trim(),dg=digitsOf(st.tel);
+   if(st.active==='N'||!name||dg.length<4){detachMgr(st);return}
+   var last=dg.slice(-4),old=st.mgrUserId?userById(st.mgrUserId):null;
+   var same=DB.users.filter(function(u){
+     return u.role==='manager'&&u.name===name&&(digitsOf(u.phone)===dg||!digitsOf(u.phone));
+   })[0]||null;
+   if(old&&old!==same){
+     if(!same&&old.autoMgr&&siteList(old).join(',')===st.id){
+       old.name=name;old.phone=st.tel;old.pinH=pinHash(old.id,last);old.active='Y';return;
+     }
+     detachMgr(st);
+   }
+   if(same){
+     var L=siteList(same);if(L.indexOf(st.id)<0)L.push(st.id);
+     same.sites=L.join(',');same.phone=st.tel;same.active='Y';
+     if(!same.pinH)same.pinH=pinHash(same.id,last);
+     st.mgrUserId=same.id;return;
+   }
+   var n={id:uid('us'),name:name,role:'manager',phone:st.tel,sites:st.id,active:'Y',autoMgr:true};
+   n.pinH=pinHash(n.id,last);DB.users.push(n);st.mgrUserId=n.id;
+ }
  function taken(siteId,date,exceptId){return DB.schedules.some(function(x){return x.id!==exceptId&&x.siteId===siteId&&x.date===date&&x.status!=='취소'})}
  function nextCertNo(date){var y=String(date).slice(0,4),n=0;
    DB.records.forEach(function(r){if(String(r.certNo||'').slice(0,4)===y)n=Math.max(n,+String(r.certNo).slice(5)||0)});
@@ -643,13 +681,15 @@ window.BYRULE=(function(){
  var api={
   apiUsers:function(){return DB.users.filter(function(u){return u.active!=='N'})
     .map(function(u){return {id:u.id,name:u.name,role:u.role}})},
-  apiLogin:function(id,pin){
-    for(var i=0;i<DB.users.length;i++){var u=DB.users[i];
-      if(u.id===id&&u.active!=='N'){
-        if(!u.pinH)err(u.role==='admin'?'아직 PIN이 없어요. 아래 「처음 설정 · PIN 잊었을 때」를 눌러주세요.':'아직 PIN이 없어요. 관리자에게 PIN을 받아주세요.');
-        if(u.pinH===pinHash(u.id,String(pin))){DB._me=u;return {token:u.id+'|v2',me:clean(u)}}
-      }}
-    err('PIN이 맞지 않아요.')},
+  apiLogin:function(name,pin){
+    name=String(name||'').trim();
+    var found=DB.users.filter(function(u){return u.name===name&&u.active!=='N'});
+    for(var i=0;i<found.length;i++){var u=found[i];
+      if(u.pinH&&u.pinH===pinHash(u.id,String(pin))){DB._me=u;return {token:u.id+'|v2',me:clean(u)}}
+    }
+    if(found.length&&found.every(function(u){return !u.pinH}))
+      err(found[0].role==='admin'?'아직 PIN이 없어요. 아래 「처음 설정 · PIN 잊었을 때」를 눌러주세요.':'아직 PIN이 없어요. 관리자에게 PIN을 받아주세요.');
+    err('이름 또는 PIN이 맞지 않아요.')},
   apiResetAdminPin:function(code,pin){
     if(sha256('bangyeok-setup|'+String(code))!==SETUP_HASH)err('설정 코드가 맞지 않아요.');
     if(!pinOk(String(pin)))err(PIN_RULE);
@@ -668,7 +708,7 @@ window.BYRULE=(function(){
       if(moved&&DB.records.some(function(r){return r.scheduleId===s.id}))err('실시 기록이 있는 일정은 날짜를 바꿀 수 없어요.');
       Object.assign(cur,s);
       if(moved){
-        var mgr=u.role!=='admin';
+        var mgr=u.role==='manager';
         cur.confirmBy=mgr?u.name:'';cur.confirmAt=mgr?today:'';cur.status=mgr?'확정':'예정';
         if(mgr){cur.requested=true;cur.ackBy='';cur.ackAt=''}
       }
@@ -704,7 +744,7 @@ window.BYRULE=(function(){
     DB.schedules.forEach(function(x){if(x.id===id&&!can(u,x.siteId))err('담당 현장이 아니에요.')});
     if(DB.records.some(function(r){return r.scheduleId===id}))err('이미 실시 기록이 있어요.');
     DB.schedules=DB.schedules.filter(function(x){return x.id!==id});return snapOut(u)},
-  apiSaveRecord:function(t,r){var u=meOf(t);if(u.role!=='admin')err('실시 기록은 소독업소 계정만 넣을 수 있어요.');
+  apiSaveRecord:function(t,r){var u=meOf(t);if(u.role==='manager')err('실시 기록은 소독업소·직원 계정만 넣을 수 있어요.');
     for(var i=0;i<DB.records.length;i++){var x=DB.records[i];
       if(x.id!==r.id&&x.siteId===r.siteId&&x.date===r.date)err('그 현장은 같은 날짜에 이미 실시 기록이 있어요.');
       if(x.id===r.id&&x.signBy)err('담당자 서명이 끝난 기록이에요. 고치려면 서명을 먼저 취소해 주세요.')}
@@ -719,7 +759,7 @@ window.BYRULE=(function(){
   apiSignRecord:function(t,id,on,img){var u=meOf(t);
     DB.records.forEach(function(x){if(x.id===id){if(!can(u,x.siteId))err('담당 현장이 아니에요.');
       var st=DB.sites.filter(function(q){return q.id===x.siteId})[0]||{};
-      x.signBy=on?(u.role==='admin'?(st.mgrName||u.name):u.name):'';x.signAt=on?today:'';x.signImg=on?(img||''):''}});return snapOut(u)},
+      x.signBy=on?(u.role!=='manager'?(st.mgrName||u.name):u.name):'';x.signAt=on?today:'';x.signImg=on?(img||''):''}});return snapOut(u)},
   apiDelivery:function(t,id,f,via){var u=meOf(t);if(u.role!=='admin')err('소독업소 계정만 바꿀 수 있어요.');
     DB.records.forEach(function(x){if(x.id===id){
       if(f==='toSite')x.toSite=x.toSite?'':today;
@@ -727,17 +767,41 @@ window.BYRULE=(function(){
   apiSaveSite:function(t,s){var u=meOf(t);if(u.role!=='admin')err('소독업소 계정만 바꿀 수 있어요.');
     var base={zone:'',dept:'',addr:'',area:'',mgrTitle:'',mgrName:'',tel:'',
       freq:'M',months:'',startMonth:1,perMonth:1,dayMode:'week',week:2,dow:2,week2:4,dow2:2,dom:10,dom2:25,active:'Y'};
-    if(s.id){DB.sites=DB.sites.map(function(x){return x.id===s.id?Object.assign({},base,x,s):x})}
-    else DB.sites.push(Object.assign({},base,s,{id:uid('st')}));
+    var saved;
+    if(s.id){DB.sites=DB.sites.map(function(x){if(x.id!==s.id)return x;saved=Object.assign({},base,x,s);return saved})}
+    else{saved=Object.assign({},base,s,{id:uid('st')});DB.sites.push(saved)}
+    if(saved)syncSiteMgr(saved);
     if(s.id&&s.active==='N')DB.schedules.forEach(function(x){
       if(x.siteId===s.id&&x.date>today&&x.status!=='취소'&&!DB.records.some(function(r){return r.scheduleId===x.id}))x.status='취소'});
     return snapOut(u)},
   apiSaveUser:function(t,x){var u=meOf(t);if(u.role!=='admin')err('소독업소 계정만 바꿀 수 있어요.');
     x=Object.assign({},x);var p=x.pin?String(x.pin):'';delete x.pin;
     if(p&&!pinOk(p))err(PIN_RULE);
-    if(x.id){DB.users=DB.users.map(function(o){if(o.id!==x.id)return o;Object.assign(o,x);if(p)o.pinH=pinHash(o.id,p);return o})}
-    else{if(!p)err('새 사용자는 PIN을 꼭 넣어주세요.');
-      var n=Object.assign({active:'Y'},x);n.id=uid('us');n.pinH=pinHash(n.id,p);DB.users.push(n)}
+    if(x.role==='manager'&&x.sites!==undefined&&!x.sites)err('담당 현장을 1곳 이상 골라주세요.');
+    if(x.id){
+      DB.users=DB.users.map(function(o){
+        if(o.id!==x.id)return o;
+        var oldTel=digitsOf(o.phone);Object.assign(o,x);
+        var tel=digitsOf(o.phone);
+        if(p)o.pinH=pinHash(o.id,p);
+        else if(o.autoMgr&&x.phone!==undefined&&tel!==oldTel&&tel.length>=4)o.pinH=pinHash(o.id,tel.slice(-4));
+        return o;
+      });
+      DB.sites.forEach(function(s){
+        if(s.mgrUserId!==x.id)return;
+        if(x.sites!==undefined&&(','+x.sites+',').indexOf(','+s.id+',')<0){s.mgrUserId='';return}
+        if(x.name)s.mgrName=x.name;
+        if(x.phone!==undefined)s.tel=x.phone;
+      });
+    }else{
+      var tel4=digitsOf(x.phone).slice(-4);
+      if(!p&&tel4.length<4)err('PIN을 넣거나 연락처를 넣어주세요.');
+      var n=Object.assign({active:'Y'},x);n.id=uid('us');n.pinH=pinHash(n.id,p||tel4);DB.users.push(n)}
+    return snapOut(u)},
+  apiDeleteUser:function(t,id){var u=meOf(t);if(u.role!=='admin')err('소독업소 계정만 지울 수 있어요.');
+    if(id===u.id)err('지금 로그인한 계정은 지울 수 없어요.');
+    DB.users=DB.users.filter(function(x){return x.id!==id});
+    DB.sites.forEach(function(s){if(s.mgrUserId===id){s.mgrUserId='';s.mgrName='';s.mgrTitle='';s.tel=''}});
     return snapOut(u)},
   apiSaveCompany:function(t,c){var u=meOf(t);if(u.role!=='admin')err('소독업소 계정만 바꿀 수 있어요.');
     var keep=DB.company||{};
@@ -750,7 +814,7 @@ window.BYRULE=(function(){
     DB.holidays=DB.holidays.filter(function(h){return h.date!==d});return snapOut(u)},
   apiGeneratePlan:function(t,y){var u=meOf(t);if(u.role!=='admin')err('소독업소 계정만 쓸 수 있어요.');
     var made=0;
-    DB.sites.filter(function(s){return s.active!=='N'}).forEach(function(s){
+    DB.sites.filter(function(s){return s.active!=='N'&&s.schedMode!=='manual'}).forEach(function(s){
       for(var m=1;m<=12;m++){
         var list=window.BYRULE.datesFor(s,y,m,DB.holidays);
         list.forEach(function(ds){
@@ -906,19 +970,17 @@ function ask(msg,ok,fn){
 
 /* ---------- 로그인 ---------- */
 function bootLogin(){
-  call('apiUsers').then(function(us){
-    $('luser').innerHTML=us.map(function(u){return '<option value="'+esc(u.id)+'">'+esc(u.name)+(u.role==='admin'?' (소독업소)':'')+'</option>'}).join('');
-    var last='';try{last=localStorage.getItem('by-user')||''}catch(e){}
-    if(last)$('luser').value=last;
-  }).catch(function(e){$('lmsg').textContent='사용자 목록을 불러오지 못했어요.'});
+  var last='';try{last=localStorage.getItem('by-user')||''}catch(e){}
+  if(last&&!$('luser').value)$('luser').value=last;
 }
 $('lbtn').onclick=function(){
-  var id=$('luser').value,pin=$('lpin').value.trim();
+  var name=$('luser').value.trim(),pin=$('lpin').value.trim();
+  if(!name){$('lmsg').textContent='이름을 넣어주세요.';return}
   if(!pin){$('lmsg').textContent='PIN을 넣어주세요.';return}
   busy(true);
-  call('apiLogin',[id,pin]).then(function(r){
+  call('apiLogin',[name,pin]).then(function(r){
     busy(false);S.token=r.token;
-    try{localStorage.setItem('by-user',id);localStorage.setItem('by-token',r.token)}catch(e){}
+    try{localStorage.setItem('by-user',name);localStorage.setItem('by-token',r.token)}catch(e){}
     start();
   }).catch(function(e){busy(false);$('lmsg').textContent=(e&&e.message)||'로그인하지 못했어요.'});
 };
@@ -934,7 +996,7 @@ $('lSetup').onclick=function(){
     busy(true);
     call('apiResetAdminPin',[m.querySelector('#sCode').value.trim(),m.querySelector('#sPin').value.trim()]).then(function(r){
       busy(false);m.remove();S.token=r.token;
-      try{localStorage.setItem('by-user',r.me.id);localStorage.setItem('by-token',r.token)}catch(e){}
+      try{localStorage.setItem('by-user',r.me.name);localStorage.setItem('by-token',r.token)}catch(e){}
       start();
     }).catch(function(e){busy(false);toast((e&&e.message)||'처리하지 못했어요.')});
   };
@@ -963,10 +1025,13 @@ function start(){
 
 /* ---------- 공통 ---------- */
 function isAdmin(){return S.me&&S.me.role==='admin'}
+function isStaff(){return S.me&&S.me.role==='staff'}
+function canRecord(){return isAdmin()||isStaff()}
+function roleName(r){return r==='admin'?'소독업소':(r==='staff'?'우리 직원':'담당자')}
 function site(id){var L=S.allSites||S.sites;for(var i=0;i<L.length;i++)if(L[i].id===id)return L[i];return null}
 function mySite(id){
-  if(isAdmin())return true;
-  if(!S.me.sites)return true;
+  if(isAdmin()||isStaff())return true;
+  if(!S.me.sites)return false;
   return S.me.sites.split(',').map(function(s){return s.trim()}).indexOf(id)>=0;
 }
 function recOf(sid,date){
@@ -1327,6 +1392,9 @@ function renderTodo(){
     var recLine=function(r){return line({id:r.scheduleId,siteId:r.siteId,date:r.date})};
     out.push(block('증명서 시설 교부 안 됨',noCert,recLine));
     out.push(block('서명 끝남 · 보건소 제출 대기',noHealth,recLine));
+  }else if(isStaff()){
+    out.push(block('오늘 가야 할 현장',todayJobs,line));
+    out.push(block('날짜 지났는데 미실시',overdue,line));
   }else{
     out.push(block('확인해 주실 일정',needConfirm,line));
     out.push(block('완료 확인·서명해 주실 방역',needSign,signLine));
@@ -1390,7 +1458,7 @@ function openSchedule(id){
   if(!isNew&&sc.createdBy&&sc.requested)h+='<p class="tiny" style="margin-bottom:8px">'+esc(sc.createdBy)+' 님이 넣은 일정이에요.</p>';
   h+='<div class="row">'+(isNew||can?'<button class="btn sm" data-save>저장</button>':'');
   if(!isNew&&isAdmin()&&sc.requested&&!sc.ackBy)h+='<button class="btn sm" data-ack>요청 확인</button>';
-  if(!isNew&&can)h+='<button class="btn ghost sm" data-confirm>'+(sc.confirmBy?'확인 취소':'일정 확인(승인)')+'</button>';
+  if(!isNew&&can&&!isStaff())h+='<button class="btn ghost sm" data-confirm>'+(sc.confirmBy?'확인 취소':'일정 확인(승인)')+'</button>';
   if(!isNew&&can&&!r)h+='<button class="btn ghost sm danger" data-del style="margin-left:auto">삭제</button>';
   h+='</div>';
   if(!isNew&&can){
@@ -1412,14 +1480,14 @@ function openSchedule(id){
       h+='<button class="btn ghost sm" data-cert="'+esc(r.id)+'">증명서 보기</button>';
       if(isAdmin())h+='<button class="btn ghost sm" data-notify="'+esc(r.id)+'">알림 보내기</button>';
       if(can)h+='<button class="btn '+(r.signBy?'ghost ':'')+'sm" data-sign="'+esc(r.id)+'">'+(r.signBy?'확인 취소':'완료 확인하기')+'</button>';
-      if(isAdmin())h+='<button class="btn ghost sm" data-edit="'+esc(r.id)+'">기록 수정</button>';
+      if(canRecord())h+='<button class="btn ghost sm" data-edit="'+esc(r.id)+'">기록 수정</button>';
       h+='</div>';
       if(isAdmin()){
         h+='<div class="row" style="margin-top:8px">'+
           '<button class="btn ghost sm" data-dv="toSite">시설 교부'+(r.toSite?' ✓':'')+'</button>'+
           '<button class="btn ghost sm" data-dv="toHealth">보건소'+(r.toHealth?' ✓ '+esc(r.via||''):'')+'</button></div>';
       }
-    } else if(isAdmin()){
+    } else if(canRecord()){
       h+='<h3>실시 기록 넣기</h3>';
       h+='<div class="g2" style="margin-top:8px"><div class="field"><label>소독일</label><input type="date" id="rDate" value="'+esc(sc.date)+'"></div>'+
         '<div class="field"><label>종료일 (하루면 비움)</label><input type="date" id="rDate2"></div></div>';
@@ -1566,7 +1634,7 @@ function openRecordEdit(r){
     '<div class="g2"><div class="field"><label>사용 약품명</label><input id="eChem" value="'+esc(r.chem||'')+'"></div>'+
     '<div class="field"><label>사용량</label><input id="eAmt" value="'+esc(r.amount||'')+'"></div></div>'+
     '<div class="row"><button class="btn sm" data-ok>저장</button><button class="btn ghost sm" data-no>취소</button>'+
-    '<button class="btn ghost sm danger" data-del style="margin-left:auto">기록 삭제</button></div>';
+    (isAdmin()?'<button class="btn ghost sm danger" data-del style="margin-left:auto">기록 삭제</button>':'')+'</div>';
   var m=modal(h);
   m.querySelector('[data-no]').onclick=function(){m.remove()};
   m.querySelector('[data-ok]').onclick=function(){
@@ -1576,7 +1644,8 @@ function openRecordEdit(r){
       worker:m.querySelector('#eWorker').value.trim()};
     m.remove();send('apiSaveRecord',[S.token,body],'저장했어요.');
   };
-  m.querySelector('[data-del]').onclick=function(){m.remove();
+  var rd=m.querySelector('[data-del]');
+  if(rd)rd.onclick=function(){m.remove();
     ask('이 실시 기록을 지울까요?','삭제',function(){send('apiDeleteRecord',[S.token,r.id],'지웠어요.')})};
 }
 
@@ -1873,7 +1942,7 @@ function renderSetup(){
   appendEnded('siteList',S.allSites,'apiSaveSite','계약 종료된 현장');
   $('userList').innerHTML=S.users.map(function(u){
     return '<div class="item"><div><div><b>'+esc(u.name)+'</b> <span class="pill p-'+(u.role==='admin'?'done':'fix')+'">'+
-      (u.role==='admin'?'소독업소':'담당자')+'</span></div>'+
+      roleName(u.role)+'</span></div>'+
       '<div class="tiny">'+(u.phone?esc(u.phone)+' · ':'')+'담당 '+
       (u.sites?u.sites.split(',').map(function(id){return (site(id.trim())||{}).name||''}).join(', '):'전체')+'</div></div>'+
       '<button class="btn ghost sm" data-u="'+esc(u.id)+'">수정</button></div>';
@@ -1961,7 +2030,8 @@ function editSite(s){
     '<div class="field"><label>담당 부서</label><input id="sDept" value="'+esc(s.dept||'')+'"></div>'+
     '<div class="g2"><div class="field"><label>담당자 성명</label><input id="sMgr" value="'+esc(s.mgrName||'')+'"></div>'+
     '<div class="field"><label>직위</label><input id="sTitle" value="'+esc(s.mgrTitle||'')+'"></div></div>'+
-    '<div class="field"><label>연락처</label><input id="sTel" value="'+esc(s.tel||'')+'"></div>'+
+    '<div class="field"><label>연락처</label><input id="sTel" inputmode="tel" value="'+esc(s.tel||'')+'" placeholder="예: 010-1234-5678">'+
+    '<div class="tiny" style="margin-top:5px">담당자 성명과 연락처를 넣으면 로그인 계정이 자동으로 만들어져요. (아이디: 이름 / PIN: 연락처 뒤 4자리)</div></div>'+
     '<div class="field"><label>소재지 (증명서에 들어감)</label><input id="sAddr" value="'+esc(s.addr||'')+'"></div>'+
     '<div class="field"><label>면적(㎡)</label><input id="sArea" value="'+esc(s.area||'')+'"></div>'+
     '<div class="g2"><div class="field"><label>계약 시작일</label><input type="date" id="sFrom" value="'+esc(s.contractFrom||'')+'"></div>'+
@@ -1970,6 +2040,9 @@ function editSite(s){
 
     '<div style="border-top:1px solid var(--line);margin:14px 0 12px;padding-top:12px">'+
     '<b style="font-size:14.5px">방역 반복 설정</b>'+
+    '<label style="font-weight:600;color:var(--ink);display:flex;gap:8px;align-items:center;margin:8px 0 10px;font-size:14px">'+
+    '<input type="checkbox" id="sManual" style="width:auto"'+(s.schedMode==='manual'?' checked':'')+'> 일정은 직접 입력 (정기 일정 없음)</label>'+
+    '<div id="wrapRule">'+
     '<p class="tiny" style="margin:4px 0 10px">여기서 정한 대로 「연간 일정 자동 생성」이 날짜를 깔아줍니다. 공휴일·주말이면 다음 평일로 미룹니다.</p>'+
 
     '<div class="g2"><div class="field"><label>얼마나 자주</label><select id="sFreq">'+
@@ -2009,7 +2082,7 @@ function editSite(s){
     '</div></div>'+
 
     '<div class="tile" style="margin-top:6px"><b style="font-size:14px" id="rulePrev">—</b><span>이렇게 반복됩니다</span></div>'+
-    '</div>'+
+    '</div></div>'+
 
     '<div class="row"><button class="btn sm" data-ok>저장</button><button class="btn ghost sm" data-no>취소</button>'+
     (isNew?'':'<button class="btn ghost sm danger" data-off style="margin-left:auto">계약 종료(숨김)</button>')+'</div>';
@@ -2024,10 +2097,12 @@ function editSite(s){
       dayMode:q('sMode').value,week:+q('sWeek').value,dow:+q('sDow').value,
       week2:+q('sWeek2').value,dow2:+q('sDow2').value,
       dom:+q('sDom').value||10,dom2:+q('sDom2').value||25,active:'Y',
-      contractFrom:q('sFrom').value,contractTo:q('sTo').value,time:q('sTime').value};
+      contractFrom:q('sFrom').value,contractTo:q('sTo').value,time:q('sTime').value,
+      schedMode:q('sManual').checked?'manual':'auto'};
   }
   function sync(){
     var o=collect();
+    q('wrapRule').classList.toggle('hide',o.schedMode==='manual');
     q('wrapMonths').classList.toggle('hide',o.freq!=='custom');
     q('wrapStart').classList.toggle('hide',['W','M','custom','legal'].indexOf(o.freq)>=0);
     q('wrapPer').classList.toggle('hide',o.freq==='W');
@@ -2045,7 +2120,7 @@ function editSite(s){
     q('rulePrev').textContent=window.BYRULE.label(o)+'  →  '+y+'년 '+prev.length+'회'+
       (prev.length?' ('+prev.slice(0,6).join(', ')+(prev.length>6?' …':'')+')':'');
   }
-  ['sFreq','sStart','sPer','sMode','sWeek','sDow','sWeek2','sDow2','sDom','sDom2'].forEach(function(id){
+  ['sManual','sFreq','sStart','sPer','sMode','sWeek','sDow','sWeek2','sDow2','sDom','sDom2'].forEach(function(id){
     var el=q(id); if(el)el.addEventListener('change',sync);
   });
   m.querySelectorAll('#monthBoxes input').forEach(function(x){x.addEventListener('change',sync)});
@@ -2054,8 +2129,9 @@ function editSite(s){
   m.querySelector('[data-ok]').onclick=function(){
     var o=collect();
     if(!o.name){toast('현장명을 넣어주세요.');return}
-    if(o.freq==='custom'&&!o.months){toast('어느 달에 하는지 골라주세요.');return}
-    m.remove();send('apiSaveSite',[S.token,o],'저장했어요.');
+    if(o.schedMode!=='manual'&&o.freq==='custom'&&!o.months){toast('어느 달에 하는지 골라주세요.');return}
+    var hasLogin=o.mgrName&&String(o.tel||'').replace(/[^0-9]/g,'').length>=4;
+    m.remove();send('apiSaveSite',[S.token,o],hasLogin?'저장했어요. 담당자 로그인: '+o.mgrName+' / 연락처 뒤 4자리':'저장했어요. 담당자 성명·연락처를 넣으면 로그인 계정이 만들어져요.');
   };
   var off=m.querySelector('[data-off]');
   if(off)off.onclick=function(){var o=collect();m.remove();ask('이 현장 계약을 종료할까요? 지난 기록은 남고, 앞으로 잡힌 일정은 취소돼요.','종료',function(){
@@ -2070,19 +2146,23 @@ function editUser(u){
     '<div class="g2"><div class="field"><label>이름</label><input id="uName" value="'+esc(u.name)+'"></div>'+
     '<div class="field"><label>PIN (4자리)</label><input id="uPin" inputmode="numeric" maxlength="6" value=""></div></div>'+
     '<div class="g2"><div class="field"><label>권한</label><select id="uRole">'+
-    '<option value="manager"'+(u.role==='manager'?' selected':'')+'>담당자</option>'+
+    '<option value="manager"'+(u.role==='manager'?' selected':'')+'>담당자 (맡은 현장만)</option>'+
+    '<option value="staff"'+(u.role==='staff'?' selected':'')+'>우리 직원 (전체 현장·기록 입력)</option>'+
     '<option value="admin"'+(u.role==='admin'?' selected':'')+'>소독업소(관리자)</option></select></div>'+
     '<div class="field"><label>연락처</label><input id="uPhone" value="'+esc(u.phone||'')+'"></div></div>'+
-    '<div class="field"><label>담당 현장 (아무것도 안 고르면 전체)</label><div id="uSites">'+
+    '<div class="field" id="uSiteWrap"><label>담당 현장 (고른 현장의 일정만 보여요)</label><div id="uSites">'+
     S.sites.map(function(s){return '<label style="font-weight:500;color:var(--ink);display:flex;gap:8px;align-items:center;margin-bottom:6px">'+
       '<input type="checkbox" style="width:auto" value="'+esc(s.id)+'"'+(picked.indexOf(s.id)>=0?' checked':'')+'> '+esc(s.name)+'</label>'}).join('')+'</div></div>'+
     '<div class="row"><button class="btn sm" data-ok>저장</button><button class="btn ghost sm" data-no>취소</button>'+
-    (isNew?'':'<button class="btn ghost sm danger" data-off style="margin-left:auto">사용 중지</button>')+'</div>'+
-    '<p class="tiny" style="margin-top:8px">PIN을 비워두면 기존 PIN이 그대로예요.</p>';
+    (isNew||u.id===S.me.id?'':'<button class="btn ghost sm danger" data-del style="margin-left:auto">삭제</button>')+'</div>'+
+    '<p class="tiny" style="margin-top:8px">'+(isNew?'PIN을 비워두면 연락처 뒤 4자리가 PIN이 돼요.':'PIN을 비워두면 기존 PIN이 그대로예요.')+'</p>';
   var m=modal(h);
+  var syncRole=function(){m.querySelector('#uSiteWrap').classList.toggle('hide',m.querySelector('#uRole').value!=='manager')};
+  m.querySelector('#uRole').addEventListener('change',syncRole);syncRole();
   m.querySelector('[data-no]').onclick=function(){m.remove()};
   m.querySelector('[data-ok]').onclick=function(){
     var sites=[].slice.call(m.querySelectorAll('#uSites input:checked')).map(function(x){return x.value}).join(',');
+    if(m.querySelector('#uRole').value!=='manager')sites='';
     var o={id:u.id,name:m.querySelector('#uName').value.trim(),role:m.querySelector('#uRole').value,
       phone:m.querySelector('#uPhone').value.trim(),sites:sites,active:'Y'};
     var pin=m.querySelector('#uPin').value.trim();
@@ -2090,9 +2170,9 @@ function editUser(u){
     if(!o.name){toast('이름을 넣어주세요.');return}
     m.remove();send('apiSaveUser',[S.token,o],'저장했어요.');
   };
-  var off=m.querySelector('[data-off]');
-  if(off)off.onclick=function(){m.remove();ask('이 사용자를 못 들어오게 할까요?','중지',function(){
-    send('apiSaveUser',[S.token,{id:u.id,name:u.name,role:u.role,phone:u.phone,sites:u.sites,active:'N'}],'중지했어요.')})};
+  var ud=m.querySelector('[data-del]');
+  if(ud)ud.onclick=function(){m.remove();ask(u.name+' 님 계정을 지울까요? 맡은 현장의 담당자 칸은 비워지고, 지난 서명과 기록은 그대로 남아요.','삭제',function(){
+    send('apiDeleteUser',[S.token,u.id],'계정을 지웠어요.')})};
 }
 $('bAddHol').onclick=function(){
   var d=$('hDate').value,nm=$('hName').value.trim();
@@ -2137,7 +2217,7 @@ function renderInner(){
     $('who').innerHTML='<span style="color:#A32F2F">로그인 정보를 못 받았어요. 로그아웃 후 다시 들어와 주세요.</span>';
     return;
   }
-  $('who').textContent=S.me.name+' · '+(isAdmin()?'소독업소':'담당자');
+  $('who').textContent=S.me.name+' · '+roleName(S.me.role);
   var bl=$('baseLine'); if(bl)bl.textContent='기준일 '+S.today+(isAdmin()?' · 현장 '+S.sites.length+'곳':'');
   renderTabRow();
   if(view===1)renderSummary();
