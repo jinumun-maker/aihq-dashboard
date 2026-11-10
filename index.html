@@ -1907,7 +1907,7 @@ if(window.AIHQ_DATA){
     {date:"2026-11-06",name:"명석 폴리싱 (3/4일)"},
     {date:"2026-11-07",name:"명석 폴리싱 (4/4일)"}
   ];
-  window.AIHQ_DATA.calSync = "2026-11-10";
+  window.AIHQ_DATA.calSync = "2026-11-10b";
 }
 /* 🏫 학교 영업 — 기록은 getData()/setData() 상태의 schools 필드에 저장되어 기존 클라우드 동기화로 팀 공유됩니다. */
 (function(){
@@ -4339,11 +4339,42 @@ function _loadXLSX(){
   return new Promise(function(res,rej){
     if(window.XLSX) return res(window.XLSX);
     var s=document.createElement('script');
-    s.src='https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js';
+    s.src='https://cdn.jsdelivr.net/npm/xlsx-js-style@1.2.0/dist/xlsx.bundle.js';
     s.onload=function(){ window.XLSX?res(window.XLSX):rej(new Error('XLSX 로드 실패')); };
     s.onerror=function(){ rej(new Error('엑셀 모듈 다운로드 실패 — 인터넷 연결 확인')); };
     document.head.appendChild(s);
   });
+}
+function _wageSheet(XLSX, title, subtitle, headers, rows, numCols, hasTotal){
+  var nc=headers.length;
+  var aoa=[[title],[subtitle],headers];
+  rows.forEach(function(r){ aoa.push(r); });
+  var ws=XLSX.utils.aoa_to_sheet(aoa);
+  var range=XLSX.utils.decode_range(ws['!ref']);
+  if(range.e.c<nc-1){ range.e.c=nc-1; ws['!ref']=XLSX.utils.encode_range(range); }
+  ws['!merges']=[{s:{r:0,c:0},e:{r:0,c:nc-1}},{s:{r:1,c:0},e:{r:1,c:nc-1}}];
+  var thin={style:'thin',color:{rgb:'C9C9C9'}};
+  var border={top:thin,bottom:thin,left:thin,right:thin};
+  var numSet={}; (numCols||[]).forEach(function(c){ numSet[c]=1; });
+  var headerRow=2, totalRowIdx=hasTotal?range.e.r:-1;
+  for(var R=0;R<=range.e.r;R++){
+    for(var C=0;C<nc;C++){
+      var addr=XLSX.utils.encode_cell({r:R,c:C});
+      var cell=ws[addr]; if(!cell){ cell={t:'s',v:''}; ws[addr]=cell; }
+      if(R===0){ cell.s={font:{bold:true,sz:13,color:{rgb:'FFFFFF'}},fill:{fgColor:{rgb:'1F3864'}},alignment:{horizontal:'left',vertical:'center'}}; }
+      else if(R===1){ cell.s={font:{sz:10,color:{rgb:'44546A'}},fill:{fgColor:{rgb:'EDF0F7'}},alignment:{horizontal:'left',vertical:'center'}}; }
+      else if(R===headerRow){ cell.s={font:{bold:true,color:{rgb:'FFFFFF'}},fill:{fgColor:{rgb:'2E5496'}},alignment:{horizontal:'center',vertical:'center'},border:border}; }
+      else {
+        var b={border:border};
+        if(numSet[C]){ b.alignment={horizontal:'right'}; b.numFmt='#,##0'; }
+        else { b.alignment={horizontal:'left'}; }
+        if(R===totalRowIdx){ b.font={bold:true}; b.fill={fgColor:{rgb:'D9E1F2'}}; }
+        cell.s=b;
+      }
+    }
+  }
+  ws['!rows']=[{hpt:26},{hpt:18},{hpt:20}];
+  return ws;
 }
 async function exportWageExcel(){
   var sel=document.getElementById('wageXlsxYear');
@@ -4373,24 +4404,26 @@ async function exportWageExcel(){
     if(btn){ btn.disabled=true; btn.textContent='엑셀 만드는 중…'; }
     var XLSX=await _loadXLSX();
     var wb=XLSX.utils.book_new();
-    var aoa1=[['날짜','소속','현장','성명','지급액(원)','이체']];
-    detail.forEach(function(x){ aoa1.push([x.date, x.co, x.site, x.name, x.amt, x.sent]); });
-    aoa1.push([]); aoa1.push(['합계','','','', detail.reduce(function(a,x){return a+x.amt;},0), '']);
-    var ws1=XLSX.utils.aoa_to_sheet(aoa1);
-    ws1['!cols']=[{wch:12},{wch:9},{wch:30},{wch:11},{wch:13},{wch:7}];
+    var sub='생성일 '+realToday()+' · 단위: 원 · 소속=청구 회사(리미트/다만산업)';
+    // ① 상세내역
+    var rows1=detail.map(function(x){ return [x.date, x.co, x.site, x.name, x.amt, x.sent]; });
+    rows1.push(['합계','','','', detail.reduce(function(a,x){return a+x.amt;},0), '']);
+    var ws1=_wageSheet(XLSX, year+'년 인력 임금 상세내역 (일당)', sub, ['날짜','소속','현장','성명','지급액','이체'], rows1, [4], true);
+    ws1['!cols']=[{wch:12},{wch:10},{wch:32},{wch:12},{wch:14},{wch:8}];
     XLSX.utils.book_append_sheet(wb,ws1,'상세내역');
+    // ② 월별 집계
     var h2=['성명','소속']; for(var m1=1;m1<=12;m1++) h2.push(m1+'월'); h2.push('합계');
-    var aoa2=[h2];
-    Object.keys(mp).sort(function(a,b){return mp[b].total-mp[a].total;}).forEach(function(k){
-      var r=mp[k], row=[r.name, r.co]; for(var m2=1;m2<=12;m2++) row.push(r.m[m2]||0); row.push(r.total); aoa2.push(row);
-    });
-    var ws2=XLSX.utils.aoa_to_sheet(aoa2);
+    var rows2=Object.keys(mp).sort(function(a,b){return mp[b].total-mp[a].total;}).map(function(k){
+      var r=mp[k], row=[r.name, r.co]; for(var m2=1;m2<=12;m2++) row.push(r.m[m2]||0); row.push(r.total); return row; });
+    var numCols2=[]; for(var c2=2;c2<=14;c2++) numCols2.push(c2);
+    var ws2=_wageSheet(XLSX, year+'년 인력 임금 — 월별 집계', sub, h2, rows2, numCols2, false);
+    var cols2=[{wch:12},{wch:10}]; for(var cc=0;cc<12;cc++) cols2.push({wch:9}); cols2.push({wch:14}); ws2['!cols']=cols2;
     XLSX.utils.book_append_sheet(wb,ws2,'월별 집계');
-    var aoa3=[['성명','소속','1분기','2분기','3분기','4분기','합계']];
-    Object.keys(qp).sort(function(a,b){return qp[b].total-qp[a].total;}).forEach(function(k){
-      var r=qp[k]; aoa3.push([r.name, r.co, r.q[1]||0, r.q[2]||0, r.q[3]||0, r.q[4]||0, r.total]);
-    });
-    var ws3=XLSX.utils.aoa_to_sheet(aoa3);
+    // ③ 분기별 집계
+    var rows3=Object.keys(qp).sort(function(a,b){return qp[b].total-qp[a].total;}).map(function(k){
+      var r=qp[k]; return [r.name, r.co, r.q[1]||0, r.q[2]||0, r.q[3]||0, r.q[4]||0, r.total]; });
+    var ws3=_wageSheet(XLSX, year+'년 인력 임금 — 분기별 집계', sub, ['성명','소속','1분기','2분기','3분기','4분기','합계'], rows3, [2,3,4,5,6], false);
+    ws3['!cols']=[{wch:12},{wch:10},{wch:12},{wch:12},{wch:12},{wch:12},{wch:14}];
     XLSX.utils.book_append_sheet(wb,ws3,'분기별 집계');
     XLSX.writeFile(wb, '인력임금내역_'+year+'.xlsx');
   }catch(e){ alert('엑셀 생성 실패: '+((e&&e.message)||e)); }
