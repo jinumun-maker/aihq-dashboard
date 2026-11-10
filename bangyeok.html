@@ -313,6 +313,18 @@ td.nm{text-align:left;white-space:nowrap;font-weight:600}
       </div>
       <button class="btn" id="bCompany">저장</button>
     </div>
+    <div class="card" id="cDrive">
+      <h2>사진 PC 폴더 자동 저장</h2>
+      <p class="muted" style="margin-bottom:10px">사진을 올리면 구글 드라이브의 방역사진 폴더에 현장·날짜별로 저장돼요.</p>
+      <div class="field"><label>연결 주소 (구글 스크립트 웹앱 URL)</label><input id="dUrl" placeholder="https://script.google.com/macros/s/.../exec"></div>
+      <div class="field"><label>연결 코드</label><input id="dKey" autocomplete="off"></div>
+      <div class="row">
+        <button class="btn sm" id="bDriveSave">저장</button>
+        <button class="btn ghost sm" id="bDriveTest">연결 시험</button>
+        <button class="btn ghost sm" id="bDriveRetry">못 보낸 사진 다시 보내기</button>
+      </div>
+      <p class="tiny" id="dStat" style="margin-top:8px"></p>
+    </div>
     <div class="card" id="cSites">
       <div class="row" style="justify-content:space-between"><h2 style="margin:0">현장 · 계약처 <span class="tiny" style="font-weight:500">— 계약 늘면 「현장 추가」</span></h2>
         <button class="btn ghost sm" id="bAddSite">현장 추가</button></div>
@@ -741,6 +753,13 @@ window.BYRULE=(function(){
   apiDeliveryBatch:function(t,ids,via){var u=meOf(t);if(u.role!=='admin')err('소독업소 계정만 바꿀 수 있어요.');
     DB.records.forEach(function(x){if(ids.indexOf(x.id)>=0&&x.signBy){x.toHealth=today;x.via=via||'팩스'}});
     return snapOut(u)},
+  apiMarkDrive:function(t,id,pids){var u=meOf(t);
+    DB.schedules.forEach(function(x){if(x.id===id){
+      if(!can(u,x.siteId))err('담당 현장이 아니에요.');
+      var L=x.driveSent||[];
+      (pids||[]).forEach(function(p){if(L.indexOf(p)<0)L.push(p)});
+      x.driveSent=L;
+    }});return snapOut(u)},
   apiAckSchedule:function(t,id,off){var u=meOf(t);if(u.role==='manager')err('소독업소·직원 계정만 할 수 있어요.');
     DB.schedules.forEach(function(x){if(x.id===id){x.ackBy=off?'':u.name;x.ackAt=off?'':today}});return snapOut(u)},
   apiConfirmSchedule:function(t,id,on){var u=meOf(t);
@@ -811,7 +830,7 @@ window.BYRULE=(function(){
     return snapOut(u)},
   apiSaveCompany:function(t,c){var u=meOf(t);if(u.role!=='admin')err('소독업소 계정만 바꿀 수 있어요.');
     var keep=DB.company||{};
-    ['name','ceo','no','tel','addr','stampImg'].forEach(function(k){if(c[k]!==undefined)keep[k]=c[k]});
+    ['name','ceo','no','tel','addr','stampImg','driveUrl','driveKey'].forEach(function(k){if(c[k]!==undefined)keep[k]=c[k]});
     DB.company=keep;return snapOut(u)},
   apiSaveHoliday:function(t,d,nm){var u=meOf(t);if(u.role!=='admin')err('소독업소 계정만 바꿀 수 있어요.');
     var f=false;DB.holidays.forEach(function(h){if(h.date===d){f=true;h.name=nm}});
@@ -1276,6 +1295,36 @@ function compressPhoto(file){
     fr.readAsDataURL(file);
   });
 }
+/* 사진을 구글 드라이브 폴더로 보냅니다 (PC에는 구글 드라이브 프로그램으로 내려옴) */
+function driveOn(){var c=S.company||{};return /^https:\/\/script\.google\.com\//.test(c.driveUrl||'')}
+function drivePost(payload){
+  var c=S.company||{};
+  if(!driveOn())return Promise.resolve(false);
+  payload.key=c.driveKey||'';
+  return fetch(c.driveUrl,{method:'POST',body:JSON.stringify(payload)})
+    .then(function(r){return r.json()}).then(function(j){return !!(j&&j.ok)}).catch(function(){return false});
+}
+function driveSend(sc,pid,data){
+  if(!data)return Promise.resolve(false);
+  var o=site(sc.siteId)||{};
+  return drivePost({month:sc.date.slice(0,7),folder:(o.name||'현장')+'_'+sc.date.slice(5),name:'사진_'+pid+'.jpg',data:data});
+}
+function driveUnsent(sc){var s=sc.driveSent||[];return (sc.photos||[]).filter(function(p){return s.indexOf(p)<0})}
+function driveSyncSchedule(id){
+  if(!driveOn())return Promise.resolve(0);
+  var sc=S.schedules.filter(function(x){return x.id===id})[0];
+  if(!sc)return Promise.resolve(0);
+  var todo=driveUnsent(sc),done=[];
+  if(!todo.length)return Promise.resolve(0);
+  return loadBlobs(todo).then(function(){
+    return todo.reduce(function(p,pid){
+      return p.then(function(){return driveSend(sc,pid,BLOB[pid])}).then(function(ok){if(ok)done.push(pid)});
+    },Promise.resolve());
+  }).then(function(){
+    if(!done.length)return 0;
+    return call('apiMarkDrive',[S.token,id,done]).then(function(d){apply(d);return done.length});
+  }).catch(function(){return done.length});
+}
 function blobSrc(v){v=String(v||'');return v.indexOf('blob:')===0?(BLOB[v.slice(5)]||''):v}
 function preloadSigns(rs){
   return Promise.all(rs.map(function(r){
@@ -1596,7 +1645,7 @@ function openSchedule(id,work){
     },Promise.resolve()).then(function(){
       busy(false);
       return send('apiAddPhotos',[S.token,sc.id,ids],ids.length+'장 올렸어요.');
-    }).then(function(){openSchedule(sc.id,work)})
+    }).then(function(){openSchedule(sc.id,work);driveSyncSchedule(sc.id)})
     .catch(function(){busy(false);toast('사진을 올리지 못했어요. 인터넷을 확인해 주세요.')});
   };
   var c=m.querySelector('[data-confirm]');
@@ -1997,7 +2046,7 @@ function renderSetup(){
   if(d)d.textContent='현장 '+S.sites.length+'곳 · 일정 '+S.schedules.length+'건 · 실시기록 '+S.records.length+
     '건 · 공휴일 '+S.holidays.length+'일 · 접속 '+(S.me?S.me.name:'-');
   var admin=isAdmin();
-  ['cCompany','cSites','cUsers','cPlan','cHoliday'].forEach(function(id){$(id).classList.toggle('hide',!admin)});
+  ['cCompany','cDrive','cSites','cUsers','cPlan','cHoliday'].forEach(function(id){$(id).classList.toggle('hide',!admin)});
   if(!admin){
     if(!$('noAdmin')){
       var d=document.createElement('div');d.className='card';d.id='noAdmin';
@@ -2013,6 +2062,7 @@ function renderSetup(){
     $('cName').value=c.name||'';$('cCeo').value=c.ceo||'';$('cNo').value=c.no||'';
     $('cTel').value=c.tel||'';$('cAddr').value=c.addr||'';
   }
+  renderDriveCard();
   var sw=$('stampWrap');
   if(sw)sw.innerHTML=(S.company.stampImg?
     '<span class="stamp-prev"><img src="'+S.company.stampImg+'" alt="직인"><span class="tiny">등록됨</span></span>'
@@ -2054,6 +2104,38 @@ function renderSetup(){
     ys.value=cur.y;
   }
 }
+function renderDriveCard(){
+  var c=S.company||{},act=(document.activeElement||{}).id;
+  if(act!=='dUrl')$('dUrl').value=c.driveUrl||'';
+  if(act!=='dKey')$('dKey').value=c.driveKey||'';
+  var n=S.schedules.reduce(function(a,s){return a+driveUnsent(s).length},0);
+  $('dStat').textContent=driveOn()?('연결됨 · 아직 안 보낸 사진 '+n+'장'):'아직 연결 전이에요. 연결하면 그 뒤로 올리는 사진부터 자동으로 저장돼요.';
+}
+$('bDriveSave').onclick=function(){
+  var u=$('dUrl').value.trim(),k=$('dKey').value.trim();
+  if(u&&!/^https:\/\/script\.google\.com\//.test(u)){toast('구글 스크립트 주소(https://script.google.com/...)를 넣어주세요.');return}
+  send('apiSaveCompany',[S.token,{driveUrl:u,driveKey:k}],'저장했어요.');
+};
+$('bDriveTest').onclick=function(){
+  if(!driveOn()){toast('연결 주소를 먼저 저장해 주세요.');return}
+  var cv=document.createElement('canvas');cv.width=240;cv.height=120;
+  var cx=cv.getContext('2d');cx.fillStyle='#2563EB';cx.fillRect(0,0,240,120);
+  busy(true);
+  drivePost({month:'연결시험',folder:'시험',name:'시험_'+Date.now()+'.jpg',data:cv.toDataURL('image/jpeg',0.7)}).then(function(ok){
+    busy(false);
+    toast(ok?'연결됐어요. 구글 드라이브 방역사진 폴더를 확인해 보세요.':'연결이 안 돼요. 주소와 코드를 확인해 주세요.');
+  });
+};
+$('bDriveRetry').onclick=function(){
+  if(!driveOn()){toast('연결 주소를 먼저 저장해 주세요.');return}
+  var ids=S.schedules.filter(function(s){return driveUnsent(s).length}).map(function(s){return s.id});
+  if(!ids.length){toast('못 보낸 사진이 없어요.');return}
+  busy(true);
+  var total=0;
+  ids.reduce(function(p,id){
+    return p.then(function(){return driveSyncSchedule(id)}).then(function(n){total+=n||0});
+  },Promise.resolve()).then(function(){busy(false);toast(total+'장을 보냈어요.');render()});
+};
 function appendEnded(boxId,list,fn,title){
   var ended=(list||[]).filter(function(x){return x.active==='N'});
   if(!ended.length)return;
