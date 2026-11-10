@@ -101,6 +101,8 @@ input,select,textarea{font:inherit;width:100%;padding:11px;border:1px solid var(
 .tile.good b{color:var(--ok)}
 .tile.warn b{color:var(--warn)}
 .tile.click{cursor:pointer}
+.cd-ok{color:var(--ok);font-weight:700}
+.cd-miss{color:var(--warn);font-weight:700}
 .tile.click:hover{border-color:var(--main)}
 .todo b{font-size:14px}
 .linkline{display:block;width:100%;text-align:left;background:none;border:none;font:inherit;font-size:13px;
@@ -249,6 +251,9 @@ td.nm{text-align:left;white-space:nowrap;font-weight:600}
     </div>
   </section>
 
+  <!-- 현장 업무 -->
+  <section id="v5" class="hide"><div class="card" id="workCard"></div></section>
+
   <!-- 현황 -->
   <section id="v2" class="hide">
     <div class="card">
@@ -269,7 +274,7 @@ td.nm{text-align:left;white-space:nowrap;font-weight:600}
         <b id="docTitle"></b>
         <button class="btn ghost sm" id="bDocNext">›</button>
       </div>
-      <div class="row"><button class="btn ghost" id="bCertAll">증명서 전부 (2부씩)</button></div>
+      <div class="row"><button class="btn ghost" id="bCertAll">증명서 전부</button></div>
       <div class="row" style="margin-top:8px"><button class="btn ghost" id="bLedger">소독실시대장 (별지 제29호)</button></div>
       <div class="row" style="margin-top:8px"><button class="btn ghost" id="bLedgerY">연간 소독실시대장</button></div>
       <div class="row" style="margin-top:8px"><button class="btn ghost" id="bMonthly">월별 실시 내역</button></div>
@@ -345,6 +350,7 @@ td.nm{text-align:left;white-space:nowrap;font-weight:600}
 
 <nav class="hide" id="nav">
   <button data-v="1" aria-selected="true"><b>📅</b>달력</button>
+  <button data-v="5" aria-selected="false" id="navWork"><b>🧰</b>현장업무</button>
   <button data-v="2" aria-selected="false"><b>📋</b>현황</button>
   <button data-v="3" aria-selected="false"><b>🖨</b>서류</button>
   <button data-v="4" aria-selected="false"><b>⚙</b>설정</button>
@@ -735,8 +741,8 @@ window.BYRULE=(function(){
   apiDeliveryBatch:function(t,ids,via){var u=meOf(t);if(u.role!=='admin')err('소독업소 계정만 바꿀 수 있어요.');
     DB.records.forEach(function(x){if(ids.indexOf(x.id)>=0&&x.signBy){x.toHealth=today;x.via=via||'팩스'}});
     return snapOut(u)},
-  apiAckSchedule:function(t,id){var u=meOf(t);if(u.role!=='admin')err('소독업소 계정만 할 수 있어요.');
-    DB.schedules.forEach(function(x){if(x.id===id){x.ackBy=u.name;x.ackAt=today}});return snapOut(u)},
+  apiAckSchedule:function(t,id,off){var u=meOf(t);if(u.role==='manager')err('소독업소·직원 계정만 할 수 있어요.');
+    DB.schedules.forEach(function(x){if(x.id===id){x.ackBy=off?'':u.name;x.ackAt=off?'':today}});return snapOut(u)},
   apiConfirmSchedule:function(t,id,on){var u=meOf(t);
     DB.schedules.forEach(function(x){if(x.id===id){if(!can(u,x.siteId))err('담당 현장이 아니에요.');
       x.confirmBy=on?u.name:'';x.confirmAt=on?today:'';x.status=on?'확정':'예정'}});return snapOut(u)},
@@ -1018,7 +1024,7 @@ function start(){
     $('login').classList.add('hide');$('app').classList.remove('hide');$('nav').classList.remove('hide');
     view=1;
     navBtns.forEach(function(x){x.setAttribute('aria-selected',String(+x.dataset.v===1))});
-    [1,2,3,4].forEach(function(v){$('v'+v).classList.toggle('hide',v!==1)});
+    [1,2,3,4,5].forEach(function(v){$('v'+v).classList.toggle('hide',v!==1)});
     apply(d);
   }).catch(function(e){busy(false);$('login').classList.remove('hide');$('lmsg').textContent=(e&&e.message)||'';});
 }
@@ -1027,7 +1033,7 @@ function start(){
 function isAdmin(){return S.me&&S.me.role==='admin'}
 function isStaff(){return S.me&&S.me.role==='staff'}
 function canRecord(){return isAdmin()||isStaff()}
-function roleName(r){return r==='admin'?'소독업소':(r==='staff'?'우리 직원':'담당자')}
+function roleName(r){return r==='admin'?'소독업소':(r==='staff'?'우리 직원':'공단 담당자')}
 function site(id){var L=S.allSites||S.sites;for(var i=0;i<L.length;i++)if(L[i].id===id)return L[i];return null}
 function mySite(id){
   if(isAdmin()||isStaff())return true;
@@ -1330,11 +1336,12 @@ function renderTabRow(){
   var m=monthStats();
   var defs=[
     {v:1,t:'일정 달력',c:m.today.length+m.miss.length},
+    canRecord()?{v:5,t:'현장 업무',c:workCount()}:null,
     {v:2,t:'현황',c:m.waitConfirm.length},
     {v:3,t:'서류',c:isAdmin()?(m.noCert.length+m.noHealth.length):0},
     {v:4,t:'설정',c:0}
   ];
-  row.innerHTML=defs.map(function(d){
+  row.innerHTML=defs.filter(Boolean).map(function(d){
     return '<button data-t="'+d.v+'" aria-selected="'+(view===d.v?'true':'false')+'">'+d.t+
       (d.c?'<span class="cnt">'+d.c+'</span>':'')+'</button>';
   }).join('');
@@ -1436,7 +1443,7 @@ $('mNext').onclick=function(){cur.m++;if(cur.m>12){cur.m=1;cur.y++}render()};
 $('bAddSch').onclick=function(){openSchedule(null)};
 
 /* ---------- 일정 상세 ---------- */
-function openSchedule(id){
+function openSchedule(id,work){
   var sc=null;
   for(var i=0;i<S.schedules.length;i++)if(S.schedules[i].id===id)sc=S.schedules[i];
   var isNew=!sc;
@@ -1446,6 +1453,8 @@ function openSchedule(id){
   var can=mySite(sc.siteId);
   var h='<h3 style="margin-bottom:6px">'+(isNew?'일정 추가':esc(sObj.name||'')+' · '+esc(sc.date))+'</h3>';
   if(!isNew)h+='<div style="margin-bottom:12px">'+stepsHTML(sc)+'</div>';
+  h+='<p class="tiny" id="mPlan" style="margin-bottom:10px;white-space:pre-wrap"></p>';
+  h+='<div id="mTop"'+(work?' class="hide"':'')+'>';
   h+='<div class="field"><label>현장</label><select id="mSite">'+
     S.sites.filter(function(s){return mySite(s.id)}).map(function(s){return '<option value="'+esc(s.id)+'"'+(s.id===sc.siteId?' selected':'')+'>'+esc(s.name)+'</option>'}).join('')+'</select></div>';
   h+='<div class="field"><label>예정일</label><input type="date" id="mDate" value="'+esc(sc.date)+'">'+
@@ -1458,9 +1467,10 @@ function openSchedule(id){
   if(!isNew&&sc.createdBy&&sc.requested)h+='<p class="tiny" style="margin-bottom:8px">'+esc(sc.createdBy)+' 님이 넣은 일정이에요.</p>';
   h+='<div class="row">'+(isNew||can?'<button class="btn sm" data-save>저장</button>':'');
   if(!isNew&&isAdmin()&&sc.requested&&!sc.ackBy)h+='<button class="btn sm" data-ack>요청 확인</button>';
+  if(!isNew&&isStaff())h+='<button class="btn sm" data-ack>'+(sc.ackBy?'확인 취소':'일정 확인')+'</button>';
   if(!isNew&&can&&!isStaff())h+='<button class="btn ghost sm" data-confirm>'+(sc.confirmBy?'확인 취소':'일정 확인(승인)')+'</button>';
   if(!isNew&&can&&!r)h+='<button class="btn ghost sm danger" data-del style="margin-left:auto">삭제</button>';
-  h+='</div>';
+  h+='</div></div>';
   if(!isNew&&can){
     var phs=sc.photos||[],signed=!!(r&&r.signBy);
     h+='<div style="margin-top:16px;border-top:1px solid var(--line);padding-top:14px"><h3>방역 사진 <span class="tiny">'+phs.length+'/5장</span></h3>'+
@@ -1497,7 +1507,7 @@ function openSchedule(id){
       h+='<div class="g2"><div class="field"><label>사용 약품명</label><input id="rChem"></div>'+
         '<div class="field"><label>사용량</label><input id="rAmt"></div></div>';
       h+='<div class="row"><button class="btn sm" data-rec>실시 저장</button>'+
-        '<button class="btn ghost sm" data-recprint>저장 + 증명서 2부</button></div>';
+        '<button class="btn ghost sm" data-recprint>저장 + 증명서</button></div>';
     } else {
       h+='<p class="muted">아직 방역 전이에요. 끝나면 여기에 실시 내용과 증명서가 올라와요.</p>';
     }
@@ -1525,7 +1535,13 @@ function openSchedule(id){
     if(extra.indexOf(v)<0)extra.push(v);
     inp.value='';drawExtra();
   };
+  var setPlan=function(id){
+    var t=(site(id)||{}).planMemo||'',p=m.querySelector('#mPlan');
+    p.textContent=t?'계약 계획: '+t:'';p.style.display=t?'block':'none';
+  };
+  setPlan(sc.siteId);
   m.querySelector('#mSite').addEventListener('change',function(){
+    setPlan(this.value);
     if(!isNew)return;
     var t=m.querySelector('#mTime');
     if(!t.value)t.value=(site(this.value)||{}).time||'';
@@ -1545,7 +1561,7 @@ function openSchedule(id){
     send('apiSaveSchedule',[S.token,body],'일정을 저장했어요.');
   };
   var ak=m.querySelector('[data-ack]');
-  if(ak)ak.onclick=function(){close();send('apiAckSchedule',[S.token,sc.id],'요청을 확인했어요.')};
+  if(ak)ak.onclick=function(){close();send('apiAckSchedule',[S.token,sc.id,isStaff()&&!!sc.ackBy],isStaff()&&sc.ackBy?'확인을 취소했어요.':'일정을 확인했어요.')};
   var phl=m.querySelector('#phList');
   if(phl){
     loadBlobs(sc.photos||[]).then(function(){
@@ -1559,7 +1575,7 @@ function openSchedule(id){
       ask('이 사진을 지울까요?','삭제',function(){
         close();
         send('apiRemovePhoto',[S.token,sc.id,pid],'사진을 지웠어요.').then(function(){
-          window.__byBlob.del(pid);openSchedule(sc.id);
+          window.__byBlob.del(pid);openSchedule(sc.id,work);
         });
       });
     }});
@@ -1580,7 +1596,7 @@ function openSchedule(id){
     },Promise.resolve()).then(function(){
       busy(false);
       return send('apiAddPhotos',[S.token,sc.id,ids],ids.length+'장 올렸어요.');
-    }).then(function(){openSchedule(sc.id)})
+    }).then(function(){openSchedule(sc.id,work)})
     .catch(function(){busy(false);toast('사진을 올리지 못했어요. 인터넷을 확인해 주세요.')});
   };
   var c=m.querySelector('[data-confirm]');
@@ -1661,17 +1677,26 @@ function renderStat(){
    return head+S.sites.filter(function(s){return zoneOf(s)===z}).map(function(s){
     var scs=S.schedules.filter(function(x){return x.siteId===s.id&&x.date.slice(0,7)===key&&x.status!=='취소'});
     var rs=S.records.filter(function(r){return r.siteId===s.id&&r.date.slice(0,7)===key});
-    var tag=rs.length?'<span class="pill p-done">완료 '+(+rs[0].date.slice(8))+'일</span>'
-      :(scs.length?'<span class="pill p-'+(scs[0].confirmBy?'fix':'plan')+'">'+(scs[0].confirmBy?'확정':'예정')+' '+(+scs[0].date.slice(8))+'일</span>'
-      :'<span class="pill p-miss">일정 없음</span>');
-    var sub=(scs.length?('<div style="margin-top:6px">'+dotsHTML(scs[0])+'</div>'):'')+
-      (rs.length?('<div class="tiny" style="margin-top:4px">'+
-      (rs[0].signBy?'담당자 확인 '+esc(rs[0].signBy):'담당자 확인 전')+
-      (rs[0].toSite?' · 시설 교부':'')+(rs[0].toHealth?' · 보건소 '+esc(rs[0].via||''):'')+'</div>'):'');
+    var used={};
+    var items=scs.map(function(x){
+      var r=recBySch(x.id)||recOf(x.siteId,x.date);
+      if(r)used[r.id]=1;
+      return {date:x.date,sc:x,r:r,st:stat(x)};
+    });
+    rs.forEach(function(r){if(!used[r.id])items.push({date:r.date,sc:null,r:r,st:'done'})});
+    items.sort(function(a,b){return a.date<b.date?-1:1});
+    var lines=items.length?items.map(function(it){
+      var r=it.r;
+      return '<div style="margin-top:6px"><span class="pill p-'+it.st+'">'+LABEL[it.st]+' '+(+it.date.slice(8))+'일</span> '+
+        (it.sc?dotsHTML(it.sc):'')+
+        (r?'<div class="tiny" style="margin-top:3px">'+(r.signBy?'담당자 확인 '+esc(r.signBy):'담당자 확인 전')+
+          (r.toSite?' · 시설 교부':'')+(r.toHealth?' · 보건소 '+esc(r.via||''):'')+
+          (!r.signBy&&mySite(s.id)?' <button class="btn sm" data-sg2="'+esc(r.id)+'" style="margin-left:6px">서명</button>':'')+'</div>':'')+
+        '</div>';
+    }).join(''):'<div style="margin-top:4px"><span class="pill p-miss">일정 없음</span></div>';
     return '<div class="item"><div><div><b>'+esc(s.name)+'</b></div>'+
       '<div class="tiny">'+(s.mgrName?esc(s.mgrName)+(s.mgrTitle?' '+esc(s.mgrTitle):''):'담당자 미지정')+
-      (s.tel?' · '+esc(s.tel):'')+'</div><div style="margin-top:4px">'+tag+'</div>'+sub+'</div>'+
-      (rs.length&&!rs[0].signBy&&mySite(s.id)?'<button class="btn sm" data-sg2="'+esc(rs[0].id)+'">서명</button>':'')+
+      (s.tel?' · '+esc(s.tel):'')+'</div>'+lines+'</div>'+
       (s.tel?'<a class="btn ghost sm" href="tel:'+esc(String(s.tel).replace(/[^0-9+]/g,''))+'">전화</a>':'')+'</div>';
    }).join('');
   }).join('');
@@ -1685,13 +1710,73 @@ function renderStat(){
       var k=cur.y+'-'+pad(m);
       var rs=S.records.filter(function(r){return r.siteId===s.id&&r.date.slice(0,7)===k});
       var scs=S.schedules.filter(function(x){return x.siteId===s.id&&x.date.slice(0,7)===k&&x.status!=='취소'});
-      if(rs.length)h+='<td class="ok">'+rs.map(function(r){return +r.date.slice(8)}).join(',')+'</td>';
-      else if(scs.length)h+='<td'+(scs[0].date<S.today?' class="miss"':'')+'>'+(+scs[0].date.slice(8))+'</td>';
-      else h+='<td></td>';
+      var seen={},parts=[];
+      rs.forEach(function(r){seen[r.date]=1;parts.push({d:r.date,c:'cd-ok'})});
+      scs.forEach(function(x){if(!seen[x.date]){seen[x.date]=1;parts.push({d:x.date,c:x.date<S.today?'cd-miss':''})}});
+      parts.sort(function(a,b){return a.d<b.d?-1:1});
+      var allDone=parts.length&&parts.every(function(p){return p.c==='cd-ok'});
+      h+='<td'+(allDone?' class="ok"':'')+'>'+parts.map(function(p){
+        return '<span class="'+p.c+'">'+(+p.d.slice(8))+'</span>';
+      }).join(', ')+'</td>';
     }
     h+='</tr>';
   });
   $('yearTable').innerHTML=h+'</tbody>';
+}
+
+/* ---------- 현장 업무 ---------- */
+function workLists(){
+  var today=S.today;
+  var open=S.schedules.filter(function(s){return s.status!=='취소'&&!recBySch(s.id)&&!recOf(s.siteId,s.date)})
+    .sort(function(a,b){var x=a.date+(a.time||''),y=b.date+(b.time||'');return x<y?-1:1});
+  var ok=open.filter(function(s){return s.confirmBy||s.ackBy});
+  return {
+    late:ok.filter(function(s){return s.date<today}),
+    today:ok.filter(function(s){return s.date===today}),
+    next:ok.filter(function(s){return s.date>today}),
+    wait:open.filter(function(s){return !s.confirmBy&&!s.ackBy&&s.date>=today})
+  };
+}
+function workCount(){var w=workLists();return w.late.length+w.today.length}
+function renderWork(){
+  var w=workLists(),ym=S.today.slice(0,7);
+  var done=S.records.filter(function(r){return r.date.slice(0,7)===ym}).sort(function(a,b){return a.date<b.date?1:-1});
+  var when=function(d,t){var x=new Date(d);return (x.getMonth()+1)+'/'+x.getDate()+' ('+DOW[x.getDay()]+')'+(t?' '+esc(t):'')};
+  var card=function(s,btn){
+    var o=site(s.siteId)||{},n=(s.photos||[]).length;
+    return '<div class="item"><div><div><b>'+esc(o.name||'')+'</b></div>'+
+      '<div class="tiny">'+when(s.date,s.time)+(s.confirmBy?' · 확인 '+esc(s.confirmBy):(s.ackBy?' · 확인 '+esc(s.ackBy):''))+' · 사진 '+n+'/5</div>'+
+      (s.note?'<div class="tiny">'+esc(s.note)+'</div>':'')+'</div>'+btn+'</div>';
+  };
+  var workBtn=function(s){return '<button class="btn sm" data-w="'+esc(s.id)+'" style="white-space:nowrap">기록·사진</button>'};
+  var section=function(title,list,fn,limit){
+    if(!list.length)return '';
+    var max=limit||list.length;
+    return '<h3 style="margin:14px 0 4px">'+title+' <span class="tiny">'+list.length+'건</span></h3>'+
+      list.slice(0,max).map(fn).join('')+(list.length>max?'<p class="tiny">외 '+(list.length-max)+'건</p>':'');
+  };
+  var body=section('날짜 지남 · 기록 필요',w.late,function(s){return card(s,workBtn(s))})+
+    section('오늘 현장',w.today,function(s){return card(s,workBtn(s))})+
+    section('다가오는 현장',w.next,function(s){return card(s,workBtn(s))},20)+
+    section('일정 확인 대기',w.wait,function(s){
+      return card(s,isStaff()?'<button class="btn ghost sm" data-ok-sch="'+esc(s.id)+'" style="white-space:nowrap">일정 확인</button>':
+        '<button class="btn ghost sm" data-open="'+esc(s.id)+'">열기</button>');
+    },20)+
+    section('이번 달 완료',done,function(r){
+      var o=site(r.siteId)||{},n=photosOf(r).length;
+      return '<div class="item"><div><div><b>'+esc(o.name||'')+'</b> <span class="pill p-done">완료</span></div>'+
+        '<div class="tiny">'+when(r.date)+' · '+esc(r.method||'')+' · 사진 '+n+'/5</div></div>'+
+        (r.scheduleId?'<button class="btn ghost sm" data-w="'+esc(r.scheduleId)+'">열기</button>':'')+'</div>';
+    },10);
+  var box=$('workCard');
+  box.innerHTML='<h2 style="margin-bottom:2px">현장 업무</h2>'+
+    '<p class="muted">일정 확인이 끝난 현장이에요. 현장을 마치면 「기록·사진」을 눌러 실시 기록과 사진(5장까지)을 넣어주세요.</p>'+
+    (body||'<p class="muted" style="margin-top:12px">지금 처리할 현장이 없어요.</p>');
+  box.querySelectorAll('[data-w]').forEach(function(b){b.onclick=function(){openSchedule(b.dataset.w,true)}});
+  box.querySelectorAll('[data-open]').forEach(function(b){b.onclick=function(){openSchedule(b.dataset.open)}});
+  box.querySelectorAll('[data-ok-sch]').forEach(function(b){b.onclick=function(){
+    send('apiAckSchedule',[S.token,b.dataset.okSch,false],'일정을 확인했어요.');
+  }});
 }
 
 /* ---------- 서류 ---------- */
@@ -1721,7 +1806,7 @@ function renderHealth(){
     '<button class="btn ghost sm" id="bHDone"'+(ready.length&&stamp?'':' disabled')+'>보건소에 보냈어요</button></div>';
   $('bHPrint').onclick=function(){
     busy(true);
-    preloadSigns(ready).then(function(){busy(false);openPaper(ready.map(function(r){return certSheet(r,'보건소 제출용')}).join(''))});
+    preloadSigns(ready).then(function(){busy(false);openPaper(ready.map(function(r){return certSheet(r)}).join(''))});
   };
   $('bHDone').onclick=function(){
     var mm=modal('<p style="margin-bottom:12px">'+ready.length+'건을 어떻게 보냈나요? (진주보건소 보건행정과 055-749-6643 · 팩스 055-749-5719)</p><div class="row">'+
@@ -1891,7 +1976,7 @@ function showCerts(rs){
   busy(true);
   preloadSigns(rs).then(function(){
     busy(false);
-    openPaper(rs.map(function(r){return certSheet(r,'시설 보관용')+certSheet(r,'보건소 제출용')}).join(''));
+    openPaper(rs.map(function(r){return certSheet(r)}).join(''));
   });
   var miss=rs.filter(function(r){var s=site(r.siteId)||{};return !s.addr||!s.area||!s.mgrName||!s.mgrTitle});
   if(!S.company.name||!S.company.addr||!S.company.ceo)toast('설정에서 업소 정보를 채우면 증명서에 찍혀요.');
@@ -1935,7 +2020,7 @@ function renderSetup(){
   $('siteList').innerHTML=S.sites.map(function(s){
     return '<div class="item"><div><div><b>'+esc(s.name)+'</b></div>'+
       '<div class="tiny">'+(s.mgrName?esc(s.mgrName):'담당자 미지정')+(s.tel?' · '+esc(s.tel):'')+
-      ' · '+esc(window.BYRULE.label(s))+'</div></div>'+
+      ' · '+esc(window.BYRULE.label(s))+'</div>'+(s.planMemo?'<div class="tiny" style="white-space:pre-wrap">계약 계획: '+esc(s.planMemo)+'</div>':'')+'</div>'+
       '<button class="btn ghost sm" data-s="'+esc(s.id)+'">수정</button></div>';
   }).join('');
   $('siteList').querySelectorAll('[data-s]').forEach(function(b){b.onclick=function(){editSite(site(b.dataset.s))}});
@@ -2042,6 +2127,7 @@ function editSite(s){
     '<b style="font-size:14.5px">방역 반복 설정</b>'+
     '<label style="font-weight:600;color:var(--ink);display:flex;gap:8px;align-items:center;margin:8px 0 10px;font-size:14px">'+
     '<input type="checkbox" id="sManual" style="width:auto"'+(s.schedMode==='manual'?' checked':'')+'> 일정은 직접 입력 (정기 일정 없음)</label>'+
+    '<div class="field"><label>계약 계획 일정 메모 (계약서 내용을 적어두세요)</label><textarea id="sPlan" rows="3" placeholder="예: 연 6회, 3·5·7·9·10·12월 실시">'+esc(s.planMemo||'')+'</textarea></div>'+
     '<div id="wrapRule">'+
     '<p class="tiny" style="margin:4px 0 10px">여기서 정한 대로 「연간 일정 자동 생성」이 날짜를 깔아줍니다. 공휴일·주말이면 다음 평일로 미룹니다.</p>'+
 
@@ -2098,7 +2184,7 @@ function editSite(s){
       week2:+q('sWeek2').value,dow2:+q('sDow2').value,
       dom:+q('sDom').value||10,dom2:+q('sDom2').value||25,active:'Y',
       contractFrom:q('sFrom').value,contractTo:q('sTo').value,time:q('sTime').value,
-      schedMode:q('sManual').checked?'manual':'auto'};
+      schedMode:q('sManual').checked?'manual':'auto',planMemo:q('sPlan').value.trim()};
   }
   function sync(){
     var o=collect();
@@ -2146,7 +2232,7 @@ function editUser(u){
     '<div class="g2"><div class="field"><label>이름</label><input id="uName" value="'+esc(u.name)+'"></div>'+
     '<div class="field"><label>PIN (4자리)</label><input id="uPin" inputmode="numeric" maxlength="6" value=""></div></div>'+
     '<div class="g2"><div class="field"><label>권한</label><select id="uRole">'+
-    '<option value="manager"'+(u.role==='manager'?' selected':'')+'>담당자 (맡은 현장만)</option>'+
+    '<option value="manager"'+(u.role==='manager'?' selected':'')+'>공단 담당자 (맡은 현장만)</option>'+
     '<option value="staff"'+(u.role==='staff'?' selected':'')+'>우리 직원 (전체 현장·기록 입력)</option>'+
     '<option value="admin"'+(u.role==='admin'?' selected':'')+'>소독업소(관리자)</option></select></div>'+
     '<div class="field"><label>연락처</label><input id="uPhone" value="'+esc(u.phone||'')+'"></div></div>'+
@@ -2189,7 +2275,7 @@ var navBtns=[].slice.call(document.querySelectorAll('nav button'));
 navBtns.forEach(function(b){b.onclick=function(){
   view=+b.dataset.v;
   navBtns.forEach(function(x){x.setAttribute('aria-selected',String(x===b))});
-  [1,2,3,4].forEach(function(v){$('v'+v).classList.toggle('hide',v!==view)});
+  [1,2,3,4,5].forEach(function(v){$('v'+v).classList.toggle('hide',v!==view)});
   render();window.scrollTo(0,0);
 }});
 function render(){
@@ -2224,6 +2310,8 @@ function renderInner(){
   if(view===1){renderTodo();renderCal()}
   consumeDeepLink();
   consumeDeepLink();
+  $('navWork').classList.toggle('hide',!canRecord());
+  if(view===5)renderWork();
   if(view===2){renderCal.silent=1;renderStat()}
   if(view===3)renderDocs();
   if(view===4)renderSetup();
