@@ -1609,7 +1609,7 @@ function openSchedule(id,work){
       h+='<div class="row" style="margin-top:10px">';
       h+='<button class="btn ghost sm" data-cert="'+esc(r.id)+'">증명서 보기</button>';
       if(isAdmin())h+='<button class="btn ghost sm" data-notify="'+esc(r.id)+'">알림 보내기</button>';
-      if(can&&isManager())h+='<button class="btn '+(r.signBy?'ghost ':'')+'sm" data-sign="'+esc(r.id)+'">'+(r.signBy?'확인 취소':'완료 확인하기')+'</button>';
+      if(can&&isManager())h+='<button class="btn '+(r.signBy?'ghost ':'')+'sm" data-sign="'+esc(r.id)+'">'+(r.signBy?'서명 취소':'완료 확인하기')+'</button>';
       else if(r.signBy&&isAdmin())h+='<button class="btn ghost sm" data-sign="'+esc(r.id)+'">서명 취소</button>';
       if(canRecord())h+='<button class="btn ghost sm" data-edit="'+esc(r.id)+'">기록 수정</button>';
       if(!r.signBy&&(isAdmin()||(isStaff()&&r.createdBy===(S.me||{}).name)))h+='<button class="btn ghost sm danger" data-undo="'+esc(r.id)+'">완료 취소</button>';
