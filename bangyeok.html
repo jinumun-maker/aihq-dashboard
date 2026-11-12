@@ -884,6 +884,28 @@ window.BYRULE=(function(){
         });
       }});
     DB._lastPlan=made;
+    return snapOut(u)},
+  /* 현장 하나만: 오늘~계약 종료(없으면 올해 말)까지. 아직 손대지 않은 자동 일정은 새 규칙으로 갈아끼움 */
+  apiGenerateSite:function(t,siteId){var u=meOf(t);if(u.role!=='admin')err('소독업소 계정만 쓸 수 있어요.');
+    var s=DB.sites.filter(function(x){return x.id===siteId})[0];
+    if(!s||s.active==='N'||s.schedMode==='manual')err('정기 일정이 있는 현장만 만들 수 있어요.');
+    var from=s.contractFrom&&s.contractFrom>today?s.contractFrom:today;
+    var to=s.contractTo||(today.slice(0,4)+'-12-31');
+    var untouched=function(x){return x.siteId===s.id&&x.date>=from&&x.status==='예정'&&x.note==='자동 생성'&&
+      !x.confirmBy&&!x.ackBy&&!(x.photos&&x.photos.length)&&!DB.records.some(function(r){return r.scheduleId===x.id})};
+    var removed=DB.schedules.filter(untouched).length;
+    DB.schedules=DB.schedules.filter(function(x){return !untouched(x)});
+    var made=0;
+    for(var y=+from.slice(0,4);y<=+to.slice(0,4);y++)for(var m=1;m<=12;m++){
+      window.BYRULE.datesFor(s,y,m,DB.holidays).forEach(function(ds){
+        if(ds<from||ds>to)return;
+        if(DB.schedules.some(function(x){return x.siteId===s.id&&x.date===ds&&x.status!=='취소'}))return;
+        DB.schedules.push({id:uid('g'),siteId:s.id,date:ds,time:s.time||'',status:'예정',note:'자동 생성',
+          createdBy:u.name,createdAt:today,confirmBy:'',confirmAt:''});
+        made++;
+      });
+    }
+    DB._lastPlan=made;DB._lastRemoved=removed;
     return snapOut(u)}
  };
 
@@ -1019,7 +1041,7 @@ function modal(html){
   document.body.appendChild(m);return m;
 }
 function ask(msg,ok,fn){
-  var m=modal('<p style="margin-bottom:14px">'+esc(msg)+'</p><div class="row" style="justify-content:flex-end">'+
+  var m=modal('<p style="margin-bottom:14px;white-space:pre-line">'+esc(msg)+'</p><div class="row" style="justify-content:flex-end">'+
     '<button class="btn ghost sm" data-n>취소</button><button class="btn sm" data-y>'+esc(ok)+'</button></div>');
   m.querySelector('[data-n]').onclick=function(){m.remove()};
   m.querySelector('[data-y]').onclick=function(){m.remove();fn()};
@@ -2103,9 +2125,12 @@ function renderSetup(){
     return '<div class="item"><div><div><b>'+esc(s.name)+'</b></div>'+
       '<div class="tiny">'+(s.mgrName?esc(s.mgrName):'담당자 미지정')+(s.tel?' · '+esc(s.tel):'')+
       ' · '+esc(window.BYRULE.label(s))+'</div>'+(s.planMemo?'<div class="tiny" style="white-space:pre-wrap">계약 계획: '+esc(s.planMemo)+'</div>':'')+'</div>'+
-      '<button class="btn ghost sm" data-s="'+esc(s.id)+'">수정</button></div>';
+      '<div class="row" style="gap:6px;flex-wrap:nowrap">'+
+      (s.schedMode==='manual'?'':'<button class="btn ghost sm" data-g="'+esc(s.id)+'">달력에 넣기</button>')+
+      '<button class="btn ghost sm" data-s="'+esc(s.id)+'">수정</button></div></div>';
   }).join('');
   $('siteList').querySelectorAll('[data-s]').forEach(function(b){b.onclick=function(){editSite(site(b.dataset.s))}});
+  $('siteList').querySelectorAll('[data-g]').forEach(function(b){b.onclick=function(){askGenSite(site(b.dataset.g))}});
   appendEnded('siteList',S.allSites,'apiSaveSite','계약 종료된 현장');
   $('userList').innerHTML=S.users.map(function(u){
     return '<div class="item"><div><div><b>'+esc(u.name)+'</b> <span class="pill p-'+(u.role==='admin'?'done':'fix')+'">'+
@@ -2360,7 +2385,12 @@ function editSite(s){
     if(!o.name){toast('현장명을 넣어주세요.');return}
     if(o.schedMode!=='manual'&&o.freq==='custom'&&!o.months){toast('어느 달에 하는지 골라주세요.');return}
     var hasLogin=o.mgrName&&String(o.tel||'').replace(/[^0-9]/g,'').length>=4;
-    m.remove();send('apiSaveSite',[S.token,o],hasLogin?'저장했어요. 담당자 로그인: '+o.mgrName+' / 연락처 뒤 4자리':'저장했어요. 담당자 성명·연락처를 넣으면 로그인 계정이 만들어져요.');
+    m.remove();send('apiSaveSite',[S.token,o],hasLogin?'저장했어요. 담당자 로그인: '+o.mgrName+' / 연락처 뒤 4자리':'저장했어요. 담당자 성명·연락처를 넣으면 로그인 계정이 만들어져요.').then(function(){
+      if(o.schedMode==='manual')return;
+      var saved=(S.sites||[]).filter(function(x){return o.id?x.id===o.id:x.name===o.name}).pop();
+      if(!saved)return;
+      setTimeout(function(){askGenSite(saved)},300);
+    });
   };
   var off=m.querySelector('[data-off]');
   if(off)off.onclick=function(){var o=collect();m.remove();ask('이 현장 계약을 종료할까요? 지난 기록은 남고, 앞으로 잡힌 일정은 취소돼요.','종료',function(){
@@ -2408,6 +2438,17 @@ $('bAddHol').onclick=function(){
   if(!d){toast('날짜를 골라주세요.');return}
   send('apiSaveHoliday',[S.token,d,nm||'휴일'],'추가했어요.').then(function(){$('hName').value=''});
 };
+function askGenSite(s){
+  ask('「'+s.name+'」 일정을 달력에 넣을까요?\n'+window.BYRULE.label(s)+'\n(오늘부터 계약 끝날 때까지 · 아직 확인 안 된 자동 일정은 새 설정으로 바뀌어요)','달력에 넣기',function(){
+    var before=(S.schedules||[]).filter(function(x){return x.siteId===s.id&&x.status!=='취소'}).length;
+    busy(true);
+    call('apiGenerateSite',[S.token,s.id]).then(function(d){
+      busy(false);apply(d);
+      var after=(S.schedules||[]).filter(function(x){return x.siteId===s.id&&x.status!=='취소'}).length;
+      toast('달력에 넣었어요. 「'+s.name+'」 예정 '+after+'건 (이전 '+before+'건)');
+    }).catch(function(e){busy(false);toast((e&&e.message)||'처리하지 못했어요.')});
+  });
+}
 $('bPlan').onclick=function(){
   var y=+$('planYear').value;
   ask(y+'년 예정일을 한 번에 만들까요?','만들기',function(){send('apiGeneratePlan',[S.token,y],'일정을 만들었어요.')});
