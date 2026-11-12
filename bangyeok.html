@@ -794,9 +794,13 @@ window.BYRULE=(function(){
     }});return snapOut(u)},
   apiAckSchedule:function(t,id,off){var u=meOf(t);if(u.role==='manager')err('소독업소·직원 계정만 할 수 있어요.');
     DB.schedules.forEach(function(x){if(x.id===id){x.ackBy=off?'':u.name;x.ackAt=off?'':today}});return snapOut(u)},
+  /* 일정 승인은 공단 담당자 몫. 대표는 잘못된 승인 취소만 */
   apiConfirmSchedule:function(t,id,on){var u=meOf(t);
+    if(on&&u.role!=='manager')err('일정 승인은 공단 담당자 계정에서 해요.');
+    if(!on&&u.role==='staff')err('승인 취소는 공단 담당자나 대표 계정에서 할 수 있어요.');
     DB.schedules.forEach(function(x){if(x.id===id){if(!can(u,x.siteId))err('담당 현장이 아니에요.');
-      x.confirmBy=on?u.name:'';x.confirmAt=on?today:'';x.status=on?'확정':'예정'}});return snapOut(u)},
+      x.confirmBy=on?u.name:'';x.confirmAt=on?today:'';
+      if(x.status!=='완료'&&x.status!=='취소')x.status=on?'확정':'예정'}});return snapOut(u)},
   apiDeleteSchedule:function(t,id){var u=meOf(t);
     DB.schedules.forEach(function(x){if(x.id===id&&!can(u,x.siteId))err('담당 현장이 아니에요.')});
     if(DB.records.some(function(r){return r.scheduleId===id}))err('이미 실시 기록이 있어요.');
@@ -820,10 +824,12 @@ window.BYRULE=(function(){
     /* 완료 표시도 되돌림 → 다시 '예정' */
     DB.schedules.forEach(function(x){if(x.status==='완료'&&(x.id===rec.scheduleId||(x.siteId===rec.siteId&&x.date===rec.date)))x.status='예정'});
     return snapOut(u)},
+  /* 완료 확인 서명은 공단 담당자 본인만. 잘못된 서명 취소는 담당자 또는 소독업소(대표) */
   apiSignRecord:function(t,id,on,img){var u=meOf(t);
+    if(on&&u.role!=='manager')err('완료 확인 서명은 공단 담당자 계정에서만 할 수 있어요.');
+    if(!on&&u.role==='staff')err('서명 취소는 공단 담당자나 대표 계정에서 할 수 있어요.');
     DB.records.forEach(function(x){if(x.id===id){if(!can(u,x.siteId))err('담당 현장이 아니에요.');
-      var st=DB.sites.filter(function(q){return q.id===x.siteId})[0]||{};
-      x.signBy=on?(u.role!=='manager'?(st.mgrName||u.name):u.name):'';x.signAt=on?today:'';x.signImg=on?(img||''):''}});return snapOut(u)},
+      x.signBy=on?u.name:'';x.signAt=on?today:'';x.signImg=on?(img||''):''}});return snapOut(u)},
   apiDelivery:function(t,id,f,via){var u=meOf(t);if(u.role!=='admin')err('소독업소 계정만 바꿀 수 있어요.');
     DB.records.forEach(function(x){if(x.id===id){
       if(f==='toSite')x.toSite=x.toSite?'':today;
@@ -1112,6 +1118,7 @@ function start(){
 /* ---------- 공통 ---------- */
 function isAdmin(){return S.me&&S.me.role==='admin'}
 function isStaff(){return S.me&&S.me.role==='staff'}
+function isManager(){return S.me&&S.me.role==='manager'}
 function canRecord(){return isAdmin()||isStaff()}
 function roleName(r){return r==='admin'?'소독업소':(r==='staff'?'우리 직원':'공단 담당자')}
 function site(id){var L=S.allSites||S.sites;for(var i=0;i<L.length;i++)if(L[i].id===id)return L[i];return null}
@@ -1304,6 +1311,7 @@ function signRecord(id){
   for(var i=0;i<S.records.length;i++)if(S.records[i].id===id)r=S.records[i];
   if(!r){toast('기록을 찾지 못했어요.');return}
   if(!mySite(r.siteId)){toast('담당 현장이 아니에요.');return}
+  if(!isManager()&&!(r.signBy&&isAdmin())){toast('완료 확인 서명은 공단 담당자 계정에서 해요. 「알림 보내기」로 요청해 주세요.');return}
   if(r.signBy){
     ask('확인 서명을 취소할까요?','취소',function(){send('apiSignRecord',[S.token,id,false,''],'확인을 취소했어요.')});
     return;
@@ -1505,7 +1513,8 @@ function renderTodo(){
     out.push(block('오늘 가야 할 현장',todayJobs,line));
     out.push(block('날짜 지났는데 미실시',overdue,line));
     out.push(block('담당자 확인 기다리는 일정',needConfirm,line));
-    out.push(block('완료 확인·서명 안 된 방역',S.records.filter(function(r){return !r.signBy}),signLine));
+    out.push(block('공단 담당자 완료 확인(서명) 기다리는 방역',S.records.filter(function(r){return !r.signBy}),
+      function(r){return line({id:r.scheduleId,siteId:r.siteId,date:r.date})}));
     var recLine=function(r){return line({id:r.scheduleId,siteId:r.siteId,date:r.date})};
     out.push(block('증명서 시설 교부 안 됨',noCert,recLine));
     out.push(block('서명 끝남 · 보건소 제출 대기',noHealth,recLine));
@@ -1578,7 +1587,8 @@ function openSchedule(id,work){
   h+='<div class="row">'+(isNew||can?'<button class="btn sm" data-save>저장</button>':'');
   if(!isNew&&isAdmin()&&sc.requested)h+='<button class="btn '+(sc.ackBy?'ghost ':'')+'sm" data-ack>'+(sc.ackBy?'요청 확인 취소':'요청 확인')+'</button>';
   if(!isNew&&isStaff())h+='<button class="btn sm" data-ack>'+(sc.ackBy?'확인 취소':'일정 확인')+'</button>';
-  if(!isNew&&can&&!isStaff())h+='<button class="btn ghost sm" data-confirm>'+(sc.confirmBy?'확인 취소':'일정 확인(승인)')+'</button>';
+  if(!isNew&&can&&isManager())h+='<button class="btn ghost sm" data-confirm>'+(sc.confirmBy?'승인 취소':'일정 확인(승인)')+'</button>';
+  else if(!isNew&&isAdmin()&&sc.confirmBy)h+='<button class="btn ghost sm" data-confirm>공단 승인 취소</button>';
   if(!isNew&&can&&!r)h+='<button class="btn ghost sm danger" data-del style="margin-left:auto">삭제</button>';
   h+='</div></div>';
   if(!isNew&&can){
@@ -1599,7 +1609,8 @@ function openSchedule(id,work){
       h+='<div class="row" style="margin-top:10px">';
       h+='<button class="btn ghost sm" data-cert="'+esc(r.id)+'">증명서 보기</button>';
       if(isAdmin())h+='<button class="btn ghost sm" data-notify="'+esc(r.id)+'">알림 보내기</button>';
-      if(can)h+='<button class="btn '+(r.signBy?'ghost ':'')+'sm" data-sign="'+esc(r.id)+'">'+(r.signBy?'확인 취소':'완료 확인하기')+'</button>';
+      if(can&&isManager())h+='<button class="btn '+(r.signBy?'ghost ':'')+'sm" data-sign="'+esc(r.id)+'">'+(r.signBy?'확인 취소':'완료 확인하기')+'</button>';
+      else if(r.signBy&&isAdmin())h+='<button class="btn ghost sm" data-sign="'+esc(r.id)+'">서명 취소</button>';
       if(canRecord())h+='<button class="btn ghost sm" data-edit="'+esc(r.id)+'">기록 수정</button>';
       if(!r.signBy&&(isAdmin()||(isStaff()&&r.createdBy===(S.me||{}).name)))h+='<button class="btn ghost sm danger" data-undo="'+esc(r.id)+'">완료 취소</button>';
       h+='</div>';
@@ -1807,7 +1818,7 @@ function renderStat(){
         (it.sc?dotsHTML(it.sc):'')+
         (r?'<div class="tiny" style="margin-top:3px">'+(r.signBy?'담당자 확인 '+esc(r.signBy):'담당자 확인 전')+
           (r.toSite?' · 시설 교부':'')+(r.toHealth?' · 보건소 '+esc(r.via||''):'')+
-          (!r.signBy&&mySite(s.id)?' <button class="btn sm" data-sg2="'+esc(r.id)+'" style="margin-left:6px">서명</button>':'')+'</div>':'')+
+          (!r.signBy&&mySite(s.id)&&isManager()?' <button class="btn sm" data-sg2="'+esc(r.id)+'" style="margin-left:6px">서명</button>':'')+'</div>':'')+
         '</div>';
     }).join(''):'<div style="margin-top:4px"><span class="pill p-miss">일정 없음</span></div>';
     return '<div class="item"><div><div><b>'+esc(s.name)+'</b></div>'+
@@ -1946,7 +1957,7 @@ function renderDocs(){
       '<div class="tiny">'+(r.signBy?'담당자 확인 '+esc(r.signBy):'담당자 확인 전')+
       (r.toSite?' · 시설 교부':'')+(r.toHealth?' · 보건소 '+esc(r.via||''):'')+'</div></div>'+
       '<div class="row" style="flex-wrap:nowrap">'+
-      (r.signBy?'':'<button class="btn sm" data-sg="'+esc(r.id)+'">서명 받기</button>')+
+      (r.signBy||!isManager()?'':'<button class="btn sm" data-sg="'+esc(r.id)+'">완료 확인</button>')+
       (r.signBy||!isAdmin()?'':'<button class="btn ghost sm" data-nf="'+esc(r.id)+'">알림</button>')+
       '<button class="btn ghost sm" data-c="'+esc(r.id)+'">증명서</button></div></div>';
   }).join(''):'<p class="muted">이번 달 실시 기록이 없어요.</p>';
