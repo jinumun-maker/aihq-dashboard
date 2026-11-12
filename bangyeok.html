@@ -401,7 +401,37 @@ window.BYRULE=(function(){
       return ms.indexOf(m)>=0;
     }
     if(f==='legal')return (m>=4&&m<=9)||m===10||m===12||m===2;
+    if(f==='season')return planOf(s)[m-1]!=='0';
     return true;
+  }
+  /* 달마다 다르게: 12달 각각 0=없음 1=월1회 2=월2회 4=월4회 W=매주 W2=주2회 */
+  var PLAN_CODES=['0','1','2','4','W','W2'];
+  function planOf(s){
+    var a=String(s.monthPlan||'').split(',');
+    var out=[];for(var i=0;i<12;i++)out.push(PLAN_CODES.indexOf(a[i])>=0?a[i]:'1');
+    return out;
+  }
+  function seasonDates(s,y,m,hols){
+    var c=planOf(s)[m-1],out=[];
+    function push(d){if(!d)return;d=shift(d,hols,true);if(d.getMonth()===m-1)out.push(ymd(d))}
+    function every(dw){var dt=new Date(y,m-1,1);while(dt.getMonth()===m-1){if(dt.getDay()===dw)push(new Date(dt));dt.setDate(dt.getDate()+1)}}
+    var dw=+(s.dow||2),dw2=+(s.dow2||s.dow||2);
+    if(c==='1')push(nthDow(y,m,+(s.week||2),dw));
+    else if(c==='2'){push(nthDow(y,m,+(s.week||2),dw));push(nthDow(y,m,+(s.week2||4),dw2))}
+    else if(c==='4'){for(var n=1;n<=4;n++)push(nthDow(y,m,n,dw))}
+    else if(c==='W')every(dw);
+    else if(c==='W2'){every(dw);if(dw2!==dw)every(dw2)}
+    return out.filter(function(v,i,arr){return arr.indexOf(v)===i}).sort();
+  }
+  var PLAN_TXT={'1':'월1회','2':'월2회','4':'월4회','W':'매주','W2':'주2회'};
+  function seasonLabel(s){
+    var p=planOf(s),parts=[],i=0;
+    while(i<12){var j=i;while(j+1<12&&p[j+1]===p[i])j++;
+      if(p[i]!=='0')parts.push((i===j?(i+1)+'월':(i+1)+'~'+(j+1)+'월')+' '+PLAN_TXT[p[i]]);
+      i=j+1}
+    var K=['일','월','화','수','목','금','토'],two=p.some(function(c){return c==='2'||c==='W2'});
+    var day=K[+(s.dow||2)]+(two&&+(s.dow2||s.dow||2)!==+(s.dow||2)?'·'+K[+(s.dow2||s.dow||2)]:'')+'요일';
+    return parts.length?parts.join(' · ')+' ('+day+')':'실시하는 달 없음';
   }
   function anchors(s){
     var per=+(s.perMonth||1);
@@ -421,6 +451,7 @@ window.BYRULE=(function(){
   }
   function datesFor(s,y,m,hols){
     if(!monthDue(s,m))return [];
+    if((s.freq||'M')==='season')return seasonDates(s,y,m,hols);
     var out=[];
     if((s.freq||"M")==="W"){
       var wd=+(s.dow||2),dt=new Date(y,m-1,1);
@@ -454,6 +485,7 @@ window.BYRULE=(function(){
     if(s.schedMode==='manual')return '일정 직접 입력';
     var f=s.freq||'M', per=+(s.perMonth||1), txt='';
     if(f==='W')return '매주 '+['일','월','화','수','목','금','토'][+(s.dow||2)]+'요일';
+    if(f==='season')return seasonLabel(s);
     if(f==='M')txt='매월';
     else if(f==='2M')txt='2개월마다';
     else if(f==='3M')txt='3개월마다';
@@ -2215,7 +2247,7 @@ function editSite(s){
 
     '<div class="g2"><div class="field"><label>얼마나 자주</label><select id="sFreq">'+
     [['W','매주'],['M','매월'],['2M','2개월마다'],['3M','3개월마다(분기)'],['6M','6개월마다'],['Y','1년에 한 번'],
-     ['custom','정한 달에만'],['legal','법정 기준(4~9월 월1·10~3월 2개월1)']].map(function(f){
+     ['custom','정한 달에만'],['season','달마다 횟수가 달라요'],['legal','법정 기준(4~9월 월1·10~3월 2개월1)']].map(function(f){
       return '<option value="'+f[0]+'"'+(s.freq===f[0]?' selected':'')+'>'+f[1]+'</option>'}).join('')+'</select></div>'+
     '<div class="field" id="wrapStart"><label>시작하는 달</label><select id="sStart">'+
     [1,2,3,4,5,6,7,8,9,10,11,12].map(function(m){
@@ -2227,6 +2259,24 @@ function editSite(s){
       return '<label style="font-weight:500;color:var(--ink);display:inline-flex;align-items:center;gap:4px;font-size:13px">'+
         '<input type="checkbox" style="width:auto" value="'+m+'"'+(on?' checked':'')+'>'+m+'월</label>';
     }).join('')+'</div></div>'+
+
+    '<div class="field hide" id="wrapSeason"><label>달마다 몇 번 하나요</label>'+
+    '<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(96px,1fr));gap:6px" id="seasonBoxes">'+
+    (function(){var p=String(s.monthPlan||'').split(',');
+      var opts=[['0','안 함'],['1','월 1회'],['2','월 2회'],['4','월 4회'],['W','매주'],['W2','주 2회']];
+      return [1,2,3,4,5,6,7,8,9,10,11,12].map(function(mo){
+        var v=p[mo-1]||'1';
+        return '<label style="font-weight:600;color:var(--ink);font-size:13px">'+mo+'월'+
+          '<select data-mo="'+mo+'" style="margin-top:3px">'+opts.map(function(o){
+            return '<option value="'+o[0]+'"'+(v===o[0]?' selected':'')+'>'+o[1]+'</option>'}).join('')+'</select></label>';
+      }).join('')})()+
+    '</div>'+
+    '<div class="row" style="margin-top:6px;gap:6px"><span class="tiny">한꺼번에:</span>'+
+    '<select id="seasonFrom" style="width:auto">'+[1,2,3,4,5,6,7,8,9,10,11,12].map(function(mo){return '<option value="'+mo+'">'+mo+'월</option>'}).join('')+'</select>'+
+    '<span class="tiny">~</span><select id="seasonTo" style="width:auto">'+[1,2,3,4,5,6,7,8,9,10,11,12].map(function(mo){return '<option value="'+mo+'"'+(mo===12?' selected':'')+'>'+mo+'월</option>'}).join('')+'</select>'+
+    '<select id="seasonVal" style="width:auto"><option value="1">월 1회</option><option value="2">월 2회</option><option value="4">월 4회</option><option value="W">매주</option><option value="W2">주 2회</option><option value="0">안 함</option></select>'+
+    '<button type="button" class="btn ghost sm" id="seasonApply">적용</button></div>'+
+    '<div class="tiny" style="margin-top:6px">월 1회·월 4회·매주는 아래 「1회차」 요일로, 월 2회는 1회차·2회차로, 주 2회는 1회차·2회차 요일로 잡혀요.</div></div>'+
 
     '<div class="g2" id="wrapPer"><div class="field"><label>한 달에 몇 번</label><select id="sPer">'+
     '<option value="1"'+(+(s.perMonth||1)===1?' selected':'')+'>1회</option>'+
@@ -2258,11 +2308,13 @@ function editSite(s){
   var q=function(id){return m.querySelector('#'+id)};
   function collect(){
     var months=[].slice.call(m.querySelectorAll('#monthBoxes input:checked')).map(function(x){return x.value}).join(',');
-    return {id:s.id,name:q('sName').value.trim(),zone:q('sZone').value.trim(),dept:q('sDept').value.trim(),
+    var plan=[].slice.call(m.querySelectorAll('#seasonBoxes select')).map(function(x){return x.value}).join(',');
+    var season=q('sFreq').value==='season';
+    return {monthPlan:plan,id:s.id,name:q('sName').value.trim(),zone:q('sZone').value.trim(),dept:q('sDept').value.trim(),
       mgrName:q('sMgr').value.trim(),mgrTitle:q('sTitle').value.trim(),tel:q('sTel').value.trim(),
       addr:q('sAddr').value.trim(),area:q('sArea').value.trim(),
       freq:q('sFreq').value,months:months,startMonth:+q('sStart').value,perMonth:+q('sPer').value,
-      dayMode:q('sMode').value,week:+q('sWeek').value,dow:+q('sDow').value,
+      dayMode:season?'week':q('sMode').value,week:+q('sWeek').value,dow:+q('sDow').value,
       week2:+q('sWeek2').value,dow2:+q('sDow2').value,
       dom:+q('sDom').value||10,dom2:+q('sDom2').value||25,active:'Y',
       contractFrom:q('sFrom').value,contractTo:q('sTo').value,time:q('sTime').value,
@@ -2272,13 +2324,15 @@ function editSite(s){
     var o=collect();
     q('wrapRule').classList.toggle('hide',o.schedMode==='manual');
     q('wrapMonths').classList.toggle('hide',o.freq!=='custom');
-    q('wrapStart').classList.toggle('hide',['W','M','custom','legal'].indexOf(o.freq)>=0);
-    q('wrapPer').classList.toggle('hide',o.freq==='W');
+    var isSeason=o.freq==='season', pl=o.monthPlan.split(',');
+    q('wrapSeason').classList.toggle('hide',!isSeason);
+    q('wrapStart').classList.toggle('hide',['W','M','custom','legal','season'].indexOf(o.freq)>=0);
+    q('wrapPer').classList.toggle('hide',o.freq==='W'||isSeason);
     q('sWeek').classList.toggle('hide',o.freq==='W');
     var byWeek=(o.dayMode==='week'||o.freq==='W');
     q('wrapWeek').classList.toggle('hide',!byWeek);
     q('wrapDate').classList.toggle('hide',byWeek);
-    q('wrapWeek2').classList.toggle('hide',!(byWeek&&o.perMonth>=2&&o.freq!=='W'));
+    q('wrapWeek2').classList.toggle('hide',!(byWeek&&(isSeason?(pl.indexOf('2')>=0||pl.indexOf('W2')>=0):(o.perMonth>=2&&o.freq!=='W'))));
     q('wrapDom2').classList.toggle('hide',!(!byWeek&&o.perMonth>=2));
     var y=cur.y, prev=[];
     for(var mm=1;mm<=12;mm++){
@@ -2292,6 +2346,13 @@ function editSite(s){
     var el=q(id); if(el)el.addEventListener('change',sync);
   });
   m.querySelectorAll('#monthBoxes input').forEach(function(x){x.addEventListener('change',sync)});
+  m.querySelectorAll('#seasonBoxes select').forEach(function(x){x.addEventListener('change',sync)});
+  q('seasonApply').onclick=function(){
+    var a=+q('seasonFrom').value,b=+q('seasonTo').value,v=q('seasonVal').value;
+    if(a>b){var t=a;a=b;b=t}
+    m.querySelectorAll('#seasonBoxes select').forEach(function(x){var mo=+x.getAttribute('data-mo');if(mo>=a&&mo<=b)x.value=v});
+    sync();
+  };
   sync();
   m.querySelector('[data-no]').onclick=function(){m.remove()};
   m.querySelector('[data-ok]').onclick=function(){
