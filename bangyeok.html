@@ -634,6 +634,9 @@ window.BYRULE=(function(){
      r.certNo=y+'-'+('0000'+seq[y]).slice(-4);
      migrated=true;
    });
+   /* 실시 기록이 있는 일정은 언제나 '완료' (예전 승인 버튼이 상태를 덮어쓴 경우 바로잡기) */
+   var done={};d.records.forEach(function(r){if(r.scheduleId)done[r.scheduleId]=1});
+   d.schedules.forEach(function(s){if(done[s.id]&&s.status!=='취소')s.status='완료'});
    return d;
  }
  function persist(){
