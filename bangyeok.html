@@ -280,7 +280,9 @@ td.nm{text-align:left;white-space:nowrap;font-weight:600}
       <div class="row" style="margin-top:8px"><button class="btn ghost" id="bMonthly">월별 실시 내역</button></div>
       <div class="row" style="margin-top:8px"><button class="btn ghost" id="bMonthlyP">월별 실시 내역 (사진 포함)</button></div>
       <div class="row" style="margin-top:8px"><button class="btn ghost" id="bAnnual">연간 실적 보고서</button></div>
-      <p class="tiny" style="margin-top:10px">대장은 소독한 날부터 2년간 보관해야 해요.</p>
+      <div class="row" style="margin-top:8px" id="pdfRow"><button class="btn ghost" id="bYearPdf">이 연도 서류 드라이브에 PDF 저장</button></div>
+      <p class="tiny" id="pdfStat" style="margin-top:6px"></p>
+      <p class="tiny" style="margin-top:10px">대장은 소독한 날부터 2년간 보관해야 해요. 해가 바뀌면 지난해 서류(대장·실적 보고서·증명서)가 구글 드라이브 「방역서류」 폴더에 자동으로 PDF 저장돼요.</p>
     </div>
     <div class="card hide" id="healthCard"></div>
     <div class="card">
@@ -876,6 +878,12 @@ window.BYRULE=(function(){
     DB.users=DB.users.filter(function(x){return x.id!==id});
     DB.sites.forEach(function(s){if(s.mgrUserId===id){s.mgrUserId='';s.mgrName='';s.mgrTitle='';s.tel=''}});
     return snapOut(u)},
+  /* 연간 서류 PDF를 드라이브에 저장한 날 기록 (y년 → 저장일, 빈 값이면 지움) */
+  apiMarkPdf:function(t,y,dt){var u=meOf(t);if(u.role!=='admin')err('소독업소 계정만 바꿀 수 있어요.');
+    if(!DB.company)DB.company={};
+    var m=Object.assign({},DB.company.pdfSaved||{});
+    if(dt)m[String(y)]=dt;else delete m[String(y)];
+    DB.company.pdfSaved=m;return snapOut(u)},
   apiSaveCompany:function(t,c){var u=meOf(t);if(u.role!=='admin')err('소독업소 계정만 바꿀 수 있어요.');
     var keep=DB.company||{};
     ['name','ceo','no','tel','addr','stampImg','driveUrl','driveKey'].forEach(function(k){if(c[k]!==undefined)keep[k]=c[k]});
@@ -1037,7 +1045,8 @@ function apply(d){S.me=d.me;S.allSites=d.sites;S.allUsers=d.users;
   var onlyActive=function(x){return x.active!=='N'};
   S.sites=d.sites.filter(onlyActive);S.users=d.users.filter(onlyActive);S.schedules=d.schedules;S.records=d.records;
   S.holidays=d.holidays||[];S.company=d.company;S.today=d.today;HOL={};
-  S.holidays.forEach(function(h){HOL[h.date]=h.name});render()}
+  S.holidays.forEach(function(h){HOL[h.date]=h.name});render();
+  if(isAdmin()&&!window.__pdfTried){window.__pdfTried=1;setTimeout(autoYearPdf,4000)}}
 var HOL={};
 function holName(ds){return HOL[ds]||''}
 function send(fn,args,okMsg){
@@ -1952,6 +1961,9 @@ function renderHealth(){
 function renderDocs(){
   var rs=monthRecs();
   $('docTitle').textContent=cur.y+'년 '+cur.m+'월 서류';
+  $('pdfRow').classList.toggle('hide',!isAdmin());
+  var sv=((S.company||{}).pdfSaved||{})[String(cur.y)];
+  $('pdfStat').textContent=isAdmin()?(sv?cur.y+'년 서류: '+sv+' 드라이브에 저장됨':cur.y+'년 서류: 아직 드라이브에 저장 안 됨'):'';
   renderHealth();
   $('recList').innerHTML=rs.length?rs.map(function(r){
     var s=site(r.siteId)||{};
@@ -2009,8 +2021,9 @@ function showMonthly(withPhotos){
     openPaper(out);
   });
 }
-function showAnnual(){
-  var y=cur.y,ys=String(y);
+function showAnnual(){openPaper(annualHTML(cur.y))}
+function annualHTML(y){
+  var ys=String(y);
   var inY=function(x){return String(x.date).slice(0,4)===ys};
   var recs=S.records.filter(inY);
   var plans=S.schedules.filter(function(s){return inY(s)&&s.status!=='취소'});
@@ -2035,15 +2048,68 @@ function showAnnual(){
     var n=recs.filter(function(r){return r.siteId===s.id}).length;
     return row+'<td>'+n+'</td><td>'+pct(d.filter(isDone).length,d.length)+'</td></tr>';
   }).join('');
-  openPaper('<div class="sheet led">'+reportHead('방역 실적 보고서',y+'년 · 진주시설관리공단 · 기준일 '+S.today)+
+  return ('<div class="sheet led">'+reportHead('방역 실적 보고서',y+'년 · 진주시설관리공단 · 기준일 '+S.today)+
     '<div class="sum">'+tile(sitesY.length+'곳','관리 현장')+tile(plans.length+'회','연간 계획')+tile(recs.length+'회','실시 완료')+tile(pct(due.filter(isDone).length,due.length),'이행률(기준일까지)')+
     tile(pct(signed,recs.length),'담당자 서명 완료')+tile(pct(recs.filter(function(r){return r.toSite}).length,recs.length),'증명서 시설 교부')+tile(pct(recs.filter(function(r){return r.toHealth}).length,recs.length),'보건소 제출')+tile(pct(withPh,recs.length),'사진 등록')+'</div>'+
     '<table><thead>'+head+'</thead><tbody>'+rows+'</tbody></table>'+
     '<p class="paperfoot">칸의 숫자는 방역을 실시한 날짜입니다.</p></div>');
 }
+
+/* ---------- 연간 서류 PDF → 구글 드라이브 (내 드라이브/방역서류/연도) ---------- */
+var PDF_CSS='body{font-family:"Malgun Gothic","Noto Sans KR",sans-serif;color:#000;margin:0}'+
+  '.sheet{padding:0;font-size:11pt;page-break-after:always}'+
+  '.lawhead{font-size:9.5pt;border-bottom:1.2pt solid #000;padding-bottom:1.5mm;margin-bottom:4mm}'+
+  '.no{font-size:10.5pt;margin-bottom:3mm}'+
+  'h4{text-align:center;font-size:18pt;letter-spacing:.3em;margin:0 0 5mm}'+
+  'table{width:100%;border-collapse:collapse;font-size:10pt}'+
+  'th,td{border:.6pt solid #000;padding:2mm;text-align:left;word-break:break-all}'+
+  'th{background:#F2F2F2;text-align:center}'+
+  '.led table{font-size:8.5pt}.led th,.led td{padding:1.5mm 1mm;text-align:center}.led td.l{text-align:left}'+
+  '.meta{font-size:9.5pt;margin-bottom:2.5mm}.meta span{display:inline-block;margin-right:8mm}'+
+  '.stmt{margin:7mm 0 5mm;text-align:center;font-size:10.5pt;line-height:1.8}.dt{text-align:center;margin-bottom:6mm}'+
+  'table.issuer{width:76%;margin-left:auto}.paperfoot{margin-top:6mm;font-size:8.5pt;text-align:center}'+
+  '.sigimg{height:12mm;vertical-align:middle;margin-left:3mm}'+
+  '.sum div{display:inline-block;width:23%;border:.6pt solid #000;padding:2mm 0;margin:0 1% 2mm 0;text-align:center;font-size:9pt}.sum b{display:block;font-size:13pt}'+
+  '@page{size:A4 portrait;margin:14mm}';
+function yearPdfHTML(y){
+  var rs=S.records.filter(function(r){return +String(r.date).slice(0,4)===y}).sort(function(a,b){return a.date<b.date?-1:1});
+  var led='',per=16;
+  for(var i=0;i<rs.length;i+=per)led+=ledgerSheet(rs.slice(i,i+per),y+'년 전체'+(rs.length>per?' ('+(i/per+1)+')':''));
+  return '<!DOCTYPE html><html><head><meta charset="utf-8"><style>'+PDF_CSS+'</style></head><body>'+
+    led+annualHTML(y)+rs.map(function(r){return certSheet(r)}).join('')+'</body></html>';
+}
+function saveYearPdf(y,auto){
+  var c=S.company||{};
+  if(!driveOn()){if(!auto)toast('설정 「사진 PC 폴더 자동 저장」에 연결 주소를 먼저 넣어 주세요.');return Promise.resolve(false)}
+  var rs=S.records.filter(function(r){return +String(r.date).slice(0,4)===y});
+  if(!rs.length){if(!auto)toast(y+'년 기록이 없어요.');return Promise.resolve(false)}
+  if(!auto)busy(true);
+  return preloadSigns(rs).then(function(){
+    return fetch(c.driveUrl,{method:'POST',body:JSON.stringify({key:c.driveKey||'',action:'pdf',year:String(y),
+      name:y+'년 방역 서류 (소독실시대장·실적보고서·증명서)',html:yearPdfHTML(y)})});
+  }).then(function(r){return r.json()}).then(function(j){
+    if(!auto)busy(false);
+    if(!j||!j.ok)throw new Error((j&&j.error)||'fail');
+    return call('apiMarkPdf',[S.token,y,S.today]).then(function(d){apply(d);
+      toast((auto?'자동으로 ':'')+y+'년 방역 서류를 구글 드라이브 「방역서류」 폴더에 PDF로 저장했어요.');return true});
+  }).catch(function(){if(!auto)busy(false);
+    toast(y+'년 서류 PDF를 드라이브에 저장하지 못했어요. 서류 탭 「드라이브에 PDF 저장」으로 다시 해 주세요.');return false});
+}
+/* 해가 바뀌면 지난해 서류를 한 번 자동 저장 (대표 계정으로 화면을 열 때) */
+function autoYearPdf(){
+  if(!isAdmin()||!driveOn())return;
+  var py=+String(S.today).slice(0,4)-1;
+  if(((S.company||{}).pdfSaved||{})[String(py)])return;
+  saveYearPdf(py,true);
+}
 $('bMonthly').onclick=function(){showMonthly(false)};
 $('bMonthlyP').onclick=function(){showMonthly(true)};
 $('bAnnual').onclick=showAnnual;
+$('bYearPdf').onclick=function(){
+  var y=cur.y,done=((S.company||{}).pdfSaved||{})[String(y)];
+  ask(y+'년 서류(소독실시대장·실적 보고서·증명서)를 PDF 한 개로 구글 드라이브 「방역서류/'+y+'」 폴더에 저장할까요?'+
+    (done?'\n('+done+'에 저장한 파일은 새 파일로 바뀌어요)':''),'저장',function(){saveYearPdf(y,false)});
+};
 $('bCertAll').onclick=function(){var rs=monthRecs();if(!rs.length){toast('이번 달 기록이 없어요.');return}showCerts(rs)};
 $('bLedger').onclick=function(){var rs=monthRecs();if(!rs.length){toast('이번 달 기록이 없어요.');return}
   showLedger(rs,cur.y+'년 '+cur.m+'월분')};
