@@ -79,6 +79,25 @@ input,select,textarea{font:inherit;width:100%;padding:11px;border:1px solid var(
 .hbtn{font:inherit;font-size:12.5px;font-weight:600;border:1px solid var(--line);background:var(--card);
  color:var(--ink);border-radius:999px;padding:6px 12px;cursor:pointer;display:inline-flex;align-items:center;gap:5px}
 .tabrow{display:flex;gap:7px;flex-wrap:wrap;margin:10px 0 14px}
+.ct-head{display:flex;justify-content:space-between;align-items:flex-start;gap:10px}
+.ct-year{display:flex;align-items:center;justify-content:center;gap:14px;margin:14px 0 4px}
+.ct-year b{font-size:17px;min-width:70px;text-align:center}
+.ct-year .btn{width:auto;padding:4px 12px;font-size:16px}
+.ct-tiles{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin-top:10px}
+.ct-tile{border-radius:12px;padding:10px 10px 9px;background:#F3F5F8}
+.ct-tile span{display:block;font-size:11.5px;color:var(--muted)}
+.ct-tile b{display:block;font-size:15.5px;margin-top:2px;word-break:keep-all}
+.ct-tile.t1{background:var(--soft)}.ct-tile.t2{background:var(--oksoft)}.ct-tile.t3{background:#FFF6E5}
+.ct-bar{height:8px;border-radius:99px;background:#EDF0F3;overflow:hidden;margin-top:10px}
+.ct-bar i{display:block;height:100%;background:var(--ok);border-radius:99px}
+.ct-card .ct-top{display:flex;justify-content:space-between;align-items:flex-start;gap:10px}
+.ct-amt{font-size:21px;font-weight:800;margin:8px 0 2px;letter-spacing:-.01em}
+.ct-chips{display:flex;flex-wrap:wrap;gap:5px;margin-top:6px}
+.ct-chip{font-size:11.5px;padding:2px 9px;border-radius:99px;background:#EEF1F4;color:#374151;font-weight:600}
+.ct-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px;margin-top:10px;padding-top:10px;border-top:1px solid var(--line)}
+.ct-grid span{display:block;font-size:11px;color:var(--muted)}.ct-grid b{font-size:13px}
+.ct-memo{margin-top:10px;padding:8px 10px;border-radius:9px;background:#F7F8FA;font-size:12.5px;white-space:pre-wrap}
+@media(max-width:380px){.ct-tile b{font-size:14px}}
 .tabrow button{font:inherit;font-size:13.5px;font-weight:600;border:1px solid var(--line);background:var(--card);
  color:var(--ink);border-radius:10px;padding:8px 14px;cursor:pointer;display:inline-flex;align-items:center;gap:7px}
 .tabrow button[aria-selected="true"]{background:var(--main);border-color:var(--main);color:#fff}
@@ -277,12 +296,6 @@ td.nm{text-align:left;white-space:nowrap;font-weight:600}
 
   <!-- 현황 -->
   <section id="v2" class="hide">
-    <div class="card hide" id="cMoney">
-      <div class="row" style="justify-content:space-between;align-items:center"><h2 style="margin:0" id="moneyTitle">계약 금액</h2>
-        <button class="btn sm" id="bAddCt" style="width:auto">+ 계약 추가</button></div>
-      <p class="tiny" style="margin:4px 0 0">🔒 대표 계정에만 보여요. 수입·지출은 리미트 웹에서 관리해요.</p>
-      <div id="moneyBox"></div>
-    </div>
     <div class="card">
       <h2 id="statTitle"></h2>
       <div id="statList"></div>
@@ -291,6 +304,20 @@ td.nm{text-align:left;white-space:nowrap;font-weight:600}
       <h2>연간 현황</h2>
       <div class="scroll"><table id="yearTable"></table></div>
     </div>
+  </section>
+
+  <!-- 계약 서류 (대표 전용) -->
+  <section id="v6" class="hide">
+    <div class="card">
+      <div class="ct-head">
+        <div><h2 style="margin:0">계약 서류</h2><p class="tiny" style="margin:2px 0 0">🔒 대표 계정에만 보여요 · 수입·지출은 리미트 웹에서 관리해요</p></div>
+        <button class="btn sm" id="bAddCt" style="width:auto;flex-shrink:0">+ 계약 추가</button>
+      </div>
+      <div class="ct-year"><button class="btn ghost sm" id="ctPrev" aria-label="이전 연도">‹</button><b id="moneyTitle">2026년</b><button class="btn ghost sm" id="ctNext" aria-label="다음 연도">›</button></div>
+      <div id="moneySum"></div>
+    </div>
+    <div id="moneyBox"></div>
+    <div class="card" id="moneyYears"></div>
   </section>
 
   <!-- 서류 -->
@@ -417,6 +444,7 @@ td.nm{text-align:left;white-space:nowrap;font-weight:600}
   <button data-v="2" aria-selected="false"><b>📋</b>현황</button>
   <button data-v="3" aria-selected="false"><b>🖨</b>서류</button>
   <button data-v="4" aria-selected="false"><b>⚙</b>설정</button>
+  <button data-v="6" aria-selected="false" id="navCt" class="hide"><b>📁</b>계약서류</button>
 </nav>
 
 <div id="paper"></div>
@@ -1234,7 +1262,7 @@ function start(){
     $('login').classList.add('hide');$('app').classList.remove('hide');$('nav').classList.remove('hide');
     view=1;
     navBtns.forEach(function(x){x.setAttribute('aria-selected',String(+x.dataset.v===1))});
-    [1,2,3,4,5].forEach(function(v){$('v'+v).classList.toggle('hide',v!==1)});
+    [1,2,3,4,5,6].forEach(function(v){$('v'+v).classList.toggle('hide',v!==1)});
     apply(d);
   }).catch(function(e){busy(false);$('login').classList.remove('hide');$('lmsg').textContent=(e&&e.message)||'';});
 }
@@ -1598,7 +1626,8 @@ function renderTabRow(){
     canRecord()?{v:5,t:'현장 업무',c:workCount()}:null,
     {v:2,t:'현황',c:m.waitConfirm.length},
     {v:3,t:'서류',c:isAdmin()?(m.noCert.length+m.noHealth.length):0},
-    {v:4,t:'설정',c:0}
+    {v:4,t:'설정',c:0},
+    isAdmin()?{v:6,t:'계약 서류',c:0}:null
   ];
   row.innerHTML=defs.filter(Boolean).map(function(d){
     return '<button data-t="'+d.v+'" aria-selected="'+(view===d.v?'true':'false')+'">'+d.t+
@@ -1944,36 +1973,56 @@ function ctCount(c){
   S.schedules.forEach(function(s){if(ids.indexOf(s.siteId)>=0&&String(s.date).slice(0,4)===y&&s.status!=='취소'&&!seen[s.id]&&!seen[s.siteId+s.date])plan++});
   return {plan:plan,done:done};
 }
+var ctY=new Date().getFullYear();
 function renderMoney(){
-  var box=$('cMoney');if(!box)return;
-  box.classList.toggle('hide',!isAdmin());if(!isAdmin())return;
-  var y=cur.y,L=(S.contracts||[]).filter(function(c){return +c.year===y});
-  $('moneyTitle').textContent=y+'년 계약 금액';
-  var tot=0,doneAmt=0,vats={};
-  var rows=L.map(function(c){
-    var n=ctCount(c),unit=n.plan?c.amount/n.plan:0,da=n.plan?Math.min(c.amount,unit*n.done):0;
-    tot+=c.amount;doneAmt+=da;vats[c.vat]=1;
-    var names=ctSites(c).map(function(id){return (site(id)||{}).name||'(지운 현장)'}).join(', ');
-    return '<div class="item"><div style="min-width:0"><div><b>'+esc(c.title||names)+'</b></div>'+
-      (c.title?'<div class="tiny">'+esc(names)+'</div>':'')+
-      '<div style="font-size:16px;font-weight:800;margin-top:3px">'+won(c.amount)+' <span class="tiny" style="font-weight:500">부가세 '+esc(c.vat)+'</span></div>'+
-      '<div class="tiny">'+(n.plan?'실시 '+n.done+' / 계획 '+n.plan+'회 · 1회 약 '+won(unit)+' · 완료분 약 '+won(da):'달력에 일정이 아직 없어요')+'</div>'+
-      (c.date?'<div class="tiny">계약일 '+esc(c.date)+'</div>':'')+
-      (c.memo?'<div class="tiny" style="white-space:pre-wrap">'+esc(c.memo)+'</div>':'')+'</div>'+
-      '<button class="btn ghost sm" data-ct="'+esc(c.id)+'" style="width:auto;flex-shrink:0;white-space:nowrap">수정</button></div>';
+  if(!isAdmin())return;
+  var y=ctY,all=S.contracts||[],L=all.filter(function(c){return +c.year===y});
+  L.sort(function(a,b){return b.amount-a.amount});
+  $('moneyTitle').textContent=y+'년';
+  var tot=0,doneAmt=0,vats={},nPlan=0,nDone=0;
+  var cards=L.map(function(c){
+    var n=ctCount(c),unit=n.plan?c.amount/n.plan:0,da=n.plan?Math.min(c.amount,unit*n.done):0,pct=n.plan?Math.min(100,Math.round(n.done*100/n.plan)):0;
+    tot+=c.amount;doneAmt+=da;vats[c.vat]=1;nPlan+=n.plan;nDone+=n.done;
+    var names=ctSites(c).map(function(id){return (site(id)||{}).name||'(지운 현장)'});
+    return '<div class="card ct-card">'+
+      '<div class="ct-top"><div style="min-width:0"><b style="font-size:15px">'+esc(c.title||names.join(', '))+'</b>'+
+        '<div class="ct-chips">'+names.map(function(nm){return '<span class="ct-chip">'+esc(nm)+'</span>'}).join('')+'</div></div>'+
+        '<button class="btn ghost sm" data-ct="'+esc(c.id)+'" style="width:auto;flex-shrink:0;white-space:nowrap">수정</button></div>'+
+      '<div class="ct-amt">'+won(c.amount)+' <span class="tiny" style="font-weight:500">부가세 '+esc(c.vat)+'</span></div>'+
+      (n.plan?'<div class="ct-bar"><i style="width:'+pct+'%"></i></div>'+
+        '<div class="tiny" style="margin-top:5px">실시 '+n.done+' / '+n.plan+'회 ('+pct+'%) · 완료분 약 '+won(da)+'</div>'
+        :'<div class="tiny" style="margin-top:6px">달력에 일정이 아직 없어요. 현장 설정에서 「달력에 넣기」를 하면 진행률이 보여요.</div>')+
+      '<div class="ct-grid"><div><span>1회 금액</span><b>'+(n.plan?'약 '+won(unit):'-')+'</b></div>'+
+        '<div><span>계약일</span><b>'+(c.date?esc(c.date):'-')+'</b></div>'+
+        '<div><span>남은 금액</span><b>'+won(c.amount-da)+'</b></div></div>'+
+      (c.memo?'<div class="ct-memo">'+esc(c.memo)+'</div>':'')+
+    '</div>';
   }).join('');
-  var sum=L.length?'<div class="g2" style="margin:12px 0 4px">'+
-      '<div style="background:var(--soft);border-radius:10px;padding:10px"><div class="tiny">계약 총액 ('+L.length+'건)</div><b style="font-size:17px">'+won(tot)+'</b></div>'+
-      '<div style="background:var(--oksoft);border-radius:10px;padding:10px"><div class="tiny">실시 완료분 · 남은 금액</div><b style="font-size:15px">'+won(doneAmt)+'</b><div class="tiny">남음 '+won(tot-doneAmt)+'</div></div></div>'+
-      (Object.keys(vats).length>1?'<p class="tiny">부가세 포함·별도 계약이 섞여 있어요.</p>':'')+
-      '<p class="tiny">완료분은 「계약 금액 ÷ 달력 계획 횟수 × 실시 횟수」로 셈한 대략 금액이에요.</p>'
-    :'<p class="muted" style="margin-top:10px">'+y+'년 계약이 아직 없어요. 「+ 계약 추가」로 넣어주세요.</p>';
-  $('moneyBox').innerHTML=sum+rows;
+  var pctAll=nPlan?Math.min(100,Math.round(nDone*100/nPlan)):0;
+  $('moneySum').innerHTML=L.length?
+    '<div class="ct-tiles"><div class="ct-tile t1"><span>계약 총액 · '+L.length+'건</span><b>'+won(tot)+'</b></div>'+
+    '<div class="ct-tile t2"><span>실시 완료분</span><b>'+won(doneAmt)+'</b></div>'+
+    '<div class="ct-tile t3"><span>남은 금액</span><b>'+won(tot-doneAmt)+'</b></div></div>'+
+    (nPlan?'<div class="ct-bar"><i style="width:'+pctAll+'%"></i></div><div class="tiny" style="margin-top:5px">전체 방역 '+nDone+' / '+nPlan+'회 실시 ('+pctAll+'%)</div>':'')+
+    (Object.keys(vats).length>1?'<p class="tiny" style="margin-top:6px">부가세 포함·별도 계약이 섞여 있어요.</p>':'')
+    :'<p class="muted" style="margin:12px 0 2px;text-align:center">'+y+'년 계약이 아직 없어요.<br>「+ 계약 추가」로 넣어주세요.</p>';
+  $('moneyBox').innerHTML=cards+(L.length?'<p class="tiny" style="margin:-4px 4px 12px">완료분 = 계약 금액 ÷ 달력 계획 횟수 × 실시 횟수 (대략 금액이에요)</p>':'');
   $('moneyBox').querySelectorAll('[data-ct]').forEach(function(b){b.onclick=function(){
-    editContract((S.contracts||[]).filter(function(c){return c.id===b.dataset.ct})[0])}});
+    editContract(all.filter(function(c){return c.id===b.dataset.ct})[0])}});
+  /* 연도별 합계 */
+  var ys={};all.forEach(function(c){var k=+c.year;ys[k]=ys[k]||{n:0,s:0};ys[k].n++;ys[k].s+=c.amount});
+  var keys=Object.keys(ys).map(Number).sort(function(a,b){return b-a});
+  $('moneyYears').classList.toggle('hide',!keys.length);
+  $('moneyYears').innerHTML='<h2 style="margin-bottom:6px">연도별 계약</h2>'+keys.map(function(k){
+    return '<button class="item linkline" data-cy="'+k+'" style="width:100%;background:none;border-left:0;border-right:0;border-bottom:0;font:inherit;cursor:pointer;text-align:left'+(k===y?';color:var(--main)':'')+'">'+
+      '<span><b>'+k+'년</b> <span class="tiny">'+ys[k].n+'건</span></span><b>'+won(ys[k].s)+'</b></button>';
+  }).join('');
+  $('moneyYears').querySelectorAll('[data-cy]').forEach(function(b){b.onclick=function(){ctY=+b.dataset.cy;renderMoney();window.scrollTo(0,0)}});
 }
+$('ctPrev').onclick=function(){ctY--;renderMoney()};
+$('ctNext').onclick=function(){ctY++;renderMoney()};
 function editContract(c){
-  var isNew=!c;c=c||{year:cur.y,vat:'포함',siteIds:''};
+  var isNew=!c;c=c||{year:ctY,vat:'포함',siteIds:''};
   var picked=ctSites(c);
   var sites=(S.allSites||S.sites).filter(function(s){return s.active!=='N'||picked.indexOf(s.id)>=0});
   var m=modal('<h2>'+(isNew?'계약 추가':'계약 수정')+'</h2>'+
@@ -1981,7 +2030,7 @@ function editContract(c){
     '<div class="field"><label>현장 (한 계약에 여러 곳이면 모두 고르세요)</label><div id="ctSites">'+
     sites.map(function(s){return '<label style="font-weight:500;color:var(--ink);display:flex;gap:8px;align-items:center;margin-bottom:6px">'+
       '<input type="checkbox" style="width:auto" value="'+esc(s.id)+'"'+(picked.indexOf(s.id)>=0?' checked':'')+'> '+esc(s.name)+'</label>'}).join('')+'</div></div>'+
-    '<div class="g2"><div class="field"><label>연도</label><input id="ctYear" type="number" inputmode="numeric" value="'+esc(c.year||cur.y)+'"></div>'+
+    '<div class="g2"><div class="field"><label>연도</label><input id="ctYear" type="number" inputmode="numeric" value="'+esc(c.year||ctY)+'"></div>'+
     '<div class="field"><label>계약일</label><input id="ctDate" type="date" value="'+esc(c.date||'')+'"></div></div>'+
     '<div class="g2"><div class="field"><label>계약 금액 (원)</label><input id="ctAmt" inputmode="numeric" value="'+(c.amount?won(c.amount).replace('원',''):'')+'" placeholder="예: 3,300,000"></div>'+
     '<div class="field"><label>부가세</label><select id="ctVat"><option'+(c.vat!=='별도'?' selected':'')+'>포함</option><option'+(c.vat==='별도'?' selected':'')+'>별도</option></select></div></div>'+
@@ -1995,7 +2044,7 @@ function editContract(c){
     var ids=[].map.call(q('ctSites').querySelectorAll('input:checked'),function(x){return x.value}).join(',');
     if(!ids){toast('현장을 1곳 이상 골라주세요.');return}
     if(!q('ctAmt').value.replace(/[^0-9]/g,'')){toast('계약 금액을 넣어주세요.');return}
-    m.remove();
+    m.remove();if(+q('ctYear').value)ctY=+q('ctYear').value;
     send('apiSaveContract',[S.token,{id:c.id||'',title:q('ctTitle').value.trim(),siteIds:ids,year:q('ctYear').value,
       date:q('ctDate').value,amount:q('ctAmt').value,vat:q('ctVat').value,memo:q('ctMemo').value.trim()}],'저장했어요.');
   };
@@ -2007,7 +2056,6 @@ function editContract(c){
 }
 $('bAddCt').onclick=function(){editContract(null)};
 function renderStat(){
-  renderMoney();
   var key=cur.y+'-'+pad(cur.m);
   $('statTitle').textContent=cur.y+'년 '+cur.m+'월 현황';
   var zs=zoneList();
@@ -2839,7 +2887,7 @@ var navBtns=[].slice.call(document.querySelectorAll('nav button'));
 navBtns.forEach(function(b){b.onclick=function(){
   view=+b.dataset.v;
   navBtns.forEach(function(x){x.setAttribute('aria-selected',String(x===b))});
-  [1,2,3,4,5].forEach(function(v){$('v'+v).classList.toggle('hide',v!==view)});
+  [1,2,3,4,5,6].forEach(function(v){$('v'+v).classList.toggle('hide',v!==view)});
   render();window.scrollTo(0,0);
 }});
 function render(){
@@ -2875,6 +2923,9 @@ function renderInner(){
   consumeDeepLink();
   consumeDeepLink();
   $('navWork').classList.toggle('hide',!canRecord());
+  $('navCt').classList.toggle('hide',!isAdmin());
+  if(view===6&&!isAdmin()){view=1;navBtns.forEach(function(x){if(+x.dataset.v===1)x.click()});return}
+  if(view===6)renderMoney();
   if(view===5)renderWork();
   if(view===2){renderCal.silent=1;renderStat()}
   if(view===3)renderDocs();
