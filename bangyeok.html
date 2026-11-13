@@ -223,7 +223,7 @@ td.nm{text-align:left;white-space:nowrap;font-weight:600}
     <div class="field"><label for="lpin">PIN (공단 담당자는 전화번호 뒤 4자리)</label><input id="lpin" type="tel" inputmode="numeric" maxlength="6" placeholder="····"></div>
     <button class="btn" id="lbtn">들어가기</button>
     <p class="tiny" id="lmsg" style="margin-top:10px"></p>
-    <button class="btn ghost sm" id="lSetup" style="margin-top:10px">처음 설정 · PIN 잊었을 때 (관리자)</button>
+    <button class="btn ghost sm" id="lSetup" style="margin-top:10px">처음 설정 · PIN 잊었을 때 (대표)</button>
   </div>
   <p class="lg-foot">소독업 정식 신고 업체 · 법정 서식으로 기록하고 보관해요</p>
 </div>
@@ -1244,7 +1244,7 @@ function isAdmin(){return S.me&&S.me.role==='admin'}
 function isStaff(){return S.me&&S.me.role==='staff'}
 function isManager(){return S.me&&S.me.role==='manager'}
 function canRecord(){return isAdmin()||isStaff()}
-function roleName(r){return r==='admin'?'소독업소':(r==='staff'?'우리 직원':'공단 담당자')}
+function roleName(r){return r==='admin'?'대표':(r==='staff'?'우리 직원':'공단 담당자')}
 function site(id){var L=S.allSites||S.sites;for(var i=0;i<L.length;i++)if(L[i].id===id)return L[i];return null}
 function mySite(id){
   if(isAdmin()||isStaff())return true;
@@ -2778,7 +2778,7 @@ function editUser(u){
     '<div class="g2"><div class="field"><label>권한</label><select id="uRole">'+
     '<option value="manager"'+(u.role==='manager'?' selected':'')+'>공단 담당자 (맡은 현장만)</option>'+
     '<option value="staff"'+(u.role==='staff'?' selected':'')+'>우리 직원 (전체 현장·기록 입력)</option>'+
-    '<option value="admin"'+(u.role==='admin'?' selected':'')+'>소독업소(관리자)</option></select></div>'+
+    '<option value="admin"'+(u.role==='admin'?' selected':'')+'>대표 (소독업소 · 전체 관리)</option></select></div>'+
     '<div class="field"><label>연락처</label><input id="uPhone" value="'+esc(u.phone||'')+'"></div></div>'+
     '<div class="field" id="uSiteWrap"><label>담당 현장 (고른 현장의 일정만 보여요)</label><div id="uSites">'+
     S.sites.map(function(s){return '<label style="font-weight:500;color:var(--ink);display:flex;gap:8px;align-items:center;margin-bottom:6px">'+
