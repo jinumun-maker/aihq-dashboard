@@ -1123,7 +1123,6 @@ function stepsOf(sc){
     {k:'담당자 확인',on:!!sc.confirmBy},
     {k:'방역 실시',on:!!r},
     {k:'완료 확인',on:!!(r&&r.signBy)},
-    {k:'증명서 교부',on:!!(r&&r.toSite)},
     {k:'보건소 발송',on:!!(r&&r.toHealth)}
   ];
 }
@@ -1602,8 +1601,7 @@ function renderSummary(){
     {n:m.week.length,l:'이번 주 예정',c:''},
     {n:m.miss.length,l:'날짜 지남 · 미실시',c:m.miss.length?'alert':'good'},
     {n:m.waitConfirm.length,l:'담당자 확인 대기',c:m.waitConfirm.length?'warn':'good'},
-    admin?{n:m.noCert.length,l:'증명서 미교부',c:m.noCert.length?'alert':'good'}
-         :{n:m.waitSign.length,l:'완료 확인 대기',c:m.waitSign.length?'warn':'good'},
+    {n:m.waitSign.length,l:'완료 확인 대기',c:m.waitSign.length?'warn':'good'},
     admin?{n:m.noHealth.length,l:'보건소 미발송',c:m.noHealth.length?'alert':'good'}
          :{n:m.done,l:'이번 달 완료',c:'good'}
   ];
@@ -1625,7 +1623,7 @@ function renderTabRow(){
     {v:1,t:'일정 달력',c:m.today.length+m.miss.length},
     canRecord()?{v:5,t:'현장 업무',c:workCount()}:null,
     {v:2,t:'현황',c:m.waitConfirm.length},
-    {v:3,t:'서류',c:isAdmin()?(m.noCert.length+m.noHealth.length):0},
+    {v:3,t:'서류',c:isAdmin()?m.noHealth.length:0},
     {v:4,t:'설정',c:0},
     isAdmin()?{v:6,t:'계약 서류',c:0}:null
   ];
@@ -1686,7 +1684,6 @@ function renderTodo(){
     out.push(block('공단 담당자 완료 확인(서명) 기다리는 방역',S.records.filter(function(r){return !r.signBy}),
       function(r){return line({id:r.scheduleId,siteId:r.siteId,date:r.date})}));
     var recLine=function(r){return line({id:r.scheduleId,siteId:r.siteId,date:r.date})};
-    out.push(block('증명서 시설 교부 안 됨',noCert,recLine));
     out.push(block('서명 끝남 · 보건소 제출 대기',noHealth,recLine));
   }else if(isStaff()){
     out.push(block('오늘 가야 할 현장',todayJobs,line));
@@ -1786,7 +1783,6 @@ function openSchedule(id,work){
       h+='</div>';
       if(isAdmin()){
         h+='<div class="row" style="margin-top:8px">'+
-          '<button class="btn ghost sm" data-dv="toSite">시설 교부'+(r.toSite?' ✓':'')+'</button>'+
           '<button class="btn ghost sm" data-dv="toHealth">보건소'+(r.toHealth?' ✓ '+esc(r.via||''):'')+'</button></div>';
       }
     } else if(canRecord()){
@@ -2079,7 +2075,7 @@ function renderStat(){
       return '<div style="margin-top:6px"><span class="pill p-'+it.st+'">'+LABEL[it.st]+' '+(+it.date.slice(8))+'일</span> '+
         (it.sc?dotsHTML(it.sc):'')+
         (r?'<div class="tiny" style="margin-top:3px">'+(r.signBy?'담당자 확인 '+esc(r.signBy):'담당자 확인 전')+
-          (r.toSite?' · 시설 교부':'')+(r.toHealth?' · 보건소 '+esc(r.via||''):'')+
+          (r.toHealth?' · 보건소 '+esc(r.via||''):'')+
           (!r.signBy&&mySite(s.id)&&isManager()?' <button class="btn sm" data-sg2="'+esc(r.id)+'" style="margin-left:6px">서명</button>':'')+'</div>':'')+
         '</div>';
     }).join(''):'<div style="margin-top:4px"><span class="pill p-miss">일정 없음</span></div>';
@@ -2220,7 +2216,7 @@ function renderDocs(){
     return '<div class="item"><div><div><b>'+esc(s.name||'')+'</b></div>'+
       '<div class="tiny">'+esc(r.date)+' · '+esc(r.method)+(r.worker?' · '+esc(r.worker):'')+'</div>'+
       '<div class="tiny">'+(r.signBy?'담당자 확인 '+esc(r.signBy):'담당자 확인 전')+
-      (r.toSite?' · 시설 교부':'')+(r.toHealth?' · 보건소 '+esc(r.via||''):'')+'</div></div>'+
+      (r.toHealth?' · 보건소 '+esc(r.via||''):'')+'</div></div>'+
       '<div class="row" style="flex-wrap:nowrap">'+
       (r.signBy||!isManager()?'':'<button class="btn sm" data-sg="'+esc(r.id)+'">완료 확인</button>')+
       (r.signBy||!isAdmin()?'':'<button class="btn ghost sm" data-nf="'+esc(r.id)+'">알림</button>')+
@@ -2250,11 +2246,11 @@ function showMonthly(withPhotos){
     var s=site(r.siteId)||{};
     return '<tr><td class="nowrap">'+esc(r.certNo||'')+'</td><td class="nowrap">'+esc(r.date)+'</td><td class="l">'+esc(s.name||'')+'</td>'+
       '<td>'+esc(r.method||'')+'</td><td class="l">'+esc(r.chem||'')+(r.amount?' '+esc(r.amount):'')+'</td>'+
-      '<td>'+esc(r.signBy||'대기')+'</td><td class="nowrap">'+esc(r.toSite||'-')+'</td><td class="nowrap">'+esc(r.toHealth||'-')+'</td><td>'+photosOf(r).length+'</td></tr>';
+      '<td>'+esc(r.signBy||'대기')+'</td><td class="nowrap">'+esc(r.toHealth||'-')+'</td><td>'+photosOf(r).length+'</td></tr>';
   };
   for(var i=0;i<rs.length;i+=per){
     out+='<div class="sheet led">'+reportHead('방역 실시 내역',meta)+
-      '<table><thead><tr><th>증명서 번호</th><th>실시일</th><th>현장</th><th>소독 종류</th><th>약품·사용량</th><th>담당자 확인</th><th>시설 교부</th><th>보건소 제출</th><th>사진</th></tr></thead><tbody>'+
+      '<table><thead><tr><th>증명서 번호</th><th>실시일</th><th>현장</th><th>소독 종류</th><th>약품·사용량</th><th>담당자 확인</th><th>보건소 제출</th><th>사진</th></tr></thead><tbody>'+
       rs.slice(i,i+per).map(row).join('')+'</tbody></table></div>';
   }
   if(!withPhotos){openPaper(out);return}
@@ -2300,7 +2296,7 @@ function annualHTML(y){
   }).join('');
   return ('<div class="sheet led">'+reportHead('방역 실적 보고서',y+'년 · 진주시설관리공단 · 기준일 '+S.today)+
     '<div class="sum">'+tile(sitesY.length+'곳','관리 현장')+tile(plans.length+'회','연간 계획')+tile(recs.length+'회','실시 완료')+tile(pct(due.filter(isDone).length,due.length),'이행률(기준일까지)')+
-    tile(pct(signed,recs.length),'담당자 서명 완료')+tile(pct(recs.filter(function(r){return r.toSite}).length,recs.length),'증명서 시설 교부')+tile(pct(recs.filter(function(r){return r.toHealth}).length,recs.length),'보건소 제출')+tile(pct(withPh,recs.length),'사진 등록')+'</div>'+
+    tile(pct(signed,recs.length),'담당자 서명 완료')+tile(pct(recs.filter(function(r){return r.toHealth}).length,recs.length),'보건소 제출')+tile(pct(withPh,recs.length),'사진 등록')+'</div>'+
     '<table><thead>'+head+'</thead><tbody>'+rows+'</tbody></table>'+
     '<p class="paperfoot">칸의 숫자는 방역을 실시한 날짜입니다.</p></div>');
 }
