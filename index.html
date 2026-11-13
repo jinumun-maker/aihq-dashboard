@@ -169,6 +169,11 @@
   .vrow-act button{background:none;border:none;font-size:16px;cursor:pointer;opacity:.6;padding:4px}
   .vrow-act button:hover{opacity:1}
   .vempty{text-align:center;color:var(--muted);font-size:13px;padding:24px}
+  .schmemo{margin:5px 0 3px;padding:8px 10px;background:var(--card);border:1px solid var(--line);border-radius:9px}
+  .schmemo .mlbl{font-size:10.5px;color:var(--muted);font-weight:700;margin-bottom:3px}
+  .schmemo .mtxt{font-size:12px;color:var(--ink);line-height:1.55;white-space:pre-wrap;word-break:break-word}
+  .schmemo .mmaprow{margin-top:6px}
+  .schmemo a.mmap{display:inline-block;padding:4px 10px;border:1px solid var(--line);border-radius:7px;font-size:11.5px;color:var(--ink);text-decoration:none;background:var(--bg)}
   .vedit-grid{display:grid;grid-template-columns:auto 1fr;gap:9px 10px;align-items:center;margin-top:6px}
   .vedit-grid label{font-size:12px;color:var(--muted);font-weight:700}
   .vedit-grid .vault-inp{margin-bottom:0}
@@ -1837,6 +1842,7 @@ if(window.AIHQ_DATA){
     {date:"2026-11-16",co:"daman",site:"세종 폴리싱 (1/7일)",work:"15:30",crew:"",contact:"",quote:0,status:"예약"},
     {date:"2026-11-17",co:"daman",site:"세종 폴리싱 (2/7일)",work:"",crew:"",contact:"",quote:0,status:"예약"},
     {date:"2026-11-18",co:"daman",site:"세종 폴리싱 (3/7일)",work:"",crew:"",contact:"",quote:0,status:"예약"},
+    {date:"2026-11-18",co:"daman",site:"금산 락정 내외부 유리",work:"",crew:"",contact:"01085315056",quote:250000,status:"예약",memo:"주소 - 금산면 중천로 21번길 15-1\n오전 8시30분 ~9시 시작 내부 유리부터 시작 -웨그테일\n오후 점심 외부 유리 진행 - 장죽 버핑 - 퓨어워터 작업\n출입구 마지막 정리"},
     {date:"2026-11-19",co:"daman",site:"세종 폴리싱 (4/7일)",work:"",crew:"",contact:"",quote:0,status:"예약"},
     {date:"2026-11-20",co:"daman",site:"세종 폴리싱 (5/7일)",work:"",crew:"",contact:"",quote:0,status:"예약"},
     {date:"2026-11-21",co:"daman",site:"세종 폴리싱 (6/7일)",work:"",crew:"",contact:"",quote:0,status:"예약"},
@@ -1940,7 +1946,7 @@ if(window.AIHQ_DATA){
     {date:"2026-11-06",name:"명석 폴리싱 (3/4일)"},
     {date:"2026-11-07",name:"명석 폴리싱 (4/4일)"}
   ];
-  window.AIHQ_DATA.calSync = "2026-11-11";
+  window.AIHQ_DATA.calSync = "2026-11-13";
 }
 /* 🏫 학교 영업 — 기록은 getData()/setData() 상태의 schools 필드에 저장되어 기존 클라우드 동기화로 팀 공유됩니다. */
 (function(){
@@ -2307,6 +2313,7 @@ function _mergeSchedule(oldSched, incoming){
     if(from.status && from.status!=='예약') to.status=from.status;
     if(!to.contact && from.contact) to.contact=from.contact;
     if(from.note && !to.note) to.note=from.note;
+    if(from.memo && !to.memo) to.memo=from.memo;   // 현장 메모(주소·특이사항) 보존
     if(from.manual) to.manual=true;
   };
   // 1차: 같은 날짜+같은 현장(또는 같은 연락처) 정확 매칭
@@ -3477,7 +3484,7 @@ function render(){
     const byDay={};
     const schedKeys=new Set((d.schedule||[]).map(s=>s.date+'|'+s.site));
     (d.calendar||[]).forEach((e,i)=>{ if(schedKeys.has(e.date+'|'+e.title)) return; (byDay[e.date]=byDay[e.date]||[]).push({t:'cal',i,time:e.time||'',title:e.title,note:e.note||''}); });
-    (d.schedule||[]).forEach(s=>{ (byDay[s.date]=byDay[s.date]||[]).push({t:'sched',time:'',title:s.site,note:s.crew?('인원: '+s.crew):(s.work||'인원 미배정'),co:s.co}); });
+    (d.schedule||[]).forEach(s=>{ (byDay[s.date]=byDay[s.date]||[]).push({t:'sched',time:'',title:s.site,note:s.crew?('인원: '+s.crew):(s.work||'인원 미배정'),co:s.co,memo:s.memo||'',site:s.site}); });
     const dts=Object.keys(byDay).filter(x=>x>=TODAY).sort();
     const agendaHTML = dts.length ? dts.map(dt=>{
       const dd=new Date(dt+'T00:00:00'), isT=dt===TODAY;
@@ -3490,7 +3497,7 @@ function render(){
         <div style="flex:1;font-size:12.5px">${items.map(it=>
           it.t==='cal'
           ? `<div style="margin:2px 0">${it.time?`<b>${it.time}</b> `:''}${it.title}${it.note?`<span style="color:var(--muted)"> · ${it.note}</span>`:''} <button class="del" onclick="delCalEvent(${it.i})" title="삭제">✕</button></div>`
-          : `<div style="margin:2px 0"><span class="pill ${coPill(it.co)}">${coName(it.co)}</span> ${it.title}${it.note?`<span style="color:var(--muted)"> · ${it.note}</span>`:''}</div>`
+          : `<div style="margin:2px 0"><span class="pill ${coPill(it.co)}">${coName(it.co)}</span> ${it.title}${it.note?`<span style="color:var(--muted)"> · ${it.note}</span>`:''}${schMemoHTML(it.memo,it.site)}</div>`
         ).join('')}</div>
       </div>`;
     }).join('') : `<div style="color:var(--muted);font-size:12.5px;padding:10px 0">예정된 일정이 없습니다.<br>등록하거나 "구글 캘린더 최신화해줘"라고 하세요.</div>`;
@@ -3947,15 +3954,26 @@ function editSchedCrew(i){
     d.crewMap=d.crewMap||{}; const k=s.date+'|'+s.site; if(s.crew) d.crewMap[k]=s.crew; else delete d.crewMap[k];  // 영구 저장
     setData(d); render(); }
 }
+// 현장 메모(캘린더 설명)에서 주소 한 줄만 뽑아 지도 검색에 쓰기
+function _memoAddr(memo){ if(!memo) return ''; var m=String(memo).match(/주소[^\n]*/); if(!m) return ''; return m[0].replace(/^주소\s*[-:·.\s]*/,'').trim(); }
+// 일정 목록(아젠다)에 메모 카드 + 지도 열기 버튼 그리기
+function schMemoHTML(memo,site){
+  if(!memo || !String(memo).trim()) return '';
+  var addr=_memoAddr(memo);
+  var map = addr ? '<div class="mmaprow"><a class="mmap" href="https://map.naver.com/p/search/'+encodeURIComponent(addr)+'" target="_blank" rel="noopener">📍 지도 열기</a></div>' : '';
+  return '<div class="schmemo"><div class="mlbl">메모</div><div class="mtxt">'+escHtml(memo)+'</div>'+map+'</div>';
+}
 // 달력에서 배치 현장 클릭 → 인원 확인 (폰에서도 확인 가능)
 function calJobInfo(i){
   const d=getData(); const s=(d.schedule||[])[i]; if(!s) return;
-  const act=prompt(`📍 ${s.site}\n📅 ${s.date}   👷 ${crewNames(s)||'(미배정)'}\n📞 ${s.contact||'-'}   💰 ${s.quote?KRW(s.quote):'-'}\n\n무엇을 할까요? 번호 입력:\n  1 = 날짜 이동\n  2 = 인원 수정\n  3 = 이 일정 삭제 (취소된 현장 등)`, '2');
+  var _addr=_memoAddr(s.memo); var _m=s.memo?('\n\n📝 메모\n'+s.memo):'';
+  const act=prompt(`📍 ${s.site}\n📅 ${s.date}   👷 ${crewNames(s)||'(미배정)'}\n📞 ${s.contact||'-'}   💰 ${s.quote?KRW(s.quote):'-'}${_m}\n\n무엇을 할까요? 번호 입력:\n  1 = 날짜 이동\n  2 = 인원 수정\n  3 = 이 일정 삭제 (취소된 현장 등)${_addr?'\n  4 = 지도 열기':''}`, '2');
   if(act===null) return;
   const a=String(act).trim();
   if(a==='1') moveSchedPrompt(i);
   else if(a==='2') editSchedCrew(i);
   else if(a==='3'){ if(confirm(`'${s.site}' (${s.date}) 일정을 삭제할까요?\n(취소됐거나 잘못 들어온 일정을 지웁니다)`)) delSchedule(i); }
+  else if(a==='4' && _addr){ window.open('https://map.naver.com/p/search/'+encodeURIComponent(_addr),'_blank'); }
 }
 // 달력에서 완료 현장 클릭 → 참여 인원 확인
 function calDoneInfo(i){
@@ -5924,8 +5942,8 @@ function buildMonthCal(y,m,d,opts){
     let items='';
     (sch[ds]||[]).forEach(({s,idx})=>{ const assigned=!!(s.crew&&String(s.crew).trim()); const cr=assigned?crewNames(s).split(/,\s*/)[0]:'';
       items+=assigned
-        ? `<span class="ci sch clk" draggable="true" data-dt="sch" data-di="${idx}" onclick="calJobInfo(${idx})" title="클릭=인원확인 · 끌어서 날짜 이동">🧹 ${esc(s.site)}${cr?' ·'+esc(cr):''}</span>`
-        : `<span class="ci noassign clk" draggable="true" data-dt="sch" data-di="${idx}" onclick="calJobInfo(${idx})" title="클릭=인원배치/이동/삭제 · 끌어서 이동">⚠️ ${esc(s.site)} <span style="font-size:9px">미배정</span></span>`; });
+        ? `<span class="ci sch clk" draggable="true" data-dt="sch" data-di="${idx}" onclick="calJobInfo(${idx})" title="클릭=인원확인 · 끌어서 날짜 이동">🧹 ${esc(s.site)}${s.memo?' 📝':''}${cr?' ·'+esc(cr):''}</span>`
+        : `<span class="ci noassign clk" draggable="true" data-dt="sch" data-di="${idx}" onclick="calJobInfo(${idx})" title="클릭=인원배치/이동/삭제 · 끌어서 이동">⚠️ ${esc(s.site)}${s.memo?' 📝':''} <span style="font-size:9px">미배정</span></span>`; });
     (done[ds]||[]).forEach(({s,idx})=>{ if(schKeys.has(ds+'|'+s.site))return; const cr=(crewNames(s)||'').split(/,\s*/)[0];
       items+=`<span class="ci done clk" onclick="calDoneInfo(${idx})" title="완료 현장 — 클릭해 인원 확인">✅ ${esc(s.site)}${cr?' ·'+esc(cr):''}</span>`; });
     (ev[ds]||[]).forEach(({e,ei})=>{ items+=`<span class="ci ev clk" draggable="true" data-dt="ev" data-di="${ei}" onclick="calEvInfo(${ei})" title="클릭=이동/삭제 · 끌어서 날짜 이동 (${esc(e.title)} ${esc(e.note)})">📌 ${e.time?esc(e.time)+' ':''}${esc(e.title)}</span>`; });
