@@ -2942,18 +2942,28 @@ window.__byReady=function(mode){
   if(n)n.textContent=(mode==='cloud'?'직원·담당자와 실시간으로 공유되는 화면입니다.'
     :'서버에 연결되지 않아 이 기기에만 저장됩니다. 인터넷을 확인해 주세요.');
   bootLogin();
+  autoLogin();
 };
+/* 새로고침해도 로그인 유지: 자료(DB)를 다 받은 뒤에 저장된 로그인으로 다시 들어가요 */
+var autoTried=false;
+function autoLogin(){
+  if(autoTried||S.me)return;
+  var t='';try{t=localStorage.getItem('by-token')||''}catch(e){}
+  autoTried=true;
+  if(!t){$('lmsg').textContent='';return}
+  S.token=t;start();
+}
 
 (function(){
   var t='';try{t=localStorage.getItem('by-token')||''}catch(e){}
   bootLogin();
+  if(t)$('lmsg').textContent='로그인 정보를 확인하고 있어요…';
   var tries=0,iv=setInterval(function(){
     tries++;
     if(window.__byMode){clearInterval(iv);window.__byReady(window.__byMode)}
     else if(tries>60)clearInterval(iv);
   },200);
   if(window.__byMode)window.__byReady(window.__byMode);
-  if(t){S.token=t;start()}
 })();
 
 </script>
