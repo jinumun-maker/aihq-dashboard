@@ -180,13 +180,22 @@
   /* 🙋 개인 메모 (나만 보기) */
   .pm-add{display:flex;gap:8px;margin:12px 0}
   .pm-add input{flex:1;min-width:0;padding:9px 11px;border:1px solid var(--line);border-radius:8px;background:var(--bg);color:var(--ink);font-family:inherit;font-size:13.5px}
-  .pm-item{display:flex;align-items:center;gap:10px;padding:9px 11px;border:1px solid var(--line);border-radius:9px;margin-bottom:7px;background:var(--card)}
+  .pm-item{display:flex;align-items:center;gap:10px;padding:9px 11px;border:1px solid var(--line);border-radius:9px;margin-bottom:7px;background:var(--card);flex-wrap:wrap}
   .pm-cb{width:18px;height:18px;border:2px solid var(--line);border-radius:5px;display:inline-flex;align-items:center;justify-content:center;font-size:12px;color:transparent;cursor:pointer;flex:none}
   .pm-item.done .pm-cb{background:var(--good);border-color:var(--good);color:#fff}
   .pm-tx{flex:1;font-size:13.5px;word-break:break-all}
   .pm-item.done .pm-tx{text-decoration:line-through;color:var(--muted)}
   .pm-del{background:none;border:none;color:var(--muted);cursor:pointer;font-size:14px;opacity:.55;flex:none}
   .pm-del:hover{opacity:1}
+  .pm-ord{display:inline-flex;gap:3px;flex:none}
+  .pm-ord button{background:none;border:1px solid var(--line);border-radius:6px;color:var(--muted);cursor:pointer;font-size:11px;line-height:1;padding:3px 6px}
+  .pm-ord button:hover{color:var(--ink);border-color:var(--muted)}
+  .pm-ord button[disabled]{opacity:.3;cursor:default}
+  .pm-pal{flex-basis:100%;display:flex;gap:8px;align-items:center;padding-top:7px;margin-top:1px;border-top:1px dashed var(--line)}
+  .pm-pal .lbl{font-size:10.5px;color:var(--muted);margin-right:1px}
+  .pm-sw{width:16px;height:16px;border-radius:999px;cursor:pointer;box-sizing:border-box;padding:0;border:2px solid transparent}
+  .pm-sw.none{border:1.5px solid var(--line);background:var(--card)}
+  .pm-sw.on{box-shadow:0 0 0 2px var(--bg),0 0 0 4px var(--muted)}
   .pm-empty{color:var(--muted);font-size:13px;padding:10px 2px}
   .pm-memo-wrap{margin-top:14px}
   .pm-memo-lbl{font-size:12px;color:var(--muted);font-weight:700;margin-bottom:6px}
@@ -1950,7 +1959,7 @@ if(window.AIHQ_DATA){
     {date:"2026-11-06",name:"명석 폴리싱 (3/4일)"},
     {date:"2026-11-07",name:"명석 폴리싱 (4/4일)"}
   ];
-  window.AIHQ_DATA.calSync = "2026-11-13b";
+  window.AIHQ_DATA.calSync = "2026-11-13c";
 }
 /* 🏫 학교 영업 — 기록은 getData()/setData() 상태의 schools 필드에 저장되어 기존 클라우드 동기화로 팀 공유됩니다. */
 (function(){
@@ -5639,6 +5648,19 @@ function pmToggleTodo(id){
 function pmDelTodo(id){
   var d=getData(), p=_myPersonal(d); p.todos=p.todos.filter(function(x){return x.id!==id;}); setData(d); render();
 }
+var PM_COLORS=[{k:'',c:'',t:'없음'},{k:'red',c:'#ef4444',t:'급함'},{k:'orange',c:'#f59e0b',t:'중요'},{k:'green',c:'#10b981',t:'여유'},{k:'blue',c:'#3b82f6',t:'참고'}];
+function _pmColor(k){ for(var i=0;i<PM_COLORS.length;i++){ if(PM_COLORS[i].k===k) return PM_COLORS[i].c; } return ''; }
+function pmSetTodoColor(id,k){
+  var d=getData(), it=_myPersonal(d).todos.find(function(x){return x.id===id;}); if(!it) return;
+  it.color=(it.color===k?'':k); setData(d); render();   // 같은 색 다시 누르면 해제(되돌리기)
+}
+function pmMoveTodo(id,dir){
+  var d=getData(), todos=_myPersonal(d).todos, i=-1, j;
+  for(j=0;j<todos.length;j++){ if(todos[j].id===id){ i=j; break; } }
+  if(i<0) return; var ni=i+dir; if(ni<0||ni>=todos.length) return;
+  var tmp=todos[i]; todos[i]=todos[ni]; todos[ni]=tmp;
+  setData(d); render();
+}
 var _pmMemoTimer=null;
 function pmSetMemo(v){
   clearTimeout(_pmMemoTimer);
@@ -5650,11 +5672,20 @@ function renderPersonal(){
   if(!p.todos.length){
     list.innerHTML='<div class="pm-empty">아직 할 일이 없어요. 위에 입력하고 Enter.</div>';
   } else {
-    list.innerHTML=p.todos.map(function(t){
-      return '<div class="pm-item'+(t.done?' done':'')+'">'
+    list.innerHTML=p.todos.map(function(t,idx){
+      var col=_pmColor(t.color||'');
+      var sw=PM_COLORS.map(function(c){
+        return '<span class="pm-sw'+(c.k?'':' none')+((t.color||'')===c.k?' on':'')+'"'
+          +(c.c?' style="background:'+c.c+'"':'')
+          +' onclick="pmSetTodoColor(\''+t.id+'\',\''+c.k+'\')" title="'+c.t+'"></span>';
+      }).join('');
+      return '<div class="pm-item'+(t.done?' done':'')+'"'+(col?' style="border-left-width:4px;border-left-color:'+col+'"':'')+'>'
         +'<span class="pm-cb" onclick="pmToggleTodo(\''+t.id+'\')" title="완료 표시">✓</span>'
         +'<span class="pm-tx">'+escHtml(t.text)+'</span>'
+        +'<span class="pm-ord"><button onclick="pmMoveTodo(\''+t.id+'\',-1)" title="위로"'+(idx===0?' disabled':'')+'>▲</button>'
+          +'<button onclick="pmMoveTodo(\''+t.id+'\',1)" title="아래로"'+(idx===p.todos.length-1?' disabled':'')+'>▼</button></span>'
         +'<button class="pm-del" onclick="pmDelTodo(\''+t.id+'\')" title="삭제">✕</button>'
+        +'<div class="pm-pal"><span class="lbl">색</span>'+sw+'</div>'
         +'</div>';
     }).join('');
   }
