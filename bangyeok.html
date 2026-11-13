@@ -44,7 +44,7 @@ input,select,textarea{font:inherit;width:100%;padding:11px;border:1px solid var(
 .cal .day.off{background:#F7F8F7;color:#B9C2BE;cursor:default}
 .cal .day.today{border-color:var(--main);border-width:2px}
 .cal .day:hover{background:#F0F5F2}
-".cal .day.pick{outline:3px solid var(--main);outline-offset:-1px;background:var(--soft)}
+.cal .day.pick{outline:3px solid var(--main);outline-offset:-1px;background:var(--soft)}
 .cal .day.over{background:#D9EDE3;outline:2px dashed var(--main);outline-offset:-2px}
 .cal .ev{cursor:pointer}
 .cal .ev[draggable="true"]{cursor:grab}
@@ -139,6 +139,9 @@ input,select,textarea{font:inherit;width:100%;padding:11px;border:1px solid var(
 .cal .day.sun .d,.cal .day.hol .d{color:#C0392B}
 .cal .day.hol{background:#FDF3F1}
 .cal .day .hn{font-size:9.5px;color:#C0392B;line-height:1.2;margin-bottom:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.cal .day.blk{background:repeating-linear-gradient(135deg,#F3F4F6 0 6px,#E5E7EB 6px 12px)}
+.cal .day.blk .bk{font-size:9.5px;font-weight:700;color:#fff;background:#6B7280;border-radius:4px;padding:0 3px;display:inline-block;margin-bottom:2px}
+.blkbar{display:flex;gap:8px;align-items:center;flex-wrap:wrap;background:#F3F4F6;border:1px solid #D1D5DB;border-radius:10px;padding:8px 10px;margin-top:8px;font-size:13px}
 .cal .ev{font-size:10.5px;border-radius:5px;padding:1px 3px;margin-bottom:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .ev.plan{background:#EEF1EF;color:#4C5956}
 .ev.fix{background:var(--bluesoft);color:var(--blue)}
@@ -279,14 +282,19 @@ td.nm{text-align:left;white-space:nowrap;font-weight:600}
         <span class="pill p-plan">예정</span><span class="pill p-fix">확정</span>
         <span class="pill p-done">완료</span><span class="pill p-miss">미실시</span>
         <span style="color:#C0392B;font-weight:700">빨간 날 = 공휴일</span>
+        <span class="pill" style="background:#6B7280;color:#fff">예약 불가</span>
         <span class="tiny">일정을 끌어서 다른 날짜로 옮길 수 있어요</span>
       </div>
     </div>
     <div class="card" id="dayCard">
       <div class="row" style="justify-content:space-between">
         <h2 style="margin:0" id="dayTitle">날짜를 누르면 그날 일정이 나와요</h2>
-        <button class="btn sm" id="bAddSch">이 날에 일정 추가</button>
+        <div class="row" style="gap:6px;flex-wrap:nowrap">
+          <button class="btn ghost sm hide" id="bBlock" style="width:auto;white-space:nowrap">예약 막기</button>
+          <button class="btn sm" id="bAddSch" style="width:auto;white-space:nowrap">이 날에 일정 추가</button>
+        </div>
       </div>
+      <div id="blkBar"></div>
       <div id="dayList" style="margin-top:8px"></div>
     </div>
   </section>
@@ -687,7 +695,7 @@ window.BYRULE=(function(){
 
  function norm(d){
    d=d||{};
-   ['sites','users','schedules','records','holidays','contracts'].forEach(function(k){ if(!Array.isArray(d[k]))d[k]=[] });
+   ['sites','users','schedules','records','holidays','contracts','blocks'].forEach(function(k){ if(!Array.isArray(d[k]))d[k]=[] });
    if(!d.company)d.company={};
    if(!d.sites.length)d.sites=JSON.parse(JSON.stringify(SEED.sites));
    if(!d.users.length)d.users=JSON.parse(JSON.stringify(SEED.users));
@@ -759,7 +767,7 @@ window.BYRULE=(function(){
    sites:admin?DB.sites:DB.sites.filter(function(s){return can(m,s.id)}),
    users:admin?DB.users.map(clean):[clean(m)],
    schedules:DB.schedules.filter(mine),records:DB.records.filter(mine),holidays:DB.holidays,company:DB.company,
-   contracts:admin?DB.contracts:[],
+   contracts:admin?DB.contracts:[],blocks:DB.blocks,
    cloud:CLOUD}))}
  function err(m){throw new Error(m)}
  function meOf(t){var p=String(t).split('|'),id=p[0];
@@ -806,6 +814,10 @@ window.BYRULE=(function(){
    var n={id:uid('us'),name:name,role:'manager',phone:st.tel,sites:st.id,active:'Y',autoMgr:true};
    n.pinH=pinHash(n.id,last);DB.users.push(n);st.mgrUserId=n.id;
  }
+ function blockOf(d){return DB.blocks.filter(function(b){return b.date===d})[0]||null}
+ function blockMsg(d){var b=blockOf(d);
+   return (+d.slice(5,7))+'/'+(+d.slice(8))+'은 리미트 사정으로 방역이 어려운 날이에요'+(b&&b.note?' ('+b.note+')':'')+'. 다른 날을 골라주세요.'}
+ function blockCheck(u,d,force){if(blockOf(d)&&!(force&&u.role!=='manager'))err(blockMsg(d))}
  function taken(siteId,date,exceptId){return DB.schedules.some(function(x){return x.id!==exceptId&&x.siteId===siteId&&x.date===date&&x.status!=='취소'})}
  function nextCertNo(date){var y=String(date).slice(0,4),n=0;
    DB.records.forEach(function(r){if(String(r.certNo||'').slice(0,4)===y)n=Math.max(n,+String(r.certNo).slice(5)||0)});
@@ -833,11 +845,13 @@ window.BYRULE=(function(){
   apiLoad:function(t){var u=meOf(t);DB._me=u;return snapOut(u)},
   apiSaveSchedule:function(t,s){var u=meOf(t);if(!can(u,s.siteId))err('담당 현장이 아니에요.');
     if(taken(s.siteId,s.date,s.id))err('그 현장은 같은 날짜에 이미 일정이 있어요.');
+    var force=!!s.force;delete s.force;
     if(s.id){
       var cur=DB.schedules.filter(function(x){return x.id===s.id})[0];
       if(!cur)err('일정을 찾지 못했어요.');
       if(!can(u,cur.siteId))err('담당 현장이 아니에요.');
       var moved=cur.date!==s.date;
+      if(moved)blockCheck(u,s.date,force);
       if(moved&&DB.records.some(function(r){return r.scheduleId===s.id}))err('실시 기록이 있는 일정은 날짜를 바꿀 수 없어요.');
       Object.assign(cur,s);
       if(moved){
@@ -845,12 +859,22 @@ window.BYRULE=(function(){
         cur.confirmBy=mgr?u.name:'';cur.confirmAt=mgr?today:'';cur.status=mgr?'확정':'예정';
         if(mgr){cur.requested=true;cur.ackBy='';cur.ackAt=''}
       }
-    }else DB.schedules.push(newSch(u,s,s.date));
+    }else{blockCheck(u,s.date,force);DB.schedules.push(newSch(u,s,s.date))}
     return snapOut(u)},
   apiAddSchedules:function(t,b){var u=meOf(t);if(!can(u,b.siteId))err('담당 현장이 아니에요.');
-    var added=0;
-    (b.dates||[]).forEach(function(d){if(d&&!taken(b.siteId,d)){DB.schedules.push(newSch(u,b,d));added++}});
-    if(!added)err('고른 날짜에는 이미 일정이 있어요.');
+    var added=0,skip=[];
+    (b.dates||[]).forEach(function(d){
+      if(!d)return;
+      if(blockOf(d)&&!(b.force&&u.role!=='manager')){skip.push(d);return}
+      if(!taken(b.siteId,d)){DB.schedules.push(newSch(u,b,d));added++}});
+    if(!added)err(skip.length?blockMsg(skip[0]):'고른 날짜에는 이미 일정이 있어요.');
+    return snapOut(u)},
+  /* 예약 막기: 우리 직원·대표가 방역 못 가는 날을 막아둠. 공단 담당자는 그날 일정을 넣거나 옮길 수 없음 */
+  apiBlockDate:function(t,d,on,note){var u=meOf(t);
+    if(u.role!=='staff'&&u.role!=='admin')err('예약 막기는 리미트 직원·대표 계정에서 해요.');
+    d=String(d||'');if(!/^\d{4}-\d{2}-\d{2}$/.test(d))err('날짜를 다시 골라주세요.');
+    DB.blocks=DB.blocks.filter(function(b){return b.date!==d});
+    if(on)DB.blocks.push({date:d,note:String(note||'').slice(0,60),by:u.name,at:today});
     return snapOut(u)},
   apiAddPhotos:function(t,id,ids){var u=meOf(t);
     DB.schedules.forEach(function(x){if(x.id===id){
@@ -1006,7 +1030,7 @@ window.BYRULE=(function(){
     var made=0;
     DB.sites.filter(function(s){return s.active!=='N'&&s.schedMode!=='manual'}).forEach(function(s){
       for(var m=1;m<=12;m++){
-        var list=window.BYRULE.datesFor(s,y,m,DB.holidays);
+        var list=window.BYRULE.datesFor(s,y,m,DB.holidays.concat(DB.blocks));
         list.forEach(function(ds){
           if(s.contractFrom&&ds<s.contractFrom)return;
           if(s.contractTo&&ds>s.contractTo)return;
@@ -1030,7 +1054,7 @@ window.BYRULE=(function(){
     DB.schedules=DB.schedules.filter(function(x){return !untouched(x)});
     var made=0;
     for(var y=+from.slice(0,4);y<=+to.slice(0,4);y++)for(var m=1;m<=12;m++){
-      window.BYRULE.datesFor(s,y,m,DB.holidays).forEach(function(ds){
+      window.BYRULE.datesFor(s,y,m,DB.holidays.concat(DB.blocks)).forEach(function(ds){
         if(ds<from||ds>to)return;
         if(DB.schedules.some(function(x){return x.siteId===s.id&&x.date===ds&&x.status!=='취소'}))return;
         DB.schedules.push({id:uid('g'),siteId:s.id,date:ds,time:s.time||'',status:'예정',note:'자동 생성',
@@ -1152,7 +1176,7 @@ function busy(on){document.body.style.opacity=on?.75:1}
 function apply(d){S.me=d.me;S.allSites=d.sites;S.allUsers=d.users;
   var onlyActive=function(x){return x.active!=='N'};
   S.sites=d.sites.filter(onlyActive);S.users=d.users.filter(onlyActive);S.schedules=d.schedules;S.records=d.records;
-  S.holidays=d.holidays||[];S.company=d.company;S.today=d.today;S.contracts=d.contracts||[];HOL={};
+  S.holidays=d.holidays||[];S.company=d.company;S.today=d.today;S.contracts=d.contracts||[];S.blocks=d.blocks||[];HOL={};
   S.holidays.forEach(function(h){HOL[h.date]=h.name});render();
   if(isAdmin()&&!window.__pdfTried){window.__pdfTried=1;setTimeout(autoYearPdf,4000)}}
 var HOL={};
@@ -1317,9 +1341,10 @@ function renderCal(){
       return true;
     });
     var hn=holName(ds);
-    var cls='day'+(ds===S.today?' today':'')+(new Date(cur.y,cur.m-1,d).getDay()===0?' sun':'')+(hn?' hol':'')+(ds===pickDate?' pick':'');
-    html+='<div class="'+cls+'" data-d="'+ds+'"><div class="d">'+d+'</div>'+
-      (hn?'<div class="hn">'+esc(hn)+'</div>':'')+
+    var bk=blockInfo(ds);
+    var cls='day'+(ds===S.today?' today':'')+(new Date(cur.y,cur.m-1,d).getDay()===0?' sun':'')+(hn?' hol':'')+(bk?' blk':'')+(ds===pickDate?' pick':'');
+    html+='<div class="'+cls+'" data-d="'+ds+'"'+(bk?' title="예약 불가'+(bk.note?' · '+esc(bk.note):'')+'"':'')+'><div class="d">'+d+'</div>'+
+      (hn?'<div class="hn">'+esc(hn)+'</div>':'')+(bk?'<div class="bk">예약 불가</div>':'')+
       evs.slice(0,3).map(function(s){
         var st=stat(s),nm=(site(s.siteId)||{}).name||'';
         var can=(st!=='done')&&mySite(s.siteId);
@@ -1329,7 +1354,7 @@ function renderCal(){
           esc(nm.length>6?nm.slice(0,6):nm)+'</div>';
       }).join('')+
       (evs.length>3?'<div class="tiny">+'+(evs.length-3)+'</div>':'')+
-      (evs.length?'':'<div class="plus">＋</div>')+'</div>';
+      (evs.length||bk?'':'<div class="plus">＋</div>')+'</div>';
   }
   $('calBody').innerHTML=html;
   $('calBody').querySelectorAll('[data-d]').forEach(function(el){
@@ -1340,7 +1365,7 @@ function renderCal(){
       if(c){try{c.scrollIntoView({behavior:'smooth',block:'nearest'})}catch(e){}
         c.classList.remove('flash');void c.offsetWidth;c.classList.add('flash');}
     };
-    el.ondblclick=function(){pickDate=el.dataset.d;openSchedule(null)};
+    el.ondblclick=function(){pickDate=el.dataset.d;$('bAddSch').onclick()};
     el.ondragover=function(e){e.preventDefault();el.classList.add('over')};
     el.ondragleave=function(){el.classList.remove('over')};
     el.ondrop=function(e){
@@ -1350,9 +1375,11 @@ function renderCal(){
       var sc=null;
       for(var i=0;i<S.schedules.length;i++)if(S.schedules[i].id===id)sc=S.schedules[i];
       if(!sc||sc.date===el.dataset.d)return;
-      var nm=(site(sc.siteId)||{}).name||'';
-      send('apiSaveSchedule',[S.token,{id:sc.id,siteId:sc.siteId,date:el.dataset.d,note:sc.note}],
-        nm+' 일정을 '+(+el.dataset.d.slice(5,7))+'/'+(+el.dataset.d.slice(8))+'로 옮겼어요.');
+      var nm=(site(sc.siteId)||{}).name||'',to=el.dataset.d;
+      blockGuard(to,function(force){
+        send('apiSaveSchedule',[S.token,{id:sc.id,siteId:sc.siteId,date:to,note:sc.note,force:force}],
+          nm+' 일정을 '+(+to.slice(5,7))+'/'+(+to.slice(8))+'로 옮겼어요.');
+      });
     };
   });
   $('calBody').querySelectorAll('[data-ev]').forEach(function(ch){
@@ -1704,8 +1731,41 @@ function renderTodo(){
   });
 }
 
+/* ---------- 예약 막기 (우리 직원·대표) ---------- */
+function blockInfo(d){var L=S.blocks||[];for(var i=0;i<L.length;i++)if(L[i].date===d)return L[i];return null}
+function canBlock(){return S.me&&(S.me.role==='staff'||S.me.role==='admin')}
+function blockText(d){var b=blockInfo(d);
+  return (+d.slice(5,7))+'/'+(+d.slice(8))+'은 리미트 사정으로 방역이 어려운 날이에요'+(b&&b.note?' ('+b.note+')':'')+'. 다른 날을 골라주세요.'}
+/* 막힌 날이면: 공단 담당자는 안내만, 직원·대표는 한 번 더 묻고 force로 진행 */
+function blockGuard(d,cb){
+  var b=blockInfo(d);
+  if(!b){cb(false);return}
+  if(!canBlock()){toast(blockText(d));return}
+  ask((+d.slice(5,7))+'/'+(+d.slice(8))+'은 예약을 막아둔 날이에요'+(b.note?' ('+b.note+')':'')+'.\n그래도 일정을 넣을까요?','그래도 넣기',function(){cb(true)});
+}
+function editBlock(d){
+  var b=blockInfo(d),lbl=(+d.slice(5,7))+'월 '+(+d.slice(8))+'일';
+  var n=S.schedules.filter(function(s){return s.date===d&&s.status!=='취소'}).length;
+  var m=modal('<h3 style="margin-bottom:6px">'+lbl+' 예약 '+(b?'막기 고치기':'막기')+'</h3>'+
+    '<p class="tiny" style="margin-bottom:10px">막아두면 공단 담당자는 이 날에 일정을 넣거나 옮길 수 없어요. 자동 일정도 다음 평일로 넘어가요.</p>'+
+    '<div class="field"><label>사유 (선택 · 담당자에게도 보여요)</label><input id="bkNote" maxlength="60" value="'+esc(b?b.note:'')+'" placeholder="예: 다른 현장 일정, 장비 점검"></div>'+
+    (n?'<p class="tiny" style="color:var(--warn);margin-bottom:8px">이 날 이미 일정이 '+n+'건 있어요. 막아도 그대로 남으니, 필요하면 다른 날로 옮겨 주세요.</p>':'')+
+    '<div class="row"><button class="btn sm" data-ok>'+(b?'저장':'예약 막기')+'</button><button class="btn ghost sm" data-no>취소</button>'+
+    (b?'<button class="btn ghost sm danger" data-un style="margin-left:auto">막기 풀기</button>':'')+'</div>');
+  m.querySelector('[data-no]').onclick=function(){m.remove()};
+  m.querySelector('[data-ok]').onclick=function(){var note=m.querySelector('#bkNote').value.trim();m.remove();
+    send('apiBlockDate',[S.token,d,true,note],lbl+' 예약을 막았어요.')};
+  var un=m.querySelector('[data-un]');
+  if(un)un.onclick=function(){m.remove();send('apiBlockDate',[S.token,d,false,''],lbl+' 막기를 풀었어요.')};
+}
+$('bBlock').onclick=function(){if(pickDate)editBlock(pickDate)};
 function renderDay(){
   var d=pickDate;
+  var bk=d?blockInfo(d):null;
+  $('bBlock').classList.toggle('hide',!d||!canBlock());
+  $('bBlock').textContent=bk?'막기 풀기·고치기':'예약 막기';
+  $('blkBar').innerHTML=bk?'<div class="blkbar"><b>⛔ 예약 불가</b><span>'+(bk.note?esc(bk.note)+' · ':'')+'리미트 사정으로 방역이 어려운 날이에요</span>'+
+    (canBlock()?'<span class="tiny">('+esc(bk.by||'')+' '+esc(bk.at||'')+')</span>':'')+'</div>':'';
   if(!d){$('dayList').innerHTML='';return}
   var dt=new Date(d);
   var hn=holName(d);
@@ -1720,13 +1780,13 @@ function renderDay(){
       ((s.photos||[]).length?' · 사진 '+s.photos.length+'장':'')+'</div>'+
       '<div style="margin-top:5px">'+stepsHTML(s)+'</div>'+
       (s.note?'<div class="tiny">'+esc(s.note)+'</div>':'')+'</div>'+
-      '<button class="btn ghost sm" data-sc="'+esc(s.id)+'">열기</button></div>';
+      '<button class="btn ghost sm" data-sc="'+esc(s.id)+'" style="width:auto;flex-shrink:0;white-space:nowrap">열기</button></div>';
   }).join(''):'<p class="muted">이 날은 잡힌 일정이 없어요. 오른쪽 위 「이 날에 일정 추가」를 누르세요.</p>';
   $('dayList').querySelectorAll('[data-sc]').forEach(function(b){b.onclick=function(){openSchedule(b.dataset.sc)}});
 }
 $('mPrev').onclick=function(){cur.m--;if(cur.m<1){cur.m=12;cur.y--}render()};
 $('mNext').onclick=function(){cur.m++;if(cur.m>12){cur.m=1;cur.y++}render()};
-$('bAddSch').onclick=function(){openSchedule(null)};
+$('bAddSch').onclick=function(){if(pickDate&&blockInfo(pickDate)&&!canBlock()){toast(blockText(pickDate));return}openSchedule(null)};
 
 /* ---------- 일정 상세 ---------- */
 function openSchedule(id,work){
@@ -1839,13 +1899,23 @@ function openSchedule(id,work){
     var body={id:sc.id,siteId:m.querySelector('#mSite').value,date:m.querySelector('#mDate').value,
       time:m.querySelector('#mTime').value,note:m.querySelector('#mNote').value.trim()};
     if(!body.date){toast('날짜를 넣어주세요.');return}
-    close();
     if(isNew){
       var ds=[body.date].concat(extra).filter(function(v,i,a){return a.indexOf(v)===i});
-      send('apiAddSchedules',[S.token,{siteId:body.siteId,dates:ds,time:body.time,note:body.note}],
-        ds.length>1?'날짜 '+ds.length+'개를 넣었어요.':'일정을 저장했어요.');
+      var bl=ds.filter(blockInfo);
+      if(bl.length&&isManager()){
+        ds=ds.filter(function(x){return !blockInfo(x)});
+        if(!ds.length){toast(blockText(bl[0]));return}
+        toast('예약 불가 날짜('+bl.map(function(x){return (+x.slice(5,7))+'/'+(+x.slice(8))}).join(', ')+')는 빼고 넣을게요.');
+      }
+      var go=function(force){close();
+        send('apiAddSchedules',[S.token,{siteId:body.siteId,dates:ds,time:body.time,note:body.note,force:force}],
+          ds.length>1?'날짜 '+ds.length+'개를 넣었어요.':'일정을 저장했어요.')};
+      if(bl.length&&!isManager())blockGuard(bl[0],go);else go(false);
       return;
     }
+    var moved=body.date!==sc.date;
+    if(moved&&blockInfo(body.date)){blockGuard(body.date,function(force){close();body.force=force;send('apiSaveSchedule',[S.token,body],'일정을 저장했어요.')});return}
+    close();
     send('apiSaveSchedule',[S.token,body],'일정을 저장했어요.');
   };
   var ak=m.querySelector('[data-ack]');
