@@ -277,6 +277,12 @@ td.nm{text-align:left;white-space:nowrap;font-weight:600}
 
   <!-- 현황 -->
   <section id="v2" class="hide">
+    <div class="card hide" id="cMoney">
+      <div class="row" style="justify-content:space-between;align-items:center"><h2 style="margin:0" id="moneyTitle">계약 금액</h2>
+        <button class="btn sm" id="bAddCt" style="width:auto">+ 계약 추가</button></div>
+      <p class="tiny" style="margin:4px 0 0">🔒 대표 계정에만 보여요. 수입·지출은 리미트 웹에서 관리해요.</p>
+      <div id="moneyBox"></div>
+    </div>
     <div class="card">
       <h2 id="statTitle"></h2>
       <div id="statList"></div>
@@ -631,7 +637,7 @@ window.BYRULE=(function(){
 
  function norm(d){
    d=d||{};
-   ['sites','users','schedules','records','holidays'].forEach(function(k){ if(!Array.isArray(d[k]))d[k]=[] });
+   ['sites','users','schedules','records','holidays','contracts'].forEach(function(k){ if(!Array.isArray(d[k]))d[k]=[] });
    if(!d.company)d.company={};
    if(!d.sites.length)d.sites=JSON.parse(JSON.stringify(SEED.sites));
    if(!d.users.length)d.users=JSON.parse(JSON.stringify(SEED.users));
@@ -703,6 +709,7 @@ window.BYRULE=(function(){
    sites:admin?DB.sites:DB.sites.filter(function(s){return can(m,s.id)}),
    users:admin?DB.users.map(clean):[clean(m)],
    schedules:DB.schedules.filter(mine),records:DB.records.filter(mine),holidays:DB.holidays,company:DB.company,
+   contracts:admin?DB.contracts:[],
    cloud:CLOUD}))}
  function err(m){throw new Error(m)}
  function meOf(t){var p=String(t).split('|'),id=p[0];
@@ -914,6 +921,19 @@ window.BYRULE=(function(){
     if(!f)DB.holidays.push({date:d,name:nm});return snapOut(u)},
   apiDeleteHoliday:function(t,d){var u=meOf(t);if(u.role!=='admin')err('소독업소 계정만 바꿀 수 있어요.');
     DB.holidays=DB.holidays.filter(function(h){return h.date!==d});return snapOut(u)},
+  /* 계약 금액: 대표(admin)만 보고 고칠 수 있음 */
+  apiSaveContract:function(t,c){var u=meOf(t);if(u.role!=='admin')err('대표 계정만 바꿀 수 있어요.');
+    var amt=+String(c.amount||'').replace(/[^0-9]/g,'');
+    if(!amt)err('계약 금액을 넣어주세요.');
+    if(!c.siteIds)err('현장을 1곳 이상 골라주세요.');
+    var x={title:String(c.title||'').slice(0,80),siteIds:String(c.siteIds),year:+c.year||+today.slice(0,4),amount:amt,
+      vat:c.vat==='별도'?'별도':'포함',date:String(c.date||''),memo:String(c.memo||'').slice(0,300),updatedAt:today};
+    if(c.id){var f=false;DB.contracts=DB.contracts.map(function(o){if(o.id!==c.id)return o;f=true;return Object.assign({},o,x)});
+      if(!f)err('지워진 계약이에요. 새로 넣어주세요.')}
+    else DB.contracts.push(Object.assign({id:uid('ct'),createdAt:today},x));
+    return snapOut(u)},
+  apiDeleteContract:function(t,id){var u=meOf(t);if(u.role!=='admin')err('대표 계정만 바꿀 수 있어요.');
+    DB.contracts=DB.contracts.filter(function(o){return o.id!==id});return snapOut(u)},
   apiGeneratePlan:function(t,y){var u=meOf(t);if(u.role!=='admin')err('소독업소 계정만 쓸 수 있어요.');
     var made=0;
     DB.sites.filter(function(s){return s.active!=='N'&&s.schedMode!=='manual'}).forEach(function(s){
@@ -1065,7 +1085,7 @@ function busy(on){document.body.style.opacity=on?.75:1}
 function apply(d){S.me=d.me;S.allSites=d.sites;S.allUsers=d.users;
   var onlyActive=function(x){return x.active!=='N'};
   S.sites=d.sites.filter(onlyActive);S.users=d.users.filter(onlyActive);S.schedules=d.schedules;S.records=d.records;
-  S.holidays=d.holidays||[];S.company=d.company;S.today=d.today;HOL={};
+  S.holidays=d.holidays||[];S.company=d.company;S.today=d.today;S.contracts=d.contracts||[];HOL={};
   S.holidays.forEach(function(h){HOL[h.date]=h.name});render();
   if(isAdmin()&&!window.__pdfTried){window.__pdfTried=1;setTimeout(autoYearPdf,4000)}}
 var HOL={};
@@ -1857,7 +1877,80 @@ function askUndoRecord(r){
 }
 
 /* ---------- 현황 ---------- */
+/* ---------- 계약 금액 (대표 전용) ---------- */
+function won(n){return String(Math.round(+n||0)).replace(/\B(?=(\d{3})+(?!\d))/g,',')+'원'}
+function ctSites(c){return String(c.siteIds||'').split(',').map(function(x){return x.trim()}).filter(Boolean)}
+function ctCount(c){
+  var ids=ctSites(c),y=String(c.year),plan=0,done=0,seen={};
+  S.records.forEach(function(r){if(ids.indexOf(r.siteId)>=0&&String(r.date).slice(0,4)===y){done++;seen[r.siteId+r.date]=1;if(r.scheduleId)seen[r.scheduleId]=1}});
+  plan=done;
+  S.schedules.forEach(function(s){if(ids.indexOf(s.siteId)>=0&&String(s.date).slice(0,4)===y&&s.status!=='취소'&&!seen[s.id]&&!seen[s.siteId+s.date])plan++});
+  return {plan:plan,done:done};
+}
+function renderMoney(){
+  var box=$('cMoney');if(!box)return;
+  box.classList.toggle('hide',!isAdmin());if(!isAdmin())return;
+  var y=cur.y,L=(S.contracts||[]).filter(function(c){return +c.year===y});
+  $('moneyTitle').textContent=y+'년 계약 금액';
+  var tot=0,doneAmt=0,vats={};
+  var rows=L.map(function(c){
+    var n=ctCount(c),unit=n.plan?c.amount/n.plan:0,da=n.plan?Math.min(c.amount,unit*n.done):0;
+    tot+=c.amount;doneAmt+=da;vats[c.vat]=1;
+    var names=ctSites(c).map(function(id){return (site(id)||{}).name||'(지운 현장)'}).join(', ');
+    return '<div class="item"><div style="min-width:0"><div><b>'+esc(c.title||names)+'</b></div>'+
+      (c.title?'<div class="tiny">'+esc(names)+'</div>':'')+
+      '<div style="font-size:16px;font-weight:800;margin-top:3px">'+won(c.amount)+' <span class="tiny" style="font-weight:500">부가세 '+esc(c.vat)+'</span></div>'+
+      '<div class="tiny">'+(n.plan?'실시 '+n.done+' / 계획 '+n.plan+'회 · 1회 약 '+won(unit)+' · 완료분 약 '+won(da):'달력에 일정이 아직 없어요')+'</div>'+
+      (c.date?'<div class="tiny">계약일 '+esc(c.date)+'</div>':'')+
+      (c.memo?'<div class="tiny" style="white-space:pre-wrap">'+esc(c.memo)+'</div>':'')+'</div>'+
+      '<button class="btn ghost sm" data-ct="'+esc(c.id)+'" style="width:auto;flex-shrink:0;white-space:nowrap">수정</button></div>';
+  }).join('');
+  var sum=L.length?'<div class="g2" style="margin:12px 0 4px">'+
+      '<div style="background:var(--soft);border-radius:10px;padding:10px"><div class="tiny">계약 총액 ('+L.length+'건)</div><b style="font-size:17px">'+won(tot)+'</b></div>'+
+      '<div style="background:var(--oksoft);border-radius:10px;padding:10px"><div class="tiny">실시 완료분 · 남은 금액</div><b style="font-size:15px">'+won(doneAmt)+'</b><div class="tiny">남음 '+won(tot-doneAmt)+'</div></div></div>'+
+      (Object.keys(vats).length>1?'<p class="tiny">부가세 포함·별도 계약이 섞여 있어요.</p>':'')+
+      '<p class="tiny">완료분은 「계약 금액 ÷ 달력 계획 횟수 × 실시 횟수」로 셈한 대략 금액이에요.</p>'
+    :'<p class="muted" style="margin-top:10px">'+y+'년 계약이 아직 없어요. 「+ 계약 추가」로 넣어주세요.</p>';
+  $('moneyBox').innerHTML=sum+rows;
+  $('moneyBox').querySelectorAll('[data-ct]').forEach(function(b){b.onclick=function(){
+    editContract((S.contracts||[]).filter(function(c){return c.id===b.dataset.ct})[0])}});
+}
+function editContract(c){
+  var isNew=!c;c=c||{year:cur.y,vat:'포함',siteIds:''};
+  var picked=ctSites(c);
+  var sites=(S.allSites||S.sites).filter(function(s){return s.active!=='N'||picked.indexOf(s.id)>=0});
+  var m=modal('<h2>'+(isNew?'계약 추가':'계약 수정')+'</h2>'+
+    '<div class="field"><label>계약명 (없으면 현장 이름으로 보여요)</label><input id="ctTitle" value="'+esc(c.title||'')+'" placeholder="예: 2027년 지하도상가 방역소독 용역"></div>'+
+    '<div class="field"><label>현장 (한 계약에 여러 곳이면 모두 고르세요)</label><div id="ctSites">'+
+    sites.map(function(s){return '<label style="font-weight:500;color:var(--ink);display:flex;gap:8px;align-items:center;margin-bottom:6px">'+
+      '<input type="checkbox" style="width:auto" value="'+esc(s.id)+'"'+(picked.indexOf(s.id)>=0?' checked':'')+'> '+esc(s.name)+'</label>'}).join('')+'</div></div>'+
+    '<div class="g2"><div class="field"><label>연도</label><input id="ctYear" type="number" inputmode="numeric" value="'+esc(c.year||cur.y)+'"></div>'+
+    '<div class="field"><label>계약일</label><input id="ctDate" type="date" value="'+esc(c.date||'')+'"></div></div>'+
+    '<div class="g2"><div class="field"><label>계약 금액 (원)</label><input id="ctAmt" inputmode="numeric" value="'+(c.amount?won(c.amount).replace('원',''):'')+'" placeholder="예: 3,300,000"></div>'+
+    '<div class="field"><label>부가세</label><select id="ctVat"><option'+(c.vat!=='별도'?' selected':'')+'>포함</option><option'+(c.vat==='별도'?' selected':'')+'>별도</option></select></div></div>'+
+    '<div class="field"><label>메모 (청구 방법·특이사항)</label><textarea id="ctMemo" rows="2">'+esc(c.memo||'')+'</textarea></div>'+
+    '<div class="row"><button class="btn sm" data-ok>저장</button><button class="btn ghost sm" data-no>취소</button>'+
+    (isNew?'':'<button class="btn ghost sm danger" data-del style="margin-left:auto">삭제</button>')+'</div>');
+  var q=function(id){return m.querySelector('#'+id)};
+  q('ctAmt').oninput=function(){var v=this.value.replace(/[^0-9]/g,'');this.value=v?won(v).replace('원',''):''};
+  m.querySelector('[data-no]').onclick=function(){m.remove()};
+  m.querySelector('[data-ok]').onclick=function(){
+    var ids=[].map.call(q('ctSites').querySelectorAll('input:checked'),function(x){return x.value}).join(',');
+    if(!ids){toast('현장을 1곳 이상 골라주세요.');return}
+    if(!q('ctAmt').value.replace(/[^0-9]/g,'')){toast('계약 금액을 넣어주세요.');return}
+    m.remove();
+    send('apiSaveContract',[S.token,{id:c.id||'',title:q('ctTitle').value.trim(),siteIds:ids,year:q('ctYear').value,
+      date:q('ctDate').value,amount:q('ctAmt').value,vat:q('ctVat').value,memo:q('ctMemo').value.trim()}],'저장했어요.');
+  };
+  var del=m.querySelector('[data-del]');
+  if(del)del.onclick=function(){m.remove();
+    var nm=c.title||ctSites(c).map(function(id){return (site(id)||{}).name||''}).join(', ');
+    ask('「'+nm+'」 '+won(c.amount)+' 계약을 지울까요?\n지운 뒤에는 다시 넣어야 해요.','지우기',function(){
+      send('apiDeleteContract',[S.token,c.id],'지웠어요.')})};
+}
+$('bAddCt').onclick=function(){editContract(null)};
 function renderStat(){
+  renderMoney();
   var key=cur.y+'-'+pad(cur.m);
   $('statTitle').textContent=cur.y+'년 '+cur.m+'월 현황';
   var zs=zoneList();
