@@ -1005,6 +1005,7 @@
     <button class="subtab" data-subtab="개요업무" onclick="showSub('개요업무')">✅ 업무 요약 <span id="dashTaskBadge" class="tabbadge"></span></button>
     <button class="subtab" data-subtab="개요결제" onclick="showSub('개요결제')">💳 결제요청 <span id="payReqMgBadge" class="tabbadge"></span></button>
     <button class="subtab" data-subtab="보관함" onclick="showSub('보관함')">🔐 로그인 보관함</button>
+    <button class="subtab" data-subtab="정기청소" onclick="showSub('정기청소')">🧹 정기청소 <span id="regBadge" class="tabbadge"></span></button>
   </div>
 
   <!-- ① 💰 재무 요약 -->
@@ -1171,6 +1172,34 @@
         <div id="vaultList"></div>
         <div style="text-align:center;margin-top:14px"><button onclick="vaultLock()" style="padding:9px 18px;border:1px solid var(--line);border-radius:9px;background:var(--bg);color:var(--ink);cursor:pointer;font-weight:600">🔒 다시 잠그기</button></div>
       </div>
+    </div>
+  </div>
+
+  <div class="subpg" data-subpg="정기청소" style="display:none">
+    <div class="card" style="margin-top:22px">
+      <h2>🧹 정기청소 <span style="font-weight:500;color:var(--muted);font-size:12px">정기 계약 현장 · 월 입금 체크 · 재계약 관리 · 모든 기기 공유</span></h2>
+      <div style="margin:4px 0 2px"><button class="primary" onclick="regAddToggle()">＋ 계약 등록</button></div>
+      <div id="regForm" style="display:none;margin-top:10px">
+        <div class="form-grid" style="grid-template-columns:1fr 1fr">
+          <div class="fld wide"><label>현장 이름</label><input id="rg_site" placeholder="예: 진주 센트럴 오피스텔"></div>
+          <div class="fld"><label>회사</label><select id="rg_co"><option value="limit">리미트(청소)</option><option value="daman">다만산업</option></select></div>
+          <div class="fld"><label>주기</label><input id="rg_cycle" placeholder="예: 주 2회 / 월 2회"></div>
+          <div class="fld"><label>월 금액(원)</label><input id="rg_amount" inputmode="numeric" placeholder="예: 450000"></div>
+          <div class="fld"><label>방문 요일</label><input id="rg_days" placeholder="예: 화·금 / 격주 수"></div>
+          <div class="fld"><label>유형·층</label><input id="rg_type" placeholder="예: 공용부·계단"></div>
+          <div class="fld"><label>관리소 담당</label><input id="rg_mgr" placeholder="예: 김소장"></div>
+          <div class="fld"><label>담당 전화</label><input id="rg_phone" inputmode="tel" placeholder="010-0000-0000"></div>
+          <div class="fld"><label>계약 시작(월)</label><input id="rg_start" type="month"></div>
+          <div class="fld"><label>계약 종료(월)</label><input id="rg_end" type="month"></div>
+        </div>
+        <div style="margin:10px 0 2px;text-align:right">
+          <button onclick="regAddToggle()" style="font-size:12px;border:1px solid var(--line);background:var(--bg);border-radius:8px;padding:8px 14px;cursor:pointer;margin-right:6px">취소</button>
+          <button class="primary" onclick="regAdd()">저장</button>
+        </div>
+      </div>
+      <div id="regSummary"></div>
+      <div id="regList"></div>
+      <div style="font-size:11px;color:var(--muted);margin-top:12px;line-height:1.6">※ 여기 입금 체크는 <b>정기청소 관리용</b>이에요. 계약엔 <b>수정</b>, 입금 칸엔 <b>취소(되돌리기)</b>가 들어 있어요.</div>
     </div>
   </div>
 
@@ -1959,7 +1988,7 @@ if(window.AIHQ_DATA){
     {date:"2026-11-06",name:"명석 폴리싱 (3/4일)"},
     {date:"2026-11-07",name:"명석 폴리싱 (4/4일)"}
   ];
-  window.AIHQ_DATA.calSync = "2026-11-16";
+  window.AIHQ_DATA.calSync = "2026-11-16b";
 }
 /* 🏫 학교 영업 — 기록은 getData()/setData() 상태의 schools 필드에 저장되어 기존 클라우드 동기화로 팀 공유됩니다. */
 (function(){
@@ -3091,6 +3120,7 @@ function render(){
   renderPipeline();
   if(typeof renderVault==='function') renderVault();
   if(typeof renderPersonal==='function') renderPersonal();
+  if(typeof renderRegular==='function') renderRegular();
   if(typeof renderLaborers==='function') renderLaborers();
   renderDev();
   renderPurchases();
@@ -5708,6 +5738,143 @@ function renderPersonal(){
   }
   var ta=document.getElementById('pm_memo');
   if(ta && document.activeElement!==ta) ta.value=p.memo;   // 타이핑 중엔 안 건드림
+}
+
+/* ===== 🧹 정기청소 (정기계약 · 월 입금 체크 · 재계약) ===== */
+function _pad2(n){ return (n<10?'0':'')+n; }
+function _regList(d){ if(!Array.isArray(d.regular)) d.regular=[]; return d.regular; }
+function _regFind(d,id){ var l=_regList(d),i; for(i=0;i<l.length;i++){ if(l[i].id===id) return l[i]; } return null; }
+function _regActive(c,ym){ if(c.start && ym<c.start) return false; if(c.end && ym>c.end) return false; return true; }
+function _regEndDate(c){ if(!c.end) return ''; var y=+c.end.slice(0,4), m=+c.end.slice(5,7), last=new Date(y,m,0).getDate(); return c.end+'-'+_pad2(last); }
+function _regDaysUntil(dateStr){ if(!dateStr) return null; var t=realToday(); var a=new Date(t+'T00:00:00'), b=new Date(dateStr+'T00:00:00'); return Math.round((b-a)/86400000); }
+function _regMonthsEl(a,b){ return (parseInt(b.slice(0,4),10)-parseInt(a.slice(0,4),10))*12 + (parseInt(b.slice(5,7),10)-parseInt(a.slice(5,7),10)); }
+function _regCoName(co){ return co==='daman'?'다만산업':'리미트'; }
+function _rgAttr(s){ return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;'); }
+var _regEdit=null, _regDelAsk=null;
+function regAddToggle(){ var f=document.getElementById('regForm'); if(!f) return; var open=(f.style.display!=='none'); f.style.display=open?'none':'block'; if(!open){ var s=document.getElementById('rg_site'); if(s) s.focus(); } }
+function regAdd(){
+  var g=function(id){ var el=document.getElementById(id); return el?String(el.value||''):''; };
+  var site=g('rg_site').trim();
+  if(!site){ toast('현장 이름을 입력해주세요.'); var s=document.getElementById('rg_site'); if(s) s.focus(); return; }
+  var d=getData(), list=_regList(d);
+  list.push({ id:'rg'+Date.now()+Math.random().toString(36).slice(2,5), co:(g('rg_co')||'limit'), site:site,
+    type:g('rg_type').trim(), mgr:g('rg_mgr').trim(), phone:g('rg_phone').trim(), cycle:g('rg_cycle').trim(),
+    amount:Math.max(0, parseInt(g('rg_amount').replace(/[^0-9]/g,''),10)||0), days:g('rg_days').trim(),
+    start:g('rg_start'), end:g('rg_end'), pays:{}, memo:'' });
+  setData(d);
+  ['rg_site','rg_type','rg_mgr','rg_phone','rg_cycle','rg_amount','rg_days','rg_start','rg_end'].forEach(function(id){ var el=document.getElementById(id); if(el) el.value=''; });
+  var f=document.getElementById('regForm'); if(f) f.style.display='none';
+  render(); toast('정기청소 계약을 등록했어요.');
+}
+function regPay(id,ym){ var d=getData(), c=_regFind(d,id); if(!c) return; c.pays=c.pays||{}; if(c.pays[ym]){ delete c.pays[ym]; } else { c.pays[ym]=true; } setData(d); render(); }
+function regEditOpen(id){ _regEdit=id; _regDelAsk=null; render(); var el=document.getElementById('re_site_'+id); if(el) el.focus(); }
+function regEditCancel(){ _regEdit=null; render(); }
+function regEditSave(id){
+  var g=function(f){ var el=document.getElementById('re_'+f+'_'+id); return el?String(el.value||''):''; };
+  var d=getData(), c=_regFind(d,id); if(!c) return;
+  var site=g('site').trim(); if(!site){ toast('현장 이름은 비울 수 없어요.'); return; }
+  c.site=site; c.co=(g('co')||c.co||'limit'); c.type=g('type').trim(); c.mgr=g('mgr').trim(); c.phone=g('phone').trim();
+  c.cycle=g('cycle').trim(); c.amount=Math.max(0,parseInt(g('amount').replace(/[^0-9]/g,''),10)||0);
+  c.days=g('days').trim(); c.start=g('start'); c.end=g('end');
+  _regEdit=null; setData(d); render(); toast('수정했어요.');
+}
+function regDelAsk(id){ _regDelAsk=id; _regEdit=null; render(); }
+function regDelCancel(){ _regDelAsk=null; render(); }
+function regDel(id){ var d=getData(), l=_regList(d), i; for(i=0;i<l.length;i++){ if(l[i].id===id){ l.splice(i,1); break; } } _regDelAsk=null; _regEdit=null; setData(d); render(); toast('계약을 삭제했어요.'); }
+function _regTile(label,val,tone){
+  var lblColor = tone==='warn'?'var(--warn)':(tone==='amber'?'#b45309':'var(--muted)');
+  var valColor = tone==='warn'?'var(--warn)':(tone==='amber'?'#b45309':'var(--ink)');
+  var bd = tone==='warn'?'#fca5a5':(tone==='amber'?'#fcd34d':'var(--line)');
+  return '<div style="background:var(--card);border:1px solid '+bd+';border-radius:10px;padding:10px">'
+    +'<div style="font-size:11px;color:'+lblColor+'">'+label+'</div>'
+    +'<div style="font-size:17px;font-weight:700;color:'+valColor+'">'+val+'</div></div>';
+}
+function _regCell(id,ym,label,state){
+  var base='text-align:center;padding:5px 0;border-radius:6px;font-size:11px;line-height:1.25;';
+  var sty, inner, clickable=true;
+  if(state==='out'){ sty='background:#f3f4f6;color:#9ca3af;'; inner=label+'<br>·'; clickable=false; }
+  else if(state==='paid'){ sty='background:#dcfce7;color:#15803d;cursor:pointer;'; inner=label+'<br>✓'; }
+  else if(state==='overdue'){ sty='background:#fee2e2;color:#b91c1c;border:1px solid #dc2626;cursor:pointer;'; inner=label+'<br>✕'; }
+  else if(state==='cur'){ sty='background:#fff7ed;color:#b45309;border:1px dashed #f59e0b;cursor:pointer;'; inner=label+'<br>이번달'; }
+  else { sty='background:#f3f4f6;color:#9ca3af;cursor:pointer;'; inner=label+'<br>·'; }
+  return '<div style="'+base+sty+'"'+(clickable?(' onclick="regPay(\''+id+'\',\''+ym+'\')" title="누르면 입금 완료 / 다시 누르면 취소"'):'')+'>'+inner+'</div>';
+}
+function _regCardHTML(c,curY,curMonth){
+  var E=escHtml, curYM=curY+'-'+_pad2(curMonth), m, ym2;
+  var ov=0; for(m=1;m<curMonth;m++){ ym2=curY+'-'+_pad2(m); if(_regActive(c,ym2)&&!(c.pays&&c.pays[ym2])) ov++; }
+  var statusBadge = ov>0
+    ? '<span style="font-size:11px;background:#fee2e2;color:#b91c1c;padding:3px 9px;border-radius:6px">입금 '+ov+'개월 밀림</span>'
+    : '<span style="font-size:11px;background:#dcfce7;color:#15803d;padding:3px 9px;border-radius:6px">정상</span>';
+  var renewBadge='';
+  if(c.end){ var dd=_regDaysUntil(_regEndDate(c));
+    if(dd!==null){ if(dd<0) renewBadge='<span style="font-size:11px;background:#f3f4f6;color:#6b7280;padding:3px 9px;border-radius:6px">만료 지남</span>';
+      else if(dd<=60) renewBadge='<span style="font-size:11px;background:#fef3c7;color:#b45309;padding:3px 9px;border-radius:6px">재계약 D-'+dd+'</span>'; } }
+  var cycle = c.cycle ? '<span style="font-size:11px;background:#dbeafe;color:#1e40af;padding:2px 8px;border-radius:6px">'+E(c.cycle)+'</span>' : '';
+  var subArr=[]; if(c.type) subArr.push(E(c.type)); subArr.push(_regCoName(c.co)); if(c.mgr) subArr.push('관리소 '+E(c.mgr)); if(c.phone) subArr.push(E(c.phone));
+  var sub=subArr.join(' · ');
+  var stat='<div><div style="font-size:11px;color:var(--muted)">월 금액</div><div style="font-size:14px;font-weight:700">'+(c.amount?KRW(c.amount):'—')+'</div></div>';
+  if(c.days) stat+='<div><div style="font-size:11px;color:var(--muted)">방문 요일</div><div style="font-size:14px;font-weight:700">'+E(c.days)+'</div></div>';
+  var period=(c.start||c.end)?('계약 '+(c.start||'?')+' ~ '+(c.end||'?')):'';
+  var prog='';
+  if(c.start&&c.end){ var tot=_regMonthsEl(c.start,c.end)+1; var el=_regMonthsEl(c.start,curYM)+1; if(el<0) el=0; if(el>tot) el=tot; var pct=tot>0?Math.max(0,Math.min(100,Math.round(el/tot*100))):0;
+    prog='<div style="margin:10px 0 12px"><div style="display:flex;justify-content:space-between;font-size:11px;color:var(--muted);margin-bottom:3px"><span>'+period+'</span><span>'+el+'개월 경과</span></div><div style="height:6px;background:#eef1f6;border-radius:4px;overflow:hidden"><div style="width:'+pct+'%;height:100%;background:'+(pct>=90?'var(--daman)':'var(--limit)')+'"></div></div></div>';
+  } else if(period){ prog='<div style="font-size:11px;color:var(--muted);margin:8px 0 10px">'+period+'</div>'; }
+  var cells='',st,paid,inP; for(m=1;m<=12;m++){ ym2=curY+'-'+_pad2(m); inP=_regActive(c,ym2); paid=!!(c.pays&&c.pays[ym2]);
+    if(!inP) st='out'; else if(paid) st='paid'; else if(m<curMonth) st='overdue'; else if(m===curMonth) st='cur'; else st='future';
+    cells+=_regCell(c.id,ym2,String(m),st); }
+  var actions=(_regDelAsk===c.id)
+    ? '<span style="font-size:11px;color:var(--warn);margin-right:6px">정말 삭제할까요?</span><button onclick="regDel(\''+c.id+'\')" style="font-size:11px;border:1px solid var(--warn);color:#fff;background:var(--warn);border-radius:6px;padding:4px 10px;cursor:pointer">삭제</button> <button onclick="regDelCancel()" style="font-size:11px;border:1px solid var(--line);background:var(--bg);border-radius:6px;padding:4px 10px;cursor:pointer">취소</button>'
+    : '<button onclick="regEditOpen(\''+c.id+'\')" style="font-size:11px;border:1px solid var(--line);background:var(--bg);border-radius:6px;padding:4px 10px;cursor:pointer">수정</button> <button onclick="regDelAsk(\''+c.id+'\')" style="font-size:11px;border:1px solid var(--line);background:var(--bg);color:var(--muted);border-radius:6px;padding:4px 10px;cursor:pointer">삭제</button>';
+  return '<div style="background:var(--card);border:1px solid var(--line);border-radius:12px;padding:14px;margin-top:10px">'
+    +'<div style="display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap;margin-bottom:6px">'
+      +'<div style="display:flex;align-items:center;gap:7px;flex-wrap:wrap"><span style="font-size:15px;font-weight:700">'+E(c.site)+'</span>'+cycle+'</div>'
+      +'<div style="display:flex;gap:5px;flex-wrap:wrap;align-items:center">'+statusBadge+renewBadge+'</div></div>'
+    + (sub?'<div style="font-size:12px;color:var(--muted);margin-bottom:10px">'+sub+'</div>':'')
+    + '<div style="display:flex;gap:18px;flex-wrap:wrap;margin-bottom:4px">'+stat+'</div>'
+    + prog
+    + '<div style="font-size:11px;color:var(--muted);margin-bottom:5px">'+curY+'년 월별 입금 — 칸을 누르면 완료 ✓ / 다시 누르면 취소</div>'
+    + '<div style="display:grid;grid-template-columns:repeat(12,1fr);gap:4px">'+cells+'</div>'
+    + '<div style="text-align:right;margin-top:10px">'+actions+'</div></div>';
+}
+function _regEditHTML(c){
+  var id=c.id;
+  function inp(f,val,label,extra){ var sv=(val==null?'':String(val)); return '<div class="fld'+((extra&&extra.wide)?' wide':'')+'"><label>'+label+'</label><input id="re_'+f+'_'+id+'" '+((extra&&extra.type)?('type="'+extra.type+'" '):'')+'value="'+_rgAttr(sv)+'"></div>'; }
+  var coSel='<div class="fld"><label>회사</label><select id="re_co_'+id+'"><option value="limit"'+(c.co!=='daman'?' selected':'')+'>리미트(청소)</option><option value="daman"'+(c.co==='daman'?' selected':'')+'>다만산업</option></select></div>';
+  return '<div style="background:var(--card);border:1px solid var(--limit);border-radius:12px;padding:14px;margin-top:10px">'
+    +'<div style="font-weight:700;font-size:13px;margin-bottom:8px">✏️ 계약 수정</div>'
+    +'<div class="form-grid" style="grid-template-columns:1fr 1fr">'
+      + inp('site',c.site,'현장 이름',{wide:true}) + coSel
+      + inp('cycle',c.cycle,'주기') + inp('amount',c.amount,'월 금액(원)')
+      + inp('days',c.days,'방문 요일') + inp('type',c.type,'유형·층')
+      + inp('mgr',c.mgr,'관리소 담당') + inp('phone',c.phone,'담당 전화')
+      + inp('start',c.start,'계약 시작(월)',{type:'month'}) + inp('end',c.end,'계약 종료(월)',{type:'month'})
+    +'</div>'
+    +'<div style="margin-top:10px;text-align:right"><button onclick="regEditCancel()" style="font-size:12px;border:1px solid var(--line);background:var(--bg);border-radius:8px;padding:8px 14px;cursor:pointer;margin-right:6px">취소</button><button class="primary" onclick="regEditSave(\''+id+'\')">저장</button></div></div>';
+}
+function renderRegular(){
+  var listEl=document.getElementById('regList'); if(!listEl) return;
+  var sumEl=document.getElementById('regSummary');
+  var d=getData(), list=_regList(d);
+  var t=realToday(), curY=t.slice(0,4), curYM=t.slice(0,7), curMonth=parseInt(t.slice(5,7),10);
+  var nActive=0,mBill=0,mGot=0,nOver=0,nRenew=0;
+  list.forEach(function(c){
+    if(_regActive(c,curYM)){ nActive++; mBill+=(+c.amount||0); if(c.pays&&c.pays[curYM]) mGot+=(+c.amount||0); }
+    var od=0,m,ym2; for(m=1;m<curMonth;m++){ ym2=curY+'-'+_pad2(m); if(_regActive(c,ym2)&&!(c.pays&&c.pays[ym2])) od++; }
+    if(od>0) nOver++;
+    if(c.end){ var dd=_regDaysUntil(_regEndDate(c)); if(dd!==null&&dd>=0&&dd<=60) nRenew++; }
+  });
+  if(sumEl){
+    sumEl.innerHTML='<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin:10px 0 4px">'
+      + _regTile('계약 현장', nActive+' 곳','')
+      + _regTile('이번 달 받을 돈', KRW(mBill),'')
+      + _regTile('미수 (안 들어옴)', nOver+' 곳', nOver>0?'warn':'')
+      + _regTile('재계약 임박', nRenew+' 곳', nRenew>0?'amber':'')
+      + '</div>'
+      + '<div style="font-size:12px;color:var(--muted);margin:2px 0">받은 돈(이번 달) '+KRW(mGot)+' · 남은 '+KRW(Math.max(0,mBill-mGot))+'</div>';
+  }
+  var badge=document.getElementById('regBadge'); if(badge){ var n=nOver+nRenew; badge.textContent=n>0?n:''; badge.className='tabbadge count'+(n>0?' on':''); }
+  if(!list.length){ listEl.innerHTML='<div style="color:var(--muted);font-size:13px;margin-top:12px">아직 등록된 정기청소 계약이 없어요. 위 <b>＋ 계약 등록</b>으로 첫 현장을 넣어보세요.</div>'; return; }
+  listEl.innerHTML=list.map(function(c){ return (_regEdit===c.id)?_regEditHTML(c):_regCardHTML(c,curY,curMonth); }).join('');
 }
 
 /* ===== 🔐 로그인 보관함 (PIN 암호화 · Web Crypto AES-GCM + PBKDF2) ===== */
