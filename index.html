@@ -1189,8 +1189,8 @@
           <div class="fld"><label>유형·층</label><input id="rg_type" placeholder="예: 공용부·계단"></div>
           <div class="fld"><label>관리소 담당</label><input id="rg_mgr" placeholder="예: 김소장"></div>
           <div class="fld"><label>담당 전화</label><input id="rg_phone" inputmode="tel" placeholder="010-0000-0000"></div>
-          <div class="fld"><label>계약 시작(월)</label><input id="rg_start" type="month"></div>
-          <div class="fld"><label>계약 종료(월)</label><input id="rg_end" type="month"></div>
+          <div class="fld"><label>계약 시작</label><div style="display:flex;gap:6px"><select id="rg_start_y" style="flex:1"></select><select id="rg_start_m" style="flex:1"></select></div></div>
+          <div class="fld"><label>계약 종료</label><div style="display:flex;gap:6px"><select id="rg_end_y" style="flex:1"></select><select id="rg_end_m" style="flex:1"></select></div></div>
         </div>
         <div style="margin:10px 0 2px;text-align:right">
           <button onclick="regAddToggle()" style="font-size:12px;border:1px solid var(--line);background:var(--bg);border-radius:8px;padding:8px 14px;cursor:pointer;margin-right:6px">취소</button>
@@ -1988,7 +1988,7 @@ if(window.AIHQ_DATA){
     {date:"2026-11-06",name:"명석 폴리싱 (3/4일)"},
     {date:"2026-11-07",name:"명석 폴리싱 (4/4일)"}
   ];
-  window.AIHQ_DATA.calSync = "2026-11-16b";
+  window.AIHQ_DATA.calSync = "2026-11-16c";
 }
 /* 🏫 학교 영업 — 기록은 getData()/setData() 상태의 schools 필드에 저장되어 기존 클라우드 동기화로 팀 공유됩니다. */
 (function(){
@@ -5750,6 +5750,11 @@ function _regDaysUntil(dateStr){ if(!dateStr) return null; var t=realToday(); va
 function _regMonthsEl(a,b){ return (parseInt(b.slice(0,4),10)-parseInt(a.slice(0,4),10))*12 + (parseInt(b.slice(5,7),10)-parseInt(a.slice(5,7),10)); }
 function _regCoName(co){ return co==='daman'?'다만산업':'리미트'; }
 function _rgAttr(s){ return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;'); }
+function _regYearOptsHTML(sel){ var cy=parseInt(realToday().slice(0,4),10), s='<option value="">—</option>', y; for(y=cy+1;y>=cy-8;y--){ s+='<option value="'+y+'"'+(String(sel)===String(y)?' selected':'')+'>'+y+'년</option>'; } return s; }
+function _regMonthOptsHTML(sel){ var s='<option value="">—</option>', m; for(m=1;m<=12;m++){ s+='<option value="'+m+'"'+(String(sel)===String(m)?' selected':'')+'>'+m+'월</option>'; } return s; }
+function _regYM(yId,mId){ var ye=document.getElementById(yId), me=document.getElementById(mId); var y=ye?(ye.value||''):'', m=me?(me.value||''):''; if(!y||!m) return ''; return y+'-'+_pad2(parseInt(m,10)); }
+function _regFillYM(){ var ys=['rg_start_y','rg_end_y'], ms=['rg_start_m','rg_end_m'], i, e; for(i=0;i<ys.length;i++){ e=document.getElementById(ys[i]); if(e&&!e.options.length) e.innerHTML=_regYearOptsHTML(''); } for(i=0;i<ms.length;i++){ e=document.getElementById(ms[i]); if(e&&!e.options.length) e.innerHTML=_regMonthOptsHTML(''); } }
+function _regOverdue(c,curYM){ var sYM=c.start||(curYM.slice(0,4)+'-01'); var y=parseInt(sYM.slice(0,4),10), m=parseInt(sYM.slice(5,7),10); var cy=parseInt(curYM.slice(0,4),10), cm=parseInt(curYM.slice(5,7),10); var cnt=0, guard=0; while((y<cy||(y===cy&&m<cm))&&guard<240){ var ym=y+'-'+_pad2(m); if(_regActive(c,ym)&&!(c.pays&&c.pays[ym])) cnt++; m++; if(m>12){m=1;y++;} guard++; } return cnt; }
 var _regEdit=null, _regDelAsk=null;
 function regAddToggle(){ var f=document.getElementById('regForm'); if(!f) return; var open=(f.style.display!=='none'); f.style.display=open?'none':'block'; if(!open){ var s=document.getElementById('rg_site'); if(s) s.focus(); } }
 function regAdd(){
@@ -5760,9 +5765,9 @@ function regAdd(){
   list.push({ id:'rg'+Date.now()+Math.random().toString(36).slice(2,5), co:(g('rg_co')||'limit'), site:site,
     type:g('rg_type').trim(), mgr:g('rg_mgr').trim(), phone:g('rg_phone').trim(), cycle:g('rg_cycle').trim(),
     amount:Math.max(0, parseInt(g('rg_amount').replace(/[^0-9]/g,''),10)||0), days:g('rg_days').trim(),
-    start:g('rg_start'), end:g('rg_end'), pays:{}, memo:'' });
+    start:_regYM('rg_start_y','rg_start_m'), end:_regYM('rg_end_y','rg_end_m'), pays:{}, memo:'' });
   setData(d);
-  ['rg_site','rg_type','rg_mgr','rg_phone','rg_cycle','rg_amount','rg_days','rg_start','rg_end'].forEach(function(id){ var el=document.getElementById(id); if(el) el.value=''; });
+  ['rg_site','rg_type','rg_mgr','rg_phone','rg_cycle','rg_amount','rg_days','rg_start_y','rg_start_m','rg_end_y','rg_end_m'].forEach(function(id){ var el=document.getElementById(id); if(el) el.value=''; });
   var f=document.getElementById('regForm'); if(f) f.style.display='none';
   render(); toast('정기청소 계약을 등록했어요.');
 }
@@ -5775,7 +5780,7 @@ function regEditSave(id){
   var site=g('site').trim(); if(!site){ toast('현장 이름은 비울 수 없어요.'); return; }
   c.site=site; c.co=(g('co')||c.co||'limit'); c.type=g('type').trim(); c.mgr=g('mgr').trim(); c.phone=g('phone').trim();
   c.cycle=g('cycle').trim(); c.amount=Math.max(0,parseInt(g('amount').replace(/[^0-9]/g,''),10)||0);
-  c.days=g('days').trim(); c.start=g('start'); c.end=g('end');
+  c.days=g('days').trim(); c.start=_regYM('re_start_y_'+id,'re_start_m_'+id); c.end=_regYM('re_end_y_'+id,'re_end_m_'+id);
   _regEdit=null; setData(d); render(); toast('수정했어요.');
 }
 function regDelAsk(id){ _regDelAsk=id; _regEdit=null; render(); }
@@ -5801,7 +5806,7 @@ function _regCell(id,ym,label,state){
 }
 function _regCardHTML(c,curY,curMonth){
   var E=escHtml, curYM=curY+'-'+_pad2(curMonth), m, ym2;
-  var ov=0; for(m=1;m<curMonth;m++){ ym2=curY+'-'+_pad2(m); if(_regActive(c,ym2)&&!(c.pays&&c.pays[ym2])) ov++; }
+  var cy=parseInt(curY,10), ov=_regOverdue(c,curYM);
   var statusBadge = ov>0
     ? '<span style="font-size:11px;background:#fee2e2;color:#b91c1c;padding:3px 9px;border-radius:6px">입금 '+ov+'개월 밀림</span>'
     : '<span style="font-size:11px;background:#dcfce7;color:#15803d;padding:3px 9px;border-radius:6px">정상</span>';
@@ -5819,9 +5824,16 @@ function _regCardHTML(c,curY,curMonth){
   if(c.start&&c.end){ var tot=_regMonthsEl(c.start,c.end)+1; var el=_regMonthsEl(c.start,curYM)+1; if(el<0) el=0; if(el>tot) el=tot; var pct=tot>0?Math.max(0,Math.min(100,Math.round(el/tot*100))):0;
     prog='<div style="margin:10px 0 12px"><div style="display:flex;justify-content:space-between;font-size:11px;color:var(--muted);margin-bottom:3px"><span>'+period+'</span><span>'+el+'개월 경과</span></div><div style="height:6px;background:#eef1f6;border-radius:4px;overflow:hidden"><div style="width:'+pct+'%;height:100%;background:'+(pct>=90?'var(--daman)':'var(--limit)')+'"></div></div></div>';
   } else if(period){ prog='<div style="font-size:11px;color:var(--muted);margin:8px 0 10px">'+period+'</div>'; }
-  var cells='',st,paid,inP; for(m=1;m<=12;m++){ ym2=curY+'-'+_pad2(m); inP=_regActive(c,ym2); paid=!!(c.pays&&c.pays[ym2]);
-    if(!inP) st='out'; else if(paid) st='paid'; else if(m<curMonth) st='overdue'; else if(m===curMonth) st='cur'; else st='future';
-    cells+=_regCell(c.id,ym2,String(m),st); }
+  var y0=c.start?parseInt(c.start.slice(0,4),10):cy, y1=c.end?parseInt(c.end.slice(0,4),10):cy;
+  if(y1<y0) y1=y0; if(!c.end && y1<cy) y1=cy; if(y1-y0>3) y0=y1-3;
+  var multiY=(y1>y0), grid='', yy, st, paid, inP, ymc;
+  for(yy=y0; yy<=y1; yy++){
+    var row=''; for(m=1;m<=12;m++){ ymc=yy+'-'+_pad2(m); inP=_regActive(c,ymc); paid=!!(c.pays&&c.pays[ymc]);
+      if(!inP) st='out'; else if(paid) st='paid'; else if(yy<cy||(yy===cy&&m<curMonth)) st='overdue'; else if(yy===cy&&m===curMonth) st='cur'; else st='future';
+      row+=_regCell(c.id,ymc,String(m),st); }
+    grid += (multiY?('<div style="font-size:11px;color:var(--muted);margin:6px 0 3px">'+yy+'년</div>'):'') + '<div style="display:grid;grid-template-columns:repeat(12,1fr);gap:4px">'+row+'</div>';
+  }
+  var gridHdr = multiY ? '월별 입금 (연도별) — 칸을 누르면 완료 ✓ / 다시 누르면 취소' : (y0+'년 월별 입금 — 칸을 누르면 완료 ✓ / 다시 누르면 취소');
   var actions=(_regDelAsk===c.id)
     ? '<span style="font-size:11px;color:var(--warn);margin-right:6px">정말 삭제할까요?</span><button onclick="regDel(\''+c.id+'\')" style="font-size:11px;border:1px solid var(--warn);color:#fff;background:var(--warn);border-radius:6px;padding:4px 10px;cursor:pointer">삭제</button> <button onclick="regDelCancel()" style="font-size:11px;border:1px solid var(--line);background:var(--bg);border-radius:6px;padding:4px 10px;cursor:pointer">취소</button>'
     : '<button onclick="regEditOpen(\''+c.id+'\')" style="font-size:11px;border:1px solid var(--line);background:var(--bg);border-radius:6px;padding:4px 10px;cursor:pointer">수정</button> <button onclick="regDelAsk(\''+c.id+'\')" style="font-size:11px;border:1px solid var(--line);background:var(--bg);color:var(--muted);border-radius:6px;padding:4px 10px;cursor:pointer">삭제</button>';
@@ -5832,8 +5844,8 @@ function _regCardHTML(c,curY,curMonth){
     + (sub?'<div style="font-size:12px;color:var(--muted);margin-bottom:10px">'+sub+'</div>':'')
     + '<div style="display:flex;gap:18px;flex-wrap:wrap;margin-bottom:4px">'+stat+'</div>'
     + prog
-    + '<div style="font-size:11px;color:var(--muted);margin-bottom:5px">'+curY+'년 월별 입금 — 칸을 누르면 완료 ✓ / 다시 누르면 취소</div>'
-    + '<div style="display:grid;grid-template-columns:repeat(12,1fr);gap:4px">'+cells+'</div>'
+    + '<div style="font-size:11px;color:var(--muted);margin-bottom:5px">'+gridHdr+'</div>'
+    + grid
     + '<div style="text-align:right;margin-top:10px">'+actions+'</div></div>';
 }
 function _regEditHTML(c){
@@ -5847,7 +5859,8 @@ function _regEditHTML(c){
       + inp('cycle',c.cycle,'주기') + inp('amount',c.amount,'월 금액(원)')
       + inp('days',c.days,'방문 요일') + inp('type',c.type,'유형·층')
       + inp('mgr',c.mgr,'관리소 담당') + inp('phone',c.phone,'담당 전화')
-      + inp('start',c.start,'계약 시작(월)',{type:'month'}) + inp('end',c.end,'계약 종료(월)',{type:'month'})
+      + '<div class="fld"><label>계약 시작</label><div style="display:flex;gap:6px"><select id="re_start_y_'+id+'" style="flex:1">'+_regYearOptsHTML(c.start?c.start.slice(0,4):'')+'</select><select id="re_start_m_'+id+'" style="flex:1">'+_regMonthOptsHTML(c.start?parseInt(c.start.slice(5,7),10):'')+'</select></div></div>'
+      + '<div class="fld"><label>계약 종료</label><div style="display:flex;gap:6px"><select id="re_end_y_'+id+'" style="flex:1">'+_regYearOptsHTML(c.end?c.end.slice(0,4):'')+'</select><select id="re_end_m_'+id+'" style="flex:1">'+_regMonthOptsHTML(c.end?parseInt(c.end.slice(5,7),10):'')+'</select></div></div>'
     +'</div>'
     +'<div style="margin-top:10px;text-align:right"><button onclick="regEditCancel()" style="font-size:12px;border:1px solid var(--line);background:var(--bg);border-radius:8px;padding:8px 14px;cursor:pointer;margin-right:6px">취소</button><button class="primary" onclick="regEditSave(\''+id+'\')">저장</button></div></div>';
 }
@@ -5855,12 +5868,12 @@ function renderRegular(){
   var listEl=document.getElementById('regList'); if(!listEl) return;
   var sumEl=document.getElementById('regSummary');
   var d=getData(), list=_regList(d);
+  _regFillYM();
   var t=realToday(), curY=t.slice(0,4), curYM=t.slice(0,7), curMonth=parseInt(t.slice(5,7),10);
   var nActive=0,mBill=0,mGot=0,nOver=0,nRenew=0;
   list.forEach(function(c){
     if(_regActive(c,curYM)){ nActive++; mBill+=(+c.amount||0); if(c.pays&&c.pays[curYM]) mGot+=(+c.amount||0); }
-    var od=0,m,ym2; for(m=1;m<curMonth;m++){ ym2=curY+'-'+_pad2(m); if(_regActive(c,ym2)&&!(c.pays&&c.pays[ym2])) od++; }
-    if(od>0) nOver++;
+    if(_regOverdue(c,curYM)>0) nOver++;
     if(c.end){ var dd=_regDaysUntil(_regEndDate(c)); if(dd!==null&&dd>=0&&dd<=60) nRenew++; }
   });
   if(sumEl){
