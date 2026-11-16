@@ -187,12 +187,10 @@
   .pm-item.done .pm-tx{text-decoration:line-through;color:var(--muted)}
   .pm-del{background:none;border:none;color:var(--muted);cursor:pointer;font-size:14px;opacity:.55;flex:none}
   .pm-del:hover{opacity:1}
-  .pm-mv{background:none;border:1px solid var(--line);border-radius:6px;color:var(--muted);cursor:pointer;font-size:11px;line-height:1;padding:4px 8px;flex:none}
-  .pm-mv:hover{color:var(--ink);border-color:var(--muted)}
-  .pm-mv.act{color:#fff;background:var(--daman);border-color:var(--daman)}
-  .pm-mv.to{color:var(--daman);border-color:var(--daman);border-style:dashed}
-  .pm-item.moving{box-shadow:0 0 0 2px var(--daman)}
-  .pm-movehint{font-size:11.5px;color:var(--daman);background:var(--card);border:1px dashed var(--daman);border-radius:8px;padding:7px 10px;margin-bottom:8px}
+  .pm-grip{cursor:grab;color:var(--muted);font-size:15px;line-height:1;flex:none;padding:0 3px;user-select:none;-webkit-user-select:none;touch-action:none}
+  .pm-grip:active{cursor:grabbing}
+  .pm-item.dragging{opacity:.4}
+  .pm-item.dragover{box-shadow:0 0 0 2px var(--daman)}
   .pm-pal{flex-basis:100%;display:flex;gap:6px;align-items:center;padding-top:6px;margin-top:1px;border-top:1px dashed var(--line)}
   .pm-pal .lbl{font-size:10px;color:var(--muted);margin-right:1px}
   .pm-sw{width:13px;height:13px;border-radius:999px;cursor:pointer;box-sizing:border-box;padding:0;border:1.5px solid transparent}
@@ -1961,7 +1959,7 @@ if(window.AIHQ_DATA){
     {date:"2026-11-06",name:"명석 폴리싱 (3/4일)"},
     {date:"2026-11-07",name:"명석 폴리싱 (4/4일)"}
   ];
-  window.AIHQ_DATA.calSync = "2026-11-13d";
+  window.AIHQ_DATA.calSync = "2026-11-16";
 }
 /* 🏫 학교 영업 — 기록은 getData()/setData() 상태의 schools 필드에 저장되어 기존 클라우드 동기화로 팀 공유됩니다. */
 (function(){
@@ -5662,17 +5660,22 @@ function pmSetTodoColor(id,k){
   var d=getData(), it=_myPersonal(d).todos.find(function(x){return x.id===id;}); if(!it) return;
   it.color=(it.color===k?'':k); setData(d); render();   // 같은 색 다시 누르면 해제(되돌리기)
 }
-var _pmMove=null;   // 옮기는 중인 할 일 id (저장 안 하는 화면 상태)
-function pmMove(id){
-  var d=getData(), todos=_myPersonal(d).todos, j, from=-1;
-  if(_pmMove===null){ _pmMove=id; render(); return; }        // 1탭: 들어올리기
-  if(_pmMove===id){ _pmMove=null; render(); return; }          // 같은 것 다시: 취소
-  for(j=0;j<todos.length;j++){ if(todos[j].id===_pmMove){ from=j; break; } }
-  if(from<0){ _pmMove=null; render(); return; }
-  var item=todos.splice(from,1)[0], ti=-1;
+var _pmDrag=null;   // 드래그 중인 할 일 id (저장 안 하는 화면 상태)
+function _pmClearDrag(){ var l=document.getElementById('pm_list'); if(!l) return; var a=l.getElementsByClassName('pm-item'); for(var i=0;i<a.length;i++){ a[i].className=a[i].className.replace(/\s*dragging/g,'').replace(/\s*dragover/g,''); } }
+function pmDragStart(e,id){ _pmDrag=id; try{ e.dataTransfer.effectAllowed='move'; e.dataTransfer.setData('text/plain',id); }catch(_e){} var it=e.currentTarget&&e.currentTarget.parentNode; if(it&&it.classList) it.classList.add('dragging'); }
+function pmDragEnd(e){ _pmDrag=null; _pmClearDrag(); }
+function pmDragOver(e,id){ if(!_pmDrag||_pmDrag===id) return; e.preventDefault(); try{ e.dataTransfer.dropEffect='move'; }catch(_e){} if(e.currentTarget&&e.currentTarget.classList) e.currentTarget.classList.add('dragover'); }
+function pmDragLeave(e){ if(e.currentTarget&&e.currentTarget.classList) e.currentTarget.classList.remove('dragover'); }
+function pmDrop(e,id){ e.preventDefault(); var dragId=_pmDrag; _pmDrag=null;
+  if(!dragId||dragId===id){ _pmClearDrag(); render(); return; }
+  var d=getData(), todos=_myPersonal(d).todos, from=-1, ti=-1, j;
+  for(j=0;j<todos.length;j++){ if(todos[j].id===dragId){ from=j; break; } }
+  if(from<0){ render(); return; }
+  var r=e.currentTarget.getBoundingClientRect(), after=(e.clientY > r.top + r.height/2);
+  var item=todos.splice(from,1)[0];
   for(j=0;j<todos.length;j++){ if(todos[j].id===id){ ti=j; break; } }
-  if(ti<0) todos.push(item); else todos.splice(ti,0,item);     // 2탭: 대상 '여기로' 앞에 끼워넣기
-  _pmMove=null; setData(d); render();
+  if(ti<0) todos.push(item); else todos.splice(after?ti+1:ti, 0, item);   // 커서 위치 따라 위/아래로 끼워넣기
+  setData(d); render();
 }
 var _pmMemoTimer=null;
 function pmSetMemo(v){
@@ -5685,8 +5688,7 @@ function renderPersonal(){
   if(!p.todos.length){
     list.innerHTML='<div class="pm-empty">아직 할 일이 없어요. 위에 입력하고 Enter.</div>';
   } else {
-    var hint = _pmMove ? '<div class="pm-movehint">옮길 자리의 <b>여기로</b>를 누르세요 · 취소하려면 <b>취소</b></div>' : '';
-    list.innerHTML = hint + p.todos.map(function(t){
+    list.innerHTML = p.todos.map(function(t){
       var cc=_pmColorObj(t.color||'');
       var sw=PM_COLORS.map(function(c){
         return '<span class="pm-sw'+(c.k?'':' none')+((t.color||'')===c.k?' on':'')+'"'
@@ -5694,15 +5696,11 @@ function renderPersonal(){
           +' onclick="pmSetTodoColor(\''+t.id+'\',\''+c.k+'\')" title="'+c.t+'"></span>';
       }).join('');
       var istyle = cc.bg ? ' style="background:'+cc.bg+';border-color:'+cc.bd+'"' : '';
-      var mv = _pmMove
-        ? (_pmMove===t.id
-            ? '<button class="pm-mv act" onclick="pmMove(\''+t.id+'\')" title="이동 취소">취소</button>'
-            : '<button class="pm-mv to" onclick="pmMove(\''+t.id+'\')" title="여기로 옮기기">여기로</button>')
-        : '<button class="pm-mv" onclick="pmMove(\''+t.id+'\')" title="이 할 일 옮기기">옮기기</button>';
-      return '<div class="pm-item'+(t.done?' done':'')+(_pmMove===t.id?' moving':'')+'"'+istyle+'>'
+      return '<div class="pm-item'+(t.done?' done':'')+'"'+istyle
+          +' ondragover="pmDragOver(event,\''+t.id+'\')" ondragleave="pmDragLeave(event)" ondrop="pmDrop(event,\''+t.id+'\')">'
+        +'<span class="pm-grip" draggable="true" ondragstart="pmDragStart(event,\''+t.id+'\')" ondragend="pmDragEnd(event)" title="잡고 위아래로 끌어 이동">≡</span>'
         +'<span class="pm-cb" onclick="pmToggleTodo(\''+t.id+'\')" title="완료 표시">✓</span>'
         +'<span class="pm-tx">'+escHtml(t.text)+'</span>'
-        +mv
         +'<button class="pm-del" onclick="pmDelTodo(\''+t.id+'\')" title="삭제">✕</button>'
         +'<div class="pm-pal"><span class="lbl">색</span>'+sw+'</div>'
         +'</div>';
