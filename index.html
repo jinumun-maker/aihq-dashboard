@@ -1738,6 +1738,13 @@
       <span class="pill" style="background:rgba(22,163,74,.13);color:#15803d">④ 편의성(폰)</span>
     </div>
   </div>
+  <div class="card" style="margin-top:22px">
+    <h2>💬 건의함 <span style="font-weight:500;color:var(--muted);font-size:12px">익명 불편사항·개선</span> <span id="suggCount" style="font-weight:500;color:var(--muted);font-size:12px"></span></h2>
+    <div id="suggSummary" style="margin:6px 0 12px"></div>
+    <div id="suggFilterBar" style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px"></div>
+    <div id="suggList"></div>
+    <div style="font-size:12px;color:var(--muted);margin-top:10px">💡 각 팀 화면 왼쪽아래 <b>💬 불편한 점</b> 버튼으로 누구나 익명으로 올려요(이름 안 받음). 상태를 바꾸거나 답을 달면 쓴 사람(그 기기)에게도 보여요. "건의 정리해줘" 하시면 개발방에서 개선 리포트로 묶어드려요.</div>
+  </div>
   </div><!-- /개발팀 -->
 
   <!-- 원본 데이터 -->
@@ -2001,7 +2008,7 @@ if(window.AIHQ_DATA){
     {date:"2026-08-08",name:"달리 칠암동 산대"},
     {date:"2026-08-10",name:"합천 청소 25평"}
   ];
-  window.AIHQ_DATA.calSync = "2026-11-17b";
+  window.AIHQ_DATA.calSync = "2026-11-17c";
 }
 /* 🏫 학교 영업 — 기록은 getData()/setData() 상태의 schools 필드에 저장되어 기존 클라우드 동기화로 팀 공유됩니다. */
 (function(){
@@ -3136,6 +3143,7 @@ function render(){
   if(typeof renderRegular==='function') renderRegular();
   if(typeof renderLaborers==='function') renderLaborers();
   renderDev();
+  if(typeof renderSuggestions==='function') renderSuggestions();
   renderPurchases();
   renderPayReqs();
   renderCars();
@@ -6117,9 +6125,137 @@ function renderDev(){
       <input type="checkbox" ${x.done?'checked':''} onchange="toggleDevDecision(${i})" style="width:17px;height:17px;margin-top:1px;cursor:pointer">
       <span style="font-size:13.5px;line-height:1.5;${x.done?'color:var(--muted);text-decoration:line-through':'color:var(--ink)'}">${escHtml(x.text)}</span>
     </label>`).join('') : `<div style="color:var(--muted);font-size:13px">대기 중인 결정이 없어요.</div>`;
+  const sugOpen=(d.suggestions||[]).filter(function(s){ return s&&(s.status==='접수'||s.status==='검토'||!s.status); }).length;
+  const attn=pending+sugOpen;
   const badge=document.getElementById('devBadge');
-  if(badge){ badge.textContent=pending>0?('❗'+pending):''; badge.className='tabbadge'+(pending>0?' on':''); }
+  if(badge){ badge.textContent=attn>0?('❗'+attn):''; badge.className='tabbadge'+(attn>0?' on':''); }
 }
+/* ── 💬 건의함 (익명 불편사항 → 개발팀 정리) ── */
+var _suggDelId='', _suggMineDelId='', _suggEditId='', SUGG_FILTER='전체';
+function _suggAttr(s){ return String(s==null?'':s).replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+function _suggData(){ var d=getData(); if(!Array.isArray(d.suggestions)) d.suggestions=[]; return d; }
+function _suggTeams(){ return ['운영팀','재무팀','경영관리팀','인사팀','마케팅팀','영업팀','개발팀','기타']; }
+function _teamOfPage(t){ var m={'대시보드':'경영관리팀','분석':'분석팀','인사':'인사팀','기업지원':'기업지원팀'}; return m[t]||t||'기타'; }
+function _suggStColor(st){ return st==='반영'?'#16a34a':(st==='보류'?'#6b7280':(st==='검토'?'#2563eb':'#dc2626')); }
+function _suggMine(){ try{ return JSON.parse(localStorage.getItem('aihq_sugg_mine')||'[]'); }catch(e){ return []; } }
+function _suggMineAdd(id){ try{ var a=_suggMine(); a.push(id); localStorage.setItem('aihq_sugg_mine', JSON.stringify(a)); }catch(e){} }
+function _suggMineDrop(id){ try{ var a=_suggMine().filter(function(x){ return x!==id; }); localStorage.setItem('aihq_sugg_mine', JSON.stringify(a)); }catch(e){} }
+
+function suggOpen(){
+  var m=document.getElementById('suggModal'); if(!m) return;
+  var at=document.querySelector('.tab.active'); var curTeam=_teamOfPage(at?at.dataset.tab:'');
+  var sel=document.getElementById('sugg_team');
+  if(sel){ var ts=_suggTeams(); if(ts.indexOf(curTeam)<0) curTeam='기타';
+    sel.innerHTML=ts.map(function(t){ return '<option'+(t===curTeam?' selected':'')+'>'+t+'</option>'; }).join(''); }
+  var tx=document.getElementById('sugg_text'); if(tx) tx.value='';
+  _suggEditId=''; _suggMineDelId='';
+  m.style.display='flex'; suggRenderMine();
+  if(tx) tx.focus();
+}
+function suggClose(){ var m=document.getElementById('suggModal'); if(m) m.style.display='none'; _suggEditId=''; _suggMineDelId=''; }
+
+function suggSend(){
+  var tx=document.getElementById('sugg_text'), sel=document.getElementById('sugg_team');
+  var text=tx?String(tx.value||'').trim():'', team=sel?sel.value:'기타', i;
+  if(!text){ toast('내용을 적어주세요'); if(tx) tx.focus(); return; }
+  var d=_suggData();
+  if(_suggEditId){
+    for(i=0;i<d.suggestions.length;i++){ if(d.suggestions[i].id===_suggEditId){ d.suggestions[i].text=text; d.suggestions[i].team=team; d.suggestions[i].edited=realToday(); break; } }
+    setData(d); _suggEditId=''; if(tx) tx.value=''; toast('수정했어요'); render(); suggRenderMine(); return;
+  }
+  var id='s'+Date.now()+Math.floor(Math.random()*1000);
+  d.suggestions.push({ id:id, team:team, text:text, date:realToday(), ts:Date.now(), status:'접수', reply:'' });
+  setData(d); _suggMineAdd(id);
+  if(tx) tx.value=''; toast('건의 접수됐어요. 고마워요! (익명)');
+  render(); suggRenderMine();
+}
+
+function suggRenderMine(){
+  var box=document.getElementById('suggMine'); if(!box) return;
+  var d=getData(), mine=_suggMine();
+  var list=(d.suggestions||[]).filter(function(s){ return s && mine.indexOf(s.id)>=0; }).sort(function(a,b){ return (b.ts||0)-(a.ts||0); });
+  if(!list.length){ box.innerHTML='<div style="color:var(--muted);font-size:12px;padding:6px 2px">이 기기에서 보낸 건의가 여기 모여요. (남들에겐 누가 썼는지 안 보여요)</div>'; return; }
+  box.innerHTML='<div style="font-size:11.5px;color:var(--muted);margin:2px 0 6px">내가 보낸 건의 (이 기기에서만 보여요)</div>'+list.map(function(s){
+    var st=s.status||'접수';
+    return '<div style="border:1px solid var(--line);border-radius:9px;padding:8px 10px;margin-bottom:6px;background:var(--bg)">'
+      +'<div style="font-size:11px;color:var(--muted);margin-bottom:3px">'+escHtml(s.team||'')+' · '+(s.date||'')+' · <b style="color:'+_suggStColor(st)+'">'+st+'</b></div>'
+      +'<div style="font-size:13px;line-height:1.5;white-space:pre-wrap">'+escHtml(s.text||'')+'</div>'
+      +(s.reply?('<div style="margin-top:5px;font-size:12px;color:var(--limit)">↳ 대표님: '+escHtml(s.reply)+'</div>'):'')
+      +'<div style="display:flex;gap:6px;margin-top:6px">'
+      +(_suggMineDelId===s.id
+          ? '<span style="font-size:12px;color:var(--warn)">철회할까요? <button class="del" style="color:var(--warn);font-weight:700" onclick="suggMineDel(\''+s.id+'\')">철회</button> <button class="del" onclick="suggMineDelCancel()">취소</button></span>'
+          : '<button class="del" onclick="suggMineEdit(\''+s.id+'\')">✏️ 수정</button><button class="del" onclick="suggMineDelAsk(\''+s.id+'\')">🗑 철회</button>')
+      +'</div></div>';
+  }).join('');
+}
+function suggMineEdit(id){
+  var d=getData(), s=(d.suggestions||[]).filter(function(x){ return x&&x.id===id; })[0]; if(!s) return;
+  _suggEditId=id;
+  var tx=document.getElementById('sugg_text'); if(tx){ tx.value=s.text||''; tx.focus(); }
+  var sel=document.getElementById('sugg_team'); if(sel&&s.team){ sel.value=s.team; }
+  toast('고친 뒤 보내기를 누르세요');
+}
+function suggMineDelAsk(id){ _suggMineDelId=id; suggRenderMine(); }
+function suggMineDelCancel(){ _suggMineDelId=''; suggRenderMine(); }
+function suggMineDel(id){
+  var d=_suggData(); d.suggestions=d.suggestions.filter(function(s){ return !(s&&s.id===id); });
+  setData(d); _suggMineDrop(id); _suggMineDelId='';
+  toast('철회했어요'); render(); suggRenderMine();
+}
+
+function suggFilter(t){ SUGG_FILTER=t; renderSuggestions(); }
+function _suggTile(label,val,color){ return '<div class="sumtile" style="flex:1;min-width:84px"><div style="font-size:11px;color:var(--muted)">'+label+'</div><div style="font-size:21px;font-weight:800;color:'+color+'">'+val+'</div></div>'; }
+function renderSuggestions(){
+  var fab=document.getElementById('suggFab');
+  if(fab){ var pw=document.getElementById('pwModal'); var locked=pw&&(pw.style.display==='flex'||pw.style.display==='block'); fab.style.display=locked?'none':'block'; }
+  var mount=document.getElementById('suggList'); if(!mount) return;
+  var d=getData(); var all=(d.suggestions||[]).slice().sort(function(a,b){ return (b.ts||0)-(a.ts||0); });
+  var open=all.filter(function(s){ return s.status==='접수'||s.status==='검토'||!s.status; }).length;
+  var done=all.filter(function(s){ return s.status==='반영'; }).length;
+  var wk=all.filter(function(s){ return (s.ts||0)>=(Date.now()-7*864e5); }).length;
+  var sm=document.getElementById('suggSummary');
+  if(sm) sm.innerHTML='<div style="display:flex;gap:8px;flex-wrap:wrap">'+_suggTile('전체',all.length,'var(--ink)')+_suggTile('미처리',open,'var(--warn)')+_suggTile('이번주 새 글',wk,'var(--limit)')+_suggTile('반영됨',done,'var(--good)')+'</div>';
+  var cnt=document.getElementById('suggCount'); if(cnt) cnt.textContent=open>0?('· 미처리 '+open+'건'):(all.length?'· 모두 처리 ✅':'');
+  var teams=['전체'].concat(_suggTeams());
+  var fl=document.getElementById('suggFilterBar');
+  if(fl) fl.innerHTML=teams.map(function(t){
+    var n=t==='전체'?all.length:all.filter(function(s){ return (s.team||'기타')===t; }).length;
+    if(t!=='전체'&&n===0) return '';
+    var on=SUGG_FILTER===t;
+    return '<button class="pill" onclick="suggFilter(\''+t+'\')" style="cursor:pointer;border:1px solid '+(on?'var(--limit)':'var(--line)')+';background:'+(on?'rgba(37,99,235,.12)':'var(--bg)')+';color:'+(on?'var(--limit)':'var(--muted)')+';font-weight:'+(on?'700':'500')+'">'+t+' '+n+'</button>';
+  }).join('');
+  var list=SUGG_FILTER==='전체'?all:all.filter(function(s){ return (s.team||'기타')===SUGG_FILTER; });
+  if(!list.length){ mount.innerHTML='<div style="color:var(--muted);font-size:13px;padding:10px 2px">아직 들어온 건의가 없어요. 각 팀 화면 왼쪽아래 <b>💬 불편한 점</b> 버튼으로 익명으로 올릴 수 있어요.</div>'; return; }
+  mount.innerHTML=list.map(function(s){
+    var st=s.status||'접수', stc=_suggStColor(st);
+    var statusBtns=['접수','검토','반영','보류'].map(function(x){
+      var on=st===x;
+      return '<button class="del" onclick="suggSetStatus(\''+s.id+'\',\''+x+'\')" style="border:1px solid '+(on?_suggStColor(x):'var(--line)')+';border-radius:7px;padding:2px 9px;font-weight:'+(on?'700':'500')+';color:'+(on?'#fff':'var(--muted)')+';background:'+(on?_suggStColor(x):'var(--bg)')+'">'+x+'</button>';
+    }).join('');
+    var delUI=_suggDelId===s.id
+      ? '<span style="font-size:12px;color:var(--warn)">삭제할까요? <button class="del" style="color:var(--warn);font-weight:700" onclick="suggDel(\''+s.id+'\')">삭제</button> <button class="del" onclick="suggDelCancel()">취소</button></span>'
+      : '<button class="del" onclick="suggDelAsk(\''+s.id+'\')" title="삭제">🗑</button>';
+    return '<div style="border:1px solid var(--line);border-radius:11px;padding:11px 13px;margin-bottom:9px;background:var(--card)">'
+      +'<div style="display:flex;align-items:center;gap:7px;margin-bottom:6px;flex-wrap:wrap">'
+        +'<span class="pill" style="background:rgba(37,99,235,.12);color:#1d4ed8">'+escHtml(s.team||'기타')+'</span>'
+        +'<span style="font-size:11px;color:var(--muted)">'+(s.date||'')+(s.edited?' (수정됨)':'')+'</span>'
+        +'<span style="margin-left:auto;font-size:11.5px;font-weight:700;color:'+stc+'">'+st+'</span>'
+      +'</div>'
+      +'<div style="font-size:13.5px;line-height:1.6;white-space:pre-wrap;color:var(--ink)">'+escHtml(s.text||'')+'</div>'
+      +'<div style="display:flex;gap:5px;flex-wrap:wrap;margin-top:9px;align-items:center">'+statusBtns+'<span style="margin-left:auto"></span>'+delUI+'</div>'
+      +'<div style="margin-top:8px;display:flex;gap:6px">'
+        +'<input id="suggReply_'+s.id+'" value="'+_suggAttr(s.reply||'')+'" placeholder="대표님 답/메모 (선택)" style="flex:1;min-width:0;padding:7px 9px;border:1px solid var(--line);border-radius:8px;background:var(--bg);color:var(--ink);font-family:inherit;font-size:12.5px">'
+        +'<button class="del" style="color:var(--limit);font-weight:700" onclick="suggReplySave(\''+s.id+'\')">답 저장</button>'
+      +'</div>'
+    +'</div>';
+  }).join('');
+}
+function suggSetStatus(id,st){ var d=_suggData(),i; for(i=0;i<d.suggestions.length;i++){ if(d.suggestions[i].id===id){ d.suggestions[i].status=st; break; } } setData(d); render(); }
+function suggReplySave(id){ var el=document.getElementById('suggReply_'+id); if(!el) return; var v=String(el.value||'').trim(); var d=_suggData(),i; for(i=0;i<d.suggestions.length;i++){ if(d.suggestions[i].id===id){ d.suggestions[i].reply=v; d.suggestions[i].replyAt=realToday(); break; } } setData(d); toast('답을 저장했어요'); render(); }
+function suggDelAsk(id){ _suggDelId=id; renderSuggestions(); }
+function suggDelCancel(){ _suggDelId=''; renderSuggestions(); }
+function suggDel(id){ var d=_suggData(); d.suggestions=d.suggestions.filter(function(s){ return !(s&&s.id===id); }); setData(d); _suggDelId=''; toast('삭제했어요'); render(); }
+
 // 업무 완료율 진행바 (부서 업무요약 상단)
 function pctBar(pct,done,total,label){
   const c=pct>=90?'#16a34a':(pct>=60?'#f59e0b':'#e11d48');
@@ -6483,6 +6619,27 @@ function fabSendMsg(){ if(!CUR_MSG_SELF) return; sendDeptMsg(CUR_MSG_SELF,'fabMs
       </div>
     </div>
     <div id="fabMsgBox" style="padding:12px 16px;overflow-y:auto;flex:1"></div>
+  </div>
+</div>
+<!-- 💬 건의함(익명 불편사항) 플로팅 버튼 + 팝업 -->
+<button id="suggFab" onclick="suggOpen()" title="불편한 점·개선 건의 (익명)" style="position:fixed;left:16px;bottom:16px;z-index:1200;height:48px;padding:0 17px;border-radius:24px;border:none;background:#0f766e;color:#fff;font-size:14px;font-weight:700;box-shadow:0 4px 16px rgba(0,0,0,.28);cursor:pointer;display:none">💬 불편한 점</button>
+<div id="suggModal" onclick="if(event.target===this)suggClose()" style="position:fixed;inset:0;z-index:1320;background:rgba(0,0,0,.45);display:none;align-items:flex-end;justify-content:flex-start">
+  <div style="background:var(--card);color:var(--ink);width:min(430px,94vw);max-height:82vh;margin:0 0 16px 16px;border-radius:16px;box-shadow:0 10px 44px rgba(0,0,0,.4);display:flex;flex-direction:column;overflow:hidden">
+    <div style="padding:13px 16px;border-bottom:1px solid var(--line);display:flex;align-items:center;gap:8px;flex-shrink:0">
+      <b style="font-size:15px">💬 불편한 점·개선 건의</b>
+      <span class="pill" style="background:rgba(15,118,110,.14);color:#0f766e;font-size:11px">익명</span>
+      <button onclick="suggClose()" title="닫기" style="margin-left:auto;border:none;background:transparent;font-size:20px;line-height:1;cursor:pointer;color:var(--muted)">✕</button>
+    </div>
+    <div style="padding:12px 16px;overflow-y:auto">
+      <div style="font-size:12px;color:var(--muted);margin-bottom:9px">이름은 <b>안 받아요.</b> 어디가 불편한지 · 어떻게 됐으면 좋겠는지 편하게 적어주세요. 개발팀이 보고 개선합니다.</div>
+      <div style="display:flex;gap:7px;align-items:center;margin-bottom:8px">
+        <span style="font-size:11.5px;color:var(--muted);white-space:nowrap">어느 팀</span>
+        <select id="sugg_team" style="flex:1;padding:7px 9px;border:1px solid var(--line);border-radius:8px;background:var(--bg);color:var(--ink);font-family:inherit;font-size:13px"></select>
+      </div>
+      <textarea id="sugg_text" rows="3" placeholder="예) 결산 입력할 때 현장 이름을 매번 다시 쳐야 해서 불편해요. 지난 현장에서 고를 수 있으면 좋겠어요." style="width:100%;box-sizing:border-box;padding:10px;border:1px solid var(--line);border-radius:10px;background:var(--bg);color:var(--ink);font-family:inherit;font-size:13.5px;line-height:1.5;resize:vertical"></textarea>
+      <button class="primary" onclick="suggSend()" style="width:100%;margin-top:9px">보내기 (익명)</button>
+      <div id="suggMine" style="margin-top:14px"></div>
+    </div>
   </div>
 </div>
 <script>
