@@ -1802,7 +1802,7 @@ const DEFAULT_DATA = {
   ]
 };
 
-/* ── 구글 캘린더 최신화 (2026-11-17: 8월 과거현장 10건 회수 — 이미 결산 끝난 달이라 '미결산'에 잘못 떠서 calSyncDel로 제거. 11/26 하모인테리어·가좌 11/25 이동은 유지): 배치인원 보존 병합 ── */
+/* ── 구글 캘린더 최신화 (2026-11-17b: 신규 현장 2건 추가 — 11/20 금산유리사장님 투룸·11/23 화장실 케라폭시. 앞+최근만 반영, 결산 끝난 과거 달은 손대지 않음. 8월 10건은 calSyncDel로 계속 제거): 배치인원 보존 병합 ── */
 if(window.AIHQ_DATA){
   window.AIHQ_DATA.schedule = [
     {date:"2026-08-11",co:"daman",site:"역세권 또오리 유리·방충망 등",work:"",crew:"",contact:"",quote:0,status:"예약"},
@@ -1894,7 +1894,9 @@ if(window.AIHQ_DATA){
     {date:"2026-12-29",co:"daman",site:"고미 평거동 하우스토리 202동 104호 47평",work:"",crew:"",contact:"",quote:0,status:"예약"},
     {date:"2026-12-31",co:"daman",site:"고미 하대 삼전프라자 102동 301호 22평",work:"",crew:"",contact:"",quote:0,status:"예약",memo:"3층이 1층입니다"},
     {date:"2027-01-30",co:"daman",site:"고미 중흥 3단지 304동 1501호 39평",work:"",crew:"",contact:"",quote:0,status:"예약"},
-    {date:"2026-11-26",co:"daman",site:"하모 인테리어 시티푸라디움 1차 104호",work:"15:30",crew:"",contact:"01083040460",quote:360000,status:"예약"}
+    {date:"2026-11-26",co:"daman",site:"하모 인테리어 시티푸라디움 1차 104호",work:"15:30",crew:"",contact:"01083040460",quote:360000,status:"예약"},
+    {date:"2026-11-20",co:"daman",site:"금산유리사장님 투룸",work:"12:30",crew:"",contact:"",quote:260000,status:"예약"},
+    {date:"2026-11-23",co:"daman",site:"화장실 바닥 2개 케라폭시 (0410)",work:"18:00",crew:"",contact:"",quote:450000,status:"예약"}
   ];
   window.AIHQ_DATA.calendar = [
     {date:"2026-08-13",time:"07:00",title:"지하상가 방역"},
@@ -1999,7 +2001,7 @@ if(window.AIHQ_DATA){
     {date:"2026-08-08",name:"달리 칠암동 산대"},
     {date:"2026-08-10",name:"합천 청소 25평"}
   ];
-  window.AIHQ_DATA.calSync = "2026-11-17";
+  window.AIHQ_DATA.calSync = "2026-11-17b";
 }
 /* 🏫 학교 영업 — 기록은 getData()/setData() 상태의 schools 필드에 저장되어 기존 클라우드 동기화로 팀 공유됩니다. */
 (function(){
