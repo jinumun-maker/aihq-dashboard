@@ -2011,7 +2011,7 @@ if(window.AIHQ_DATA){
     {date:"2026-08-08",name:"달리 칠암동 산대"},
     {date:"2026-08-10",name:"합천 청소 25평"}
   ];
-  window.AIHQ_DATA.calSync = "2026-11-20d";
+  window.AIHQ_DATA.calSync = "2026-11-20e";
 }
 /* 🏫 학교 영업 — 기록은 getData()/setData() 상태의 schools 필드에 저장되어 기존 클라우드 동기화로 팀 공유됩니다. */
 (function(){
@@ -2378,7 +2378,8 @@ function _mergeSchedule(oldSched, incoming){
     if(from.status && from.status!=='예약') to.status=from.status;
     if(!to.contact && from.contact) to.contact=from.contact;
     if(from.note && !to.note) to.note=from.note;
-    if(from.memo && !to.memo) to.memo=from.memo;   // 현장 메모(주소·특이사항) 보존
+    if(from.memoManual){ to.memo=from.memo; to.memoManual=true; }   // 대표가 손수 고친 메모는 항상 보존(캘린더가 안 덮음)
+    else if(from.memo && !to.memo) to.memo=from.memo;   // 현장 메모(캘린더 설명) 보존
     if(from.manual) to.manual=true;
   };
   // 1차: 같은 날짜+같은 현장(또는 같은 연락처) 정확 매칭
@@ -3564,7 +3565,7 @@ function render(){
         <div style="flex:1;font-size:12.5px">${items.map(it=>
           it.t==='cal'
           ? `<div style="margin:2px 0">${it.time?`<b>${it.time}</b> `:''}${it.title}${it.note?`<span style="color:var(--muted)"> · ${it.note}</span>`:''} <button class="del" onclick="delCalEvent(${it.i})" title="삭제">✕</button></div>`
-          : `<div style="margin:2px 0"><span class="pill ${coPill(it.co)}">${coName(it.co)}</span> ${it.title}${it.note?`<span style="color:var(--muted)"> · ${it.note}</span>`:''}${schMemoHTML(it.memo,it.site)}</div>`
+          : `<div style="margin:2px 0"><span class="pill ${coPill(it.co)}">${coName(it.co)}</span> ${it.title}${it.note?`<span style="color:var(--muted)"> · ${it.note}</span>`:''}${schMemoHTML(it.memo,it.site,dt)}</div>`
         ).join('')}</div>
       </div>`;
     }).join('') : `<div style="color:var(--muted);font-size:12.5px;padding:10px 0">예정된 일정이 없습니다.<br>등록하거나 "구글 캘린더 최신화해줘"라고 하세요.</div>`;
@@ -4023,12 +4024,37 @@ function editSchedCrew(i){
 }
 // 현장 메모(캘린더 설명)에서 주소 한 줄만 뽑아 지도 검색에 쓰기
 function _memoAddr(memo){ if(!memo) return ''; var m=String(memo).match(/주소[^\n]*/); if(!m) return ''; return m[0].replace(/^주소\s*[-:·.\s]*/,'').trim(); }
-// 일정 목록(아젠다)에 메모 카드 + 지도 열기 버튼 그리기
-function schMemoHTML(memo,site){
-  if(!memo || !String(memo).trim()) return '';
+// 일정 목록(아젠다) 메모: 보기 + 대표가 직접 수정/추가 (최신화해도 보존)
+var _memoEditKey='';
+function _memoEsc(s){ return String(s==null?'':s).replace(/\\/g,'\\\\').replace(/'/g,"\\'"); }
+function _memoVisibleBox(){ var bs=document.querySelectorAll('.memoEditBox'); for(var i=0;i<bs.length;i++){ if(bs[i].offsetParent!==null) return bs[i]; } return bs[0]||null; }
+function memoEditOpen(date,site){ _memoEditKey=date+'|'+site; render(); setTimeout(function(){ var b=_memoVisibleBox(); if(b) b.focus(); },30); }
+function memoEditCancel(){ _memoEditKey=''; render(); }
+function memoEditSave(){
+  var b=_memoVisibleBox(); if(!b) return;
+  var val=String(b.value||'').trim();
+  var p=_memoEditKey.indexOf('|'); var date=_memoEditKey.slice(0,p); var site=_memoEditKey.slice(p+1);
+  var d=getData();
+  var hit=(d.schedule||[]).filter(function(s){ return s && s.date===date && s.site===site; })[0];
+  if(hit){ if(val){ hit.memo=val; hit.memoManual=true; } else { hit.memo=''; hit.memoManual=false; } }
+  _memoEditKey='';
+  setData(d); toast(val?'메모 저장했어요':'메모 비웠어요'); render();
+}
+// 일정 목록(아젠다)에 메모 카드 + ✏️수정 + 지도 열기 버튼 그리기
+function schMemoHTML(memo,site,date){
+  var key=(date||'')+'|'+site;
+  if(_memoEditKey===key){
+    return '<div class="schmemo"><div class="mlbl">메모 수정</div>'
+      +'<textarea class="memoEditBox" rows="3" style="width:100%;box-sizing:border-box;padding:7px 9px;border:1px solid var(--line);border-radius:7px;background:var(--bg);color:var(--ink);font-family:inherit;font-size:12px;line-height:1.5;resize:vertical">'+escHtml(memo||'')+'</textarea>'
+      +'<div style="margin-top:6px;display:flex;gap:6px"><button class="del" style="color:var(--limit);font-weight:700" onclick="memoEditSave()">저장</button><button class="del" onclick="memoEditCancel()">취소</button></div></div>';
+  }
+  var has=memo && String(memo).trim();
+  if(!has){
+    return '<button class="del" onclick="memoEditOpen(\''+_memoEsc(date)+'\',\''+_memoEsc(site)+'\')" style="color:var(--muted);margin:3px 0 2px;display:inline-block">＋ 메모</button>';
+  }
   var addr=_memoAddr(memo);
   var map = addr ? '<div class="mmaprow"><a class="mmap" href="https://map.naver.com/p/search/'+encodeURIComponent(addr)+'" target="_blank" rel="noopener">📍 지도 열기</a></div>' : '';
-  return '<div class="schmemo"><div class="mlbl">메모</div><div class="mtxt">'+escHtml(memo)+'</div>'+map+'</div>';
+  return '<div class="schmemo"><div class="mlbl">메모 <button class="del" onclick="memoEditOpen(\''+_memoEsc(date)+'\',\''+_memoEsc(site)+'\')" style="color:var(--limit);padding:0 2px;font-size:11px">✏️ 수정</button></div><div class="mtxt">'+escHtml(memo)+'</div>'+map+'</div>';
 }
 // 달력에서 배치 현장 클릭 → 인원 확인 (폰에서도 확인 가능)
 function calJobInfo(i){
