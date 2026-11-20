@@ -1743,7 +1743,7 @@
     <div id="suggSummary" style="margin:6px 0 12px"></div>
     <div id="suggFilterBar" style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px"></div>
     <div id="suggList"></div>
-    <div style="font-size:12px;color:var(--muted);margin-top:10px">🔒 이 목록은 <b>대표님만</b> 보여요. 직원은 각 팀 화면 왼쪽아래 <b>💬 불편한 점</b> 버튼으로 누구나 익명으로 올려요(이름 안 받음). 상태를 바꾸거나 답을 달면 쓴 사람(그 기기)에게도 보여요. "건의 정리해줘" 하시면 개발방에서 개선 리포트로 묶어드려요.</div>
+    <div style="font-size:12px;color:var(--muted);margin-top:10px">🔒 이 목록은 <b>대표님·혜란 이사님만</b> 보여요. 직원은 각 팀 화면 왼쪽아래 <b>💬 불편한 점</b> 버튼으로 누구나 익명으로 올려요(이름 안 받음). 상태를 바꾸거나 답을 달면 쓴 사람(그 기기)에게도 보여요. "건의 정리해줘" 하시면 개발방에서 개선 리포트로 묶어드려요.</div>
   </div>
   </div><!-- /개발팀 -->
 
@@ -2010,7 +2010,7 @@ if(window.AIHQ_DATA){
     {date:"2026-08-08",name:"달리 칠암동 산대"},
     {date:"2026-08-10",name:"합천 청소 25평"}
   ];
-  window.AIHQ_DATA.calSync = "2026-11-20";
+  window.AIHQ_DATA.calSync = "2026-11-20b";
 }
 /* 🏫 학교 영업 — 기록은 getData()/setData() 상태의 schools 필드에 저장되어 기존 클라우드 동기화로 팀 공유됩니다. */
 (function(){
@@ -6127,7 +6127,7 @@ function renderDev(){
       <input type="checkbox" ${x.done?'checked':''} onchange="toggleDevDecision(${i})" style="width:17px;height:17px;margin-top:1px;cursor:pointer">
       <span style="font-size:13.5px;line-height:1.5;${x.done?'color:var(--muted);text-decoration:line-through':'color:var(--ink)'}">${escHtml(x.text)}</span>
     </label>`).join('') : `<div style="color:var(--muted);font-size:13px">대기 중인 결정이 없어요.</div>`;
-  const sugOpen=(CURRENT_ROLE==='대표')?(d.suggestions||[]).filter(function(s){ return s&&(s.status==='접수'||s.status==='검토'||!s.status); }).length:0;
+  const sugOpen=(CURRENT_ROLE==='대표'||CURRENT_ROLE==='혜란')?(d.suggestions||[]).filter(function(s){ return s&&(s.status==='접수'||s.status==='검토'||!s.status); }).length:0;
   const attn=pending+sugOpen;
   const badge=document.getElementById('devBadge');
   if(badge){ badge.textContent=attn>0?('❗'+attn):''; badge.className='tabbadge'+(attn>0?' on':''); }
@@ -6210,7 +6210,7 @@ function _suggTile(label,val,color){ return '<div class="sumtile" style="flex:1;
 function renderSuggestions(){
   var fab=document.getElementById('suggFab');
   if(fab){ var pw=document.getElementById('pwModal'); var locked=pw&&(pw.style.display==='flex'||pw.style.display==='block'); fab.style.display=locked?'none':'block'; }
-  var _boss=(CURRENT_ROLE==='대표');
+  var _boss=(CURRENT_ROLE==='대표'||CURRENT_ROLE==='혜란');
   var _ac=document.getElementById('suggAdminCard'); if(_ac) _ac.style.display=_boss?'':'none';
   var mount=document.getElementById('suggList'); if(!mount) return;
   if(!_boss) return;   // 건의함 목록은 대표만 봄
