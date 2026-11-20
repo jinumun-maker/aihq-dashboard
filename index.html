@@ -1809,7 +1809,7 @@ const DEFAULT_DATA = {
   ]
 };
 
-/* ── 구글 캘린더 최신화 (2026-11-20: 신규 현장 2건(11/27 주택 주차장 폴리싱·11/30 대포동 남해 폴리싱) + 견적 수정(금산유리 26→36·가좌 60→63, 가좌 메모). 앞+최근만 반영, 과거 달 안 건드림. 8월 10건은 calSyncDel 유지): 배치인원 보존 병합 ── */
+/* ── 구글 캘린더 최신화 (2026-11-20c: 세종 폴리싱 22→19일 축소 반영[11/20·21·22 calSyncDel 제거]. 앞서 신규현장 2건(11/27·11/30)·견적수정 2건은 유지. 8월 10건 유지): 배치인원 보존 병합 ── */
 if(window.AIHQ_DATA){
   window.AIHQ_DATA.schedule = [
     {date:"2026-08-11",co:"daman",site:"역세권 또오리 유리·방충망 등",work:"",crew:"",contact:"",quote:0,status:"예약"},
@@ -1888,10 +1888,7 @@ if(window.AIHQ_DATA){
     {date:"2026-11-17",co:"daman",site:"세종 폴리싱 (2/7일)",work:"",crew:"",contact:"",quote:0,status:"예약"},
     {date:"2026-11-18",co:"daman",site:"세종 폴리싱 (3/7일)",work:"",crew:"",contact:"",quote:0,status:"예약"},
     {date:"2026-11-18",co:"daman",site:"금산 락정 내외부 유리",work:"",crew:"",contact:"01085315056",quote:250000,status:"예약",memo:"주소 - 금산면 중천로 21번길 15-1\n오전 8시30분 ~9시 시작 내부 유리부터 시작 -웨그테일\n오후 점심 외부 유리 진행 - 장죽 버핑 - 퓨어워터 작업\n출입구 마지막 정리"},
-    {date:"2026-11-19",co:"daman",site:"세종 폴리싱 (4/7일)",work:"",crew:"",contact:"",quote:0,status:"예약"},
-    {date:"2026-11-20",co:"daman",site:"세종 폴리싱 (5/7일)",work:"",crew:"",contact:"",quote:0,status:"예약"},
-    {date:"2026-11-21",co:"daman",site:"세종 폴리싱 (6/7일)",work:"",crew:"",contact:"",quote:0,status:"예약"},
-    {date:"2026-11-22",co:"daman",site:"세종 폴리싱 (7/7일)",work:"~16:30",crew:"",contact:"",quote:0,status:"예약"},
+    {date:"2026-11-19",co:"daman",site:"세종 폴리싱 (4/7일)",work:"~16:30 (마지막날)",crew:"",contact:"",quote:0,status:"예약"},
     {date:"2026-11-24",co:"daman",site:"고미 중흥 4단지 402동 1403호",work:"11:30",crew:"",contact:"",quote:0,status:"예약"},
     {date:"2026-11-24",co:"daman",site:"뱅미 친구 입주청소",work:"12:00",crew:"",contact:"",quote:0,status:"예약"},
     {date:"2026-11-25",co:"daman",site:"가좌주공그린빌 35평 (태식이 지인) 4명",work:"13:30",crew:"",contact:"01025622282",quote:630000,status:"예약",memo:"베란다 바닥 스티커 자국 확인하기"},
@@ -1993,6 +1990,9 @@ if(window.AIHQ_DATA){
     {date:"2027-12-30",time:"07:00",title:"지하상가 방역"}
   ];
   window.AIHQ_DATA.calSyncDel = [   // 캘린더에서 취소된 현장 — 최신화 때 영구 제거(배치인원 있어도)
+    {date:"2026-11-20",name:"세종 폴리싱 (5/7일)"},
+    {date:"2026-11-21",name:"세종 폴리싱 (6/7일)"},
+    {date:"2026-11-22",name:"세종 폴리싱 (7/7일)"},
     {date:"2026-10-14",name:"고미 남해 주은파크빌 가동 101호"},
     {date:"2026-11-10",name:"고미 남해 주은파크빌 가동 101호"},
     {date:"2026-11-04",name:"명석 폴리싱 (1/4일)"},
@@ -2010,7 +2010,7 @@ if(window.AIHQ_DATA){
     {date:"2026-08-08",name:"달리 칠암동 산대"},
     {date:"2026-08-10",name:"합천 청소 25평"}
   ];
-  window.AIHQ_DATA.calSync = "2026-11-20b";
+  window.AIHQ_DATA.calSync = "2026-11-20c";
 }
 /* 🏫 학교 영업 — 기록은 getData()/setData() 상태의 schools 필드에 저장되어 기존 클라우드 동기화로 팀 공유됩니다. */
 (function(){
