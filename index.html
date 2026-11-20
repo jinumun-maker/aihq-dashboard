@@ -1738,12 +1738,12 @@
       <span class="pill" style="background:rgba(22,163,74,.13);color:#15803d">④ 편의성(폰)</span>
     </div>
   </div>
-  <div class="card" style="margin-top:22px">
+  <div class="card" id="suggAdminCard" style="margin-top:22px">
     <h2>💬 건의함 <span style="font-weight:500;color:var(--muted);font-size:12px">익명 불편사항·개선</span> <span id="suggCount" style="font-weight:500;color:var(--muted);font-size:12px"></span></h2>
     <div id="suggSummary" style="margin:6px 0 12px"></div>
     <div id="suggFilterBar" style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px"></div>
     <div id="suggList"></div>
-    <div style="font-size:12px;color:var(--muted);margin-top:10px">💡 각 팀 화면 왼쪽아래 <b>💬 불편한 점</b> 버튼으로 누구나 익명으로 올려요(이름 안 받음). 상태를 바꾸거나 답을 달면 쓴 사람(그 기기)에게도 보여요. "건의 정리해줘" 하시면 개발방에서 개선 리포트로 묶어드려요.</div>
+    <div style="font-size:12px;color:var(--muted);margin-top:10px">🔒 이 목록은 <b>대표님만</b> 보여요. 직원은 각 팀 화면 왼쪽아래 <b>💬 불편한 점</b> 버튼으로 누구나 익명으로 올려요(이름 안 받음). 상태를 바꾸거나 답을 달면 쓴 사람(그 기기)에게도 보여요. "건의 정리해줘" 하시면 개발방에서 개선 리포트로 묶어드려요.</div>
   </div>
   </div><!-- /개발팀 -->
 
@@ -1809,7 +1809,7 @@ const DEFAULT_DATA = {
   ]
 };
 
-/* ── 구글 캘린더 최신화 (2026-11-17b: 신규 현장 2건 추가 — 11/20 금산유리사장님 투룸·11/23 화장실 케라폭시. 앞+최근만 반영, 결산 끝난 과거 달은 손대지 않음. 8월 10건은 calSyncDel로 계속 제거): 배치인원 보존 병합 ── */
+/* ── 구글 캘린더 최신화 (2026-11-20: 신규 현장 2건(11/27 주택 주차장 폴리싱·11/30 대포동 남해 폴리싱) + 견적 수정(금산유리 26→36·가좌 60→63, 가좌 메모). 앞+최근만 반영, 과거 달 안 건드림. 8월 10건은 calSyncDel 유지): 배치인원 보존 병합 ── */
 if(window.AIHQ_DATA){
   window.AIHQ_DATA.schedule = [
     {date:"2026-08-11",co:"daman",site:"역세권 또오리 유리·방충망 등",work:"",crew:"",contact:"",quote:0,status:"예약"},
@@ -1894,7 +1894,7 @@ if(window.AIHQ_DATA){
     {date:"2026-11-22",co:"daman",site:"세종 폴리싱 (7/7일)",work:"~16:30",crew:"",contact:"",quote:0,status:"예약"},
     {date:"2026-11-24",co:"daman",site:"고미 중흥 4단지 402동 1403호",work:"11:30",crew:"",contact:"",quote:0,status:"예약"},
     {date:"2026-11-24",co:"daman",site:"뱅미 친구 입주청소",work:"12:00",crew:"",contact:"",quote:0,status:"예약"},
-    {date:"2026-11-25",co:"daman",site:"가좌주공그린빌 35평 (태식이 지인) 4명",work:"13:30",crew:"",contact:"01025622282",quote:600000,status:"예약"},
+    {date:"2026-11-25",co:"daman",site:"가좌주공그린빌 35평 (태식이 지인) 4명",work:"13:30",crew:"",contact:"01025622282",quote:630000,status:"예약",memo:"베란다 바닥 스티커 자국 확인하기"},
     {date:"2026-12-04",co:"daman",site:"고미 금호석류아파트 115동 2001호",work:"12:30",crew:"",contact:"",quote:0,status:"예약"},
     {date:"2026-12-12",co:"daman",site:"시티 프라디움 34평 에어컨 (25년 하모 담당자)",work:"에어컨 확인",contact:"01088207177",quote:460000,status:"예약"},
     {date:"2026-11-28",co:"daman",site:"기중이집 청소",work:"",crew:"",contact:"",quote:460000,status:"예약"},
@@ -1902,8 +1902,10 @@ if(window.AIHQ_DATA){
     {date:"2026-12-31",co:"daman",site:"고미 하대 삼전프라자 102동 301호 22평",work:"",crew:"",contact:"",quote:0,status:"예약",memo:"3층이 1층입니다"},
     {date:"2027-01-30",co:"daman",site:"고미 중흥 3단지 304동 1501호 39평",work:"",crew:"",contact:"",quote:0,status:"예약"},
     {date:"2026-11-26",co:"daman",site:"하모 인테리어 시티푸라디움 1차 104호",work:"15:30",crew:"",contact:"01083040460",quote:360000,status:"예약"},
-    {date:"2026-11-20",co:"daman",site:"금산유리사장님 투룸",work:"12:30",crew:"",contact:"",quote:260000,status:"예약"},
-    {date:"2026-11-23",co:"daman",site:"화장실 바닥 2개 케라폭시 (0410)",work:"18:00",crew:"",contact:"",quote:450000,status:"예약"}
+    {date:"2026-11-20",co:"daman",site:"금산유리사장님 투룸",work:"12:30",crew:"",contact:"",quote:360000,status:"예약"},
+    {date:"2026-11-23",co:"daman",site:"화장실 바닥 2개 케라폭시 (0410)",work:"18:00",crew:"",contact:"",quote:450000,status:"예약"},
+    {date:"2026-11-27",co:"daman",site:"주택 주차장 폴리싱",work:"",crew:"",contact:"01093096221",quote:0,status:"예약"},
+    {date:"2026-11-30",co:"daman",site:"대포동 소장님 남해 폴리싱 35평",work:"",crew:"",contact:"",quote:0,status:"예약"}
   ];
   window.AIHQ_DATA.calendar = [
     {date:"2026-08-13",time:"07:00",title:"지하상가 방역"},
@@ -2008,7 +2010,7 @@ if(window.AIHQ_DATA){
     {date:"2026-08-08",name:"달리 칠암동 산대"},
     {date:"2026-08-10",name:"합천 청소 25평"}
   ];
-  window.AIHQ_DATA.calSync = "2026-11-17c";
+  window.AIHQ_DATA.calSync = "2026-11-20";
 }
 /* 🏫 학교 영업 — 기록은 getData()/setData() 상태의 schools 필드에 저장되어 기존 클라우드 동기화로 팀 공유됩니다. */
 (function(){
@@ -6125,7 +6127,7 @@ function renderDev(){
       <input type="checkbox" ${x.done?'checked':''} onchange="toggleDevDecision(${i})" style="width:17px;height:17px;margin-top:1px;cursor:pointer">
       <span style="font-size:13.5px;line-height:1.5;${x.done?'color:var(--muted);text-decoration:line-through':'color:var(--ink)'}">${escHtml(x.text)}</span>
     </label>`).join('') : `<div style="color:var(--muted);font-size:13px">대기 중인 결정이 없어요.</div>`;
-  const sugOpen=(d.suggestions||[]).filter(function(s){ return s&&(s.status==='접수'||s.status==='검토'||!s.status); }).length;
+  const sugOpen=(CURRENT_ROLE==='대표')?(d.suggestions||[]).filter(function(s){ return s&&(s.status==='접수'||s.status==='검토'||!s.status); }).length:0;
   const attn=pending+sugOpen;
   const badge=document.getElementById('devBadge');
   if(badge){ badge.textContent=attn>0?('❗'+attn):''; badge.className='tabbadge'+(attn>0?' on':''); }
@@ -6208,7 +6210,10 @@ function _suggTile(label,val,color){ return '<div class="sumtile" style="flex:1;
 function renderSuggestions(){
   var fab=document.getElementById('suggFab');
   if(fab){ var pw=document.getElementById('pwModal'); var locked=pw&&(pw.style.display==='flex'||pw.style.display==='block'); fab.style.display=locked?'none':'block'; }
+  var _boss=(CURRENT_ROLE==='대표');
+  var _ac=document.getElementById('suggAdminCard'); if(_ac) _ac.style.display=_boss?'':'none';
   var mount=document.getElementById('suggList'); if(!mount) return;
+  if(!_boss) return;   // 건의함 목록은 대표만 봄
   var d=getData(); var all=(d.suggestions||[]).slice().sort(function(a,b){ return (b.ts||0)-(a.ts||0); });
   var open=all.filter(function(s){ return s.status==='접수'||s.status==='검토'||!s.status; }).length;
   var done=all.filter(function(s){ return s.status==='반영'; }).length;
