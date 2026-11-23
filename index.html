@@ -2011,7 +2011,7 @@ if(window.AIHQ_DATA){
     {date:"2026-08-08",name:"달리 칠암동 산대"},
     {date:"2026-08-10",name:"합천 청소 25평"}
   ];
-  window.AIHQ_DATA.calSync = "2026-11-20e";
+  window.AIHQ_DATA.calSync = "2026-11-23";
 }
 /* 🏫 학교 영업 — 기록은 getData()/setData() 상태의 schools 필드에 저장되어 기존 클라우드 동기화로 팀 공유됩니다. */
 (function(){
@@ -5728,6 +5728,17 @@ function pmToggleTodo(id){
 function pmDelTodo(id){
   var d=getData(), p=_myPersonal(d); p.todos=p.todos.filter(function(x){return x.id!==id;}); setData(d); render();
 }
+var _pmEditId='';
+function pmEditTodo(id){ _pmEditId=id; render(); setTimeout(function(){ var b=document.getElementById('pm_edit_box'); if(b){ b.focus(); try{ b.select(); }catch(_e){} } },30); }
+function pmEditCancel(){ _pmEditId=''; render(); }
+function pmEditSave(){
+  var b=document.getElementById('pm_edit_box'); if(!b) return;
+  var v=(b.value||'').trim();
+  var d=getData(), it=_myPersonal(d).todos.find(function(x){return x.id===_pmEditId;});
+  if(it && v) it.text=v;   // 빈 값은 무시(삭제는 ✕로)
+  _pmEditId='';
+  setData(d); toast('메모 수정했어요'); render();
+}
 var PM_COLORS=[
   {k:'',c:'',bg:'',bd:'',t:'없음'},
   {k:'red',c:'#ef4444',bg:'rgba(239,68,68,.12)',bd:'rgba(239,68,68,.42)',t:'급함'},
@@ -5776,11 +5787,20 @@ function renderPersonal(){
           +' onclick="pmSetTodoColor(\''+t.id+'\',\''+c.k+'\')" title="'+c.t+'"></span>';
       }).join('');
       var istyle = cc.bg ? ' style="background:'+cc.bg+';border-color:'+cc.bd+'"' : '';
+      if(_pmEditId===t.id){
+        return '<div class="pm-item'+(t.done?' done':'')+'"'+istyle+'>'
+          +'<span class="pm-grip" style="opacity:.3">≡</span>'
+          +'<input id="pm_edit_box" value="'+_suggAttr(t.text)+'" onkeydown="if(event.key===\'Enter\')pmEditSave();else if(event.key===\'Escape\')pmEditCancel();" style="flex:1;min-width:0;padding:5px 8px;border:1px solid var(--limit);border-radius:7px;background:var(--bg);color:var(--ink);font-family:inherit;font-size:13px">'
+          +'<button class="pm-del" style="color:var(--limit);font-weight:700" onclick="pmEditSave()" title="저장">저장</button>'
+          +'<button class="pm-del" onclick="pmEditCancel()" title="취소">취소</button>'
+          +'</div>';
+      }
       return '<div class="pm-item'+(t.done?' done':'')+'"'+istyle
           +' ondragover="pmDragOver(event,\''+t.id+'\')" ondragleave="pmDragLeave(event)" ondrop="pmDrop(event,\''+t.id+'\')">'
         +'<span class="pm-grip" draggable="true" ondragstart="pmDragStart(event,\''+t.id+'\')" ondragend="pmDragEnd(event)" title="잡고 위아래로 끌어 이동">≡</span>'
         +'<span class="pm-cb" onclick="pmToggleTodo(\''+t.id+'\')" title="완료 표시">✓</span>'
-        +'<span class="pm-tx">'+escHtml(t.text)+'</span>'
+        +'<span class="pm-tx" onclick="pmEditTodo(\''+t.id+'\')" title="눌러서 수정" style="cursor:text">'+escHtml(t.text)+'</span>'
+        +'<button class="pm-del" style="color:var(--daman)" onclick="pmEditTodo(\''+t.id+'\')" title="수정">✏️</button>'
         +'<button class="pm-del" onclick="pmDelTodo(\''+t.id+'\')" title="삭제">✕</button>'
         +'<div class="pm-pal"><span class="lbl">색</span>'+sw+'</div>'
         +'</div>';
