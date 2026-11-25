@@ -149,6 +149,55 @@
   .pmemo{display:flex;align-items:flex-start;gap:8px;padding:10px 14px;background:var(--card);border-top:1px solid var(--line);font-size:12.5px}
   .pmemo .lbl{color:var(--muted);font-weight:600;flex:none;padding-top:6px}
   .pmemo textarea.mx{flex:1;min-width:120px;font-family:inherit;font-size:12.5px;padding:6px 8px;border:1px solid var(--line);border-radius:7px;background:var(--bg);color:var(--ink);resize:vertical;line-height:1.5}
+  /* 📈 영업 프로젝트 — 압축 타일 + 상세 모달 */
+  .ptiles{display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:10px}
+  .ptile{position:relative;border:1px solid var(--line);border-left-width:5px;border-radius:12px;background:var(--bg);padding:11px 12px 12px;cursor:pointer;transition:box-shadow .12s,transform .12s;overflow:hidden}
+  .ptile:hover{box-shadow:0 3px 12px rgba(0,0,0,.09);transform:translateY(-1px)}
+  .ptile:active{transform:translateY(0)}
+  .ptile.late{box-shadow:0 0 0 2px rgba(220,38,38,.12)}
+  .ptile.dead{opacity:.55}
+  .pt-open{position:absolute;top:10px;right:11px;font-size:11px;color:var(--muted);opacity:.7}
+  .pt-top{display:flex;align-items:center;gap:5px;flex-wrap:wrap;margin-bottom:7px;padding-right:34px}
+  .pt-name{font-size:13.5px;font-weight:800;letter-spacing:-.2px;line-height:1.3;word-break:break-word}
+  .pt-amt{font-size:15px;font-weight:800;font-variant-numeric:tabular-nums;margin-top:3px}
+  .pt-meta{font-size:11px;color:var(--muted);margin-top:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .pt-bar{display:flex;gap:2px;margin-top:9px}
+  .pt-seg{flex:1;height:5px;border-radius:3px;background:var(--line)}
+  .pt-next{font-size:11px;color:var(--muted);margin-top:8px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .pt-next b{color:var(--ink);font-weight:700}
+  .pdlg-back{position:fixed;inset:0;background:rgba(15,23,42,.5);display:none;align-items:center;justify-content:center;z-index:9999;padding:14px}
+  .pdlg{background:var(--card);border:1px solid var(--line);border-radius:16px;width:100%;max-width:520px;max-height:92vh;overflow:auto;position:relative;box-shadow:0 20px 50px rgba(0,0,0,.3)}
+  .pdlg-x{position:absolute;top:11px;right:13px;width:30px;height:30px;border:none;border-radius:8px;background:var(--bg);color:var(--muted);font-size:15px;cursor:pointer;z-index:2}
+  .pdlg-x:hover{background:var(--line);color:var(--ink)}
+  .pdbody{padding:18px 17px 17px}
+  .pd-h{display:flex;align-items:flex-start;gap:8px;flex-wrap:wrap;padding-right:34px}
+  .pd-name{font-size:17px;font-weight:800;letter-spacing:-.3px;line-height:1.3;flex:1;min-width:140px;word-break:break-word}
+  .pd-meta{font-size:12px;color:var(--muted);margin:3px 0 0}
+  .pd-sec{margin-top:16px}
+  .pd-lbl{font-size:11.5px;color:var(--muted);font-weight:800;margin-bottom:7px;letter-spacing:-.2px}
+  .pd-amt{display:flex;align-items:center;gap:8px}
+  .pd-amt input{flex:1;font-family:inherit;font-size:15px;font-weight:700;padding:9px 11px;border:1px solid var(--line);border-radius:9px;background:var(--bg);color:var(--ink);font-variant-numeric:tabular-nums}
+  .pd-stages{display:flex;gap:4px}
+  .pd-stg{flex:1;text-align:center;cursor:pointer;border:1px solid var(--line);border-radius:9px;padding:7px 2px;background:var(--bg);transition:all .1s}
+  .pd-stg .n{font-size:13px;font-weight:800;line-height:1}
+  .pd-stg .k{font-size:9px;color:var(--muted);margin-top:3px;letter-spacing:-.4px;display:block}
+  .pd-stg.on .k{color:rgba(255,255,255,.92)}
+  .pd-stg.pass{opacity:.7}
+  .pd-navs{display:flex;gap:7px;margin-top:9px}
+  .pd-navs button{flex:1;padding:9px;border-radius:9px;border:1px solid var(--line);background:var(--bg);color:var(--ink);font-family:inherit;font-size:13px;font-weight:700;cursor:pointer}
+  .pd-navs button.go{background:var(--limit);color:#fff;border-color:var(--limit)}
+  .pd-navs button:disabled{opacity:.4;cursor:default}
+  .pd-fld input,.pd-fld textarea{width:100%;box-sizing:border-box;font-family:inherit;font-size:13px;padding:9px 11px;border:1px solid var(--line);border-radius:9px;background:var(--bg);color:var(--ink)}
+  .pd-fld textarea{resize:vertical;line-height:1.55;min-height:56px}
+  .pd-row2{display:flex;gap:8px}
+  .pd-log{font-size:11.5px;color:var(--muted);line-height:1.7;max-height:150px;overflow:auto;background:var(--bg);border:1px solid var(--line);border-radius:9px;padding:9px 11px}
+  .pd-log b{color:var(--ink);font-weight:700}
+  .pd-foot{display:flex;gap:8px;align-items:center;margin-top:18px;flex-wrap:wrap}
+  .pd-kill{padding:8px 12px;border:1px solid var(--line);border-radius:9px;background:var(--bg);color:var(--ink);font-size:12.5px;font-weight:700;cursor:pointer}
+  .pd-del{padding:8px 12px;border:1px solid rgba(220,38,38,.4);border-radius:9px;background:transparent;color:var(--warn);font-size:12.5px;font-weight:700;cursor:pointer}
+  .pd-confirm{background:rgba(220,38,38,.08);border:1px solid rgba(220,38,38,.35);border-radius:10px;padding:11px 12px;margin-top:14px;font-size:12.5px}
+  .pd-confirm .row{display:flex;gap:8px;margin-top:9px}
+  .pd-confirm button{flex:1;padding:8px;border-radius:8px;font-weight:700;font-size:12.5px;cursor:pointer;font-family:inherit}
   /* 🔐 로그인 보관함 */
   .vault-warn{background:rgba(245,158,11,.12);border:1px solid rgba(245,158,11,.4);color:var(--ink);border-radius:10px;padding:11px 14px;font-size:12.8px;line-height:1.6;margin:14px 0 16px}
   .vault-box{max-width:420px;margin:0 auto;background:var(--card);border:1px solid var(--line);border-radius:12px;padding:18px}
@@ -1680,6 +1729,13 @@
     <h2>📋 진행 중인 건 <span id="pipeCount" style="font-weight:500;color:var(--muted);font-size:12px"></span></h2>
     <div class="pfilters" id="pipeFilters"></div>
     <div id="pipeList"></div>
+  </div>
+  <!-- 프로젝트 상세 모달 -->
+  <div id="pipeDlg" class="pdlg-back" onclick="if(event.target===this)closePipeDetail()">
+    <div class="pdlg" role="dialog" aria-modal="true" aria-label="프로젝트 상세">
+      <button class="pdlg-x" onclick="closePipeDetail()" aria-label="닫기">✕</button>
+      <div id="pipeDlgBody"></div>
+    </div>
   </div>
   </div><!-- /영업프로젝트 -->
 
@@ -5504,6 +5560,7 @@ const PSTAGES=[
   {n:'⑥', k:'수금완료', d:'입금 확인 · 종료',              c:'#16a34a'}
 ];
 let PIPE_FILTER='전체';
+var _pipeOpenId='', _pipeDelAsk=false;   // 상세 모달 상태
 function _pdays(a,b){ if(!a||!b) return 0; return Math.round((new Date(b)-new Date(a))/86400000); }
 function _pkdate(s){ if(!s) return ''; const p=String(s).split('-'); return (+p[1])+'/'+(+p[2]); }
 function _pwon(n){ return (Math.round(+n||0)).toLocaleString('ko-KR')+'원'; }
@@ -5658,7 +5715,7 @@ function renderPipeline(){
       '<span class="sname" style="color:'+s.c+'">'+s.n+' '+s.k+'</span>'+
       '<span class="sdesc">'+escHtml(s.d)+'</span><span class="sline"></span>'+
       '<span class="scnt">'+g.length+'건 · '+_pman(a)+'</span></div>'+
-      '<div class="plist">'+g.map(pipeCard).join('')+'</div></div>';
+      '<div class="ptiles">'+g.map(pipeTile).join('')+'</div></div>';
   });
   const dead=V.filter(p=>p.dead);
   if(dead.length){
@@ -5668,9 +5725,10 @@ function renderPipeline(){
       '<span class="sname" style="color:var(--muted)">✖ 끝난 건</span>'+
       '<span class="sdesc">보류 · 실주</span><span class="sline"></span>'+
       '<span class="scnt">'+dead.length+'건 · '+_pman(da)+'</span></div>'+
-      '<div class="plist">'+dead.map(pipeCard).join('')+'</div></div>';
+      '<div class="ptiles">'+dead.map(pipeTile).join('')+'</div></div>';
   }
   box.innerHTML=html;
+  if(_pipeOpenId) _renderPipeDetail();   // 상세 모달 열려 있으면 같이 갱신
 }
 
 function advPipe(id){
@@ -5707,6 +5765,75 @@ function editPipeAmt(id){
   p.amt=n<0?0:n; setData(d); render();
 }
 function setPipeMemo(id,v){ const d=getData(); const p=(d.pipeline||[]).find(x=>x.id===id); if(!p) return; p.memo=String(v||''); setData(d); render(); }
+function setPipeAmt(id,v){ const d=getData(); const p=(d.pipeline||[]).find(x=>x.id===id); if(!p) return; const n=Math.round(parseFloat(String(v).replace(/[^0-9.]/g,''))||0); p.amt=n<0?0:n; setData(d); render(); }
+function setPipeStage(id,i){ const d=getData(); const p=(d.pipeline||[]).find(x=>x.id===id); if(!p||p.dead||i===p.stage) return; p.stage=i; p.log=p.log||[]; p.log.push({d:realToday(),t:'단계 → '+PSTAGES[i].k}); if(i===5){ p.next=''; p.due=''; } setData(d); render(); }
+function killPipe2(id,why){ const d=getData(); const p=(d.pipeline||[]).find(x=>x.id===id); if(!p) return; p.dead=why; p.next=''; p.due=''; p.log=p.log||[]; p.log.push({d:realToday(),t:why}); setData(d); render(); }
+
+/* ── 작은 타일(목록) + 상세 모달 ── */
+function pipeTile(p){
+  const t=realToday();
+  const waited=_pdays(_ptouch(p),t);
+  const overdue=!p.dead && p.stage<4 && p.due && _pdays(t,p.due)<0;
+  const slowPay=!p.dead && p.stage===4 && waited>=10;
+  const isLate=overdue||slowPay;
+  const SC=p.dead?'#9ca3af':PSTAGES[p.stage].c;
+  const seg=PSTAGES.map((s,i)=>'<span class="pt-seg"'+((i<=p.stage&&!p.dead)?' style="background:'+SC+'"':'')+'></span>').join('');
+  let badge='';
+  if(slowPay)      badge='<span class="pill p-late">💸'+waited+'일</span>';
+  else if(overdue) badge='<span class="pill p-late">⏰기한</span>';
+  const stage=p.dead
+    ? '<span class="stagebadge" style="background:#9ca3af">✖ '+escHtml(p.dead)+'</span>'
+    : '<span class="stagebadge" style="background:'+SC+'">'+PSTAGES[p.stage].n+' '+PSTAGES[p.stage].k+'</span>';
+  const nx=(!p.dead&&p.next)?('<div class="pt-next">🔜 <b>'+escHtml(p.next)+'</b>'+(p.due?(' · '+_pkdate(p.due)):'')+'</div>'):'';
+  return '<div class="ptile'+(isLate?' late':'')+(p.dead?' dead':'')+'" style="border-left-color:'+SC+'" onclick="openPipeDetail(\''+p.id+'\')">'+
+    '<span class="pt-open">열기 ›</span>'+
+    '<div class="pt-top">'+stage+'<span class="pill '+(p.co==='limit'?'p-limit':'p-daman')+'">'+(p.co==='limit'?'리미트':'다만')+'</span>'+badge+'</div>'+
+    '<div class="pt-name">'+escHtml(p.name)+'</div>'+
+    '<div class="pt-amt">'+_pwon(p.amt)+'</div>'+
+    '<div class="pt-meta">'+escHtml([p.area,p.work].filter(Boolean).join(' · '))+'</div>'+
+    '<div class="pt-bar">'+seg+'</div>'+nx+'</div>';
+}
+function openPipeDetail(id){ _pipeOpenId=id; _pipeDelAsk=false; _renderPipeDetail(); const b=document.getElementById('pipeDlg'); if(b) b.style.display='flex'; try{ document.body.style.overflow='hidden'; }catch(e){} }
+function closePipeDetail(){ _pipeOpenId=''; _pipeDelAsk=false; const b=document.getElementById('pipeDlg'); if(b) b.style.display='none'; try{ document.body.style.overflow=''; }catch(e){} }
+function _renderPipeDetail(){
+  if(!_pipeOpenId) return;
+  const body=document.getElementById('pipeDlgBody'); if(!body) return;
+  const p=_pfind(_pipeOpenId); if(!p){ closePipeDetail(); return; }
+  body.innerHTML=_pipeDetailHTML(p);
+}
+function askPipeDel(){ _pipeDelAsk=true; _renderPipeDetail(); }
+function cancelPipeDel(){ _pipeDelAsk=false; _renderPipeDetail(); }
+function _pipeDetailHTML(p){
+  const SC=p.dead?'#9ca3af':PSTAGES[p.stage].c;
+  const q="'"+p.id+"'";
+  const stages=PSTAGES.map((s,i)=>
+    '<div class="pd-stg'+((i===p.stage&&!p.dead)?' on':'')+((i<p.stage&&!p.dead)?' pass':'')+'"'+
+      ((i===p.stage&&!p.dead)?(' style="background:'+SC+';border-color:'+SC+';color:#fff"'):'')+
+      ' onclick="setPipeStage('+q+','+i+')"><span class="n">'+s.n+'</span><span class="k">'+escHtml(s.k)+'</span></div>'
+  ).join('');
+  const nav='<div class="pd-navs">'+
+    '<button onclick="backPipe('+q+')"'+(p.stage<=0||p.dead?' disabled':'')+'>← 되돌리기</button>'+
+    '<button class="go" onclick="advPipe('+q+')"'+(p.stage>=5||p.dead?' disabled':'')+'>'+(p.stage>=5?'수금완료':('→ '+PSTAGES[p.stage+1].k))+'</button></div>';
+  const logs=(p.log||[]).slice().reverse().map(l=>'<div>· '+_pkdate(l.d)+' <b>'+escHtml(l.t)+'</b></div>').join('')||'<span style="color:var(--muted)">기록 없음</span>';
+  const killRow = p.dead
+    ? '<button class="pd-kill" onclick="revivePipe('+q+')">↩ 다시 진행</button>'
+    : '<button class="pd-kill" onclick="killPipe2('+q+',\'보류\')">⏸ 보류</button><button class="pd-kill" onclick="killPipe2('+q+',\'실주\')">✖ 실주</button>';
+  const delRow = _pipeDelAsk
+    ? '<div class="pd-confirm">정말 삭제할까요? 되돌릴 수 없어요.<div class="row"><button class="pd-del" style="border-color:var(--warn);color:#fff;background:var(--warn)" onclick="delPipe('+q+');closePipeDetail();">네, 삭제</button><button class="pd-kill" onclick="cancelPipeDel()">취소</button></div></div>'
+    : '';
+  return '<div class="pdbody">'+
+    '<div class="pd-h"><div class="pd-name">'+escHtml(p.name)+'</div>'+
+      '<span class="pill '+(p.co==='limit'?'p-limit':'p-daman')+'">'+(p.co==='limit'?'리미트':'다만산업')+'</span></div>'+
+    '<div class="pd-meta">'+escHtml([p.area,p.work].filter(Boolean).join(' · '))+' · 견적일 '+_pkdate(p.qd)+(p.owner?(' · '+escHtml(p.owner)):'')+'</div>'+
+    '<div class="pd-sec"><div class="pd-lbl">💰 견적 금액</div><div class="pd-amt"><input type="number" inputmode="numeric" value="'+(+p.amt||0)+'" onchange="setPipeAmt('+q+',this.value)"><span style="font-weight:800;white-space:nowrap">'+_pman(p.amt)+'</span></div></div>'+
+    '<div class="pd-sec"><div class="pd-lbl">📊 진행 단계 — 눌러서 바꾸기</div><div class="pd-stages">'+stages+'</div>'+nav+'</div>'+
+    (p.dead?'':'<div class="pd-sec"><div class="pd-lbl">🔜 다음 할 일</div><div class="pd-row2"><div class="pd-fld" style="flex:2"><input value="'+escHtml(p.next)+'" placeholder="예: 전화해서 확답받기" onchange="setPipeNext('+q+',this.value)"></div><div class="pd-fld" style="flex:1"><input type="date" value="'+escHtml(p.due)+'" onchange="setPipeDue('+q+',this.value)"></div></div></div>')+
+    '<div class="pd-sec"><div class="pd-lbl">📝 메모</div><div class="pd-fld"><textarea rows="3" placeholder="통화·협의 내용, 참고사항" onchange="setPipeMemo('+q+',this.value)">'+escHtml(p.memo)+'</textarea></div></div>'+
+    '<div class="pd-sec"><div class="pd-lbl">🕘 진행 기록</div><div class="pd-log">'+logs+'</div></div>'+
+    '<div class="pd-foot">'+killRow+'<span style="flex:1"></span><button class="pd-del" onclick="askPipeDel()">🗑 삭제</button></div>'+
+    delRow+'</div>';
+}
+document.addEventListener('keydown',function(e){ if((e.key==='Escape'||e.key==='Esc') && _pipeOpenId) closePipeDetail(); });
 
 /* ===== 🙋 개인 메모 (나만 보기 · 로그인 역할별 저장) ===== */
 function _meKey(){ return (typeof CURRENT_ROLE!=='undefined' && CURRENT_ROLE) ? CURRENT_ROLE : 'me'; }
