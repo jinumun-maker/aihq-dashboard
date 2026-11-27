@@ -1970,7 +1970,7 @@ if(window.AIHQ_DATA){
     {date:"2026-11-26",co:"daman",site:"하모 인테리어 시티푸라디움 1차 104호",work:"15:30",crew:"",contact:"01083040460",quote:360000,status:"예약"},
     {date:"2026-11-20",co:"daman",site:"금산유리사장님 투룸",work:"12:30",crew:"",contact:"",quote:360000,status:"예약"},
     {date:"2026-11-23",co:"daman",site:"화장실 바닥 2개 케라폭시 (0410)",work:"18:00",crew:"",contact:"",quote:450000,status:"예약"},
-    {date:"2026-11-27",co:"daman",site:"주택 주차장 폴리싱",work:"",crew:"",contact:"01093096221",quote:0,status:"예약"},
+    {date:"2026-12-03",co:"daman",site:"주택 주차장 폴리싱",work:"",crew:"",contact:"01093096221",quote:0,status:"예약"},
     {date:"2026-11-30",co:"daman",site:"대포동 소장님 남해 폴리싱 35평",work:"",crew:"",contact:"",quote:0,status:"예약"},
     {date:"2026-12-01",co:"daman",site:"대포동 소장님 남해 폴리싱 35평",work:"",crew:"",contact:"",quote:0,status:"예약"},
     {date:"2026-11-27",co:"daman",site:"우미린 34평 (월요일 줄눈 고객)",work:"18:30 · 현주나팀",crew:"",contact:"",quote:450000,status:"예약"},
@@ -2063,6 +2063,7 @@ if(window.AIHQ_DATA){
     {date:"2027-12-30",time:"07:00",title:"지하상가 방역"}
   ];
   window.AIHQ_DATA.calSyncDel = [   // 캘린더에서 취소된 현장 — 최신화 때 영구 제거(배치인원 있어도)
+    {date:"2026-11-27",name:"주택 주차장 폴리싱"},
     {date:"2026-12-31",name:"고미 하대 삼전프라자 102동 301호 22평"},
     {date:"2026-11-16",name:"세종 폴리싱 (1/7일)"},
     {date:"2026-11-17",name:"세종 폴리싱 (2/7일)"},
@@ -2088,7 +2089,7 @@ if(window.AIHQ_DATA){
     {date:"2026-08-08",name:"달리 칠암동 산대"},
     {date:"2026-08-10",name:"합천 청소 25평"}
   ];
-  window.AIHQ_DATA.calSync = "2026-11-27d";
+  window.AIHQ_DATA.calSync = "2026-11-27e";
 }
 /* 🏫 학교 영업 — 기록은 getData()/setData() 상태의 schools 필드에 저장되어 기존 클라우드 동기화로 팀 공유됩니다. */
 (function(){
@@ -2472,7 +2473,7 @@ function _mergeSchedule(oldSched, incoming){
     if(m){ used.add(m); carry(m,n); }
   });
   // 3차: 캘린더에 없어도 과거 일정·배정된 인원·수동 추가 항목은 절대 잃지 않고 유지
-  const kept = old.filter(o=>!used.has(o) && (o.date < _today || _hasCrew(o) || o.manual));
+  const kept = old.filter(o=>!used.has(o) && (o.date < _today || _hasCrew(o) || o.manual || o.calTitle));
   return inc.concat(kept).sort((a,b)=> a.date<b.date?-1 : a.date>b.date?1 : 0);
 }
 function _applyCalSync(d){   // 구글 캘린더 최신화: calSync 값이 바뀌면 1회 반영 — 배치 인원·과거 데이터는 보존(병합)
@@ -2710,6 +2711,7 @@ function calAutoUndo(i){
 // '달력에서 빠진 일정' — 대표가 직접 빼기
 function calGoneRemove(i){
   var d=getData(); var s=(d.schedule||[])[i]; if(!s) return;
+  d.deleted=d.deleted||{}; d.deleted[s.date+'|'+_nkey(s.site)]=true;   // 되살아나지 않게 삭제표식
   d.schedule.splice(i,1);
   setData(d); toast('뺐어요.');
   renderCalAutoPanel(); if(typeof render==='function') render();
