@@ -2087,7 +2087,7 @@ if(window.AIHQ_DATA){
     {date:"2026-08-08",name:"달리 칠암동 산대"},
     {date:"2026-08-10",name:"합천 청소 25평"}
   ];
-  window.AIHQ_DATA.calSync = "2026-11-27";
+  window.AIHQ_DATA.calSync = "2026-11-27b";
 }
 /* 🏫 학교 영업 — 기록은 getData()/setData() 상태의 schools 필드에 저장되어 기존 클라우드 동기화로 팀 공유됩니다. */
 (function(){
@@ -2566,6 +2566,14 @@ function _parseCalTitle(t){
   return { site:site, contact:phone, quote:quote };
 }
 
+// 현장 아님(연차·점검표·미팅 등)은 자동 현장으로 넣지 않는다.
+function _calNonSite(t){
+  t=String(t||'');
+  var bad=['연차','반차','휴무','점검표','미팅','회의','방역','소독'];
+  for(var i=0;i<bad.length;i++){ if(t.indexOf(bad[i])>=0) return true; }
+  return false;
+}
+
 // 추가 전용 병합: 캘린더에 '새로 생긴' 현장만 넣는다. 기존 항목·배치인원·과거는 절대 건드리지 않는다.
 function _calAutoMerge(d, items){
   if(!d) return 0;
@@ -2577,6 +2585,7 @@ function _calAutoMerge(d, items){
   (items||[]).forEach(function(it){
     if(!it||!it.date||!it.title) return;
     if(it.date < today) return;                                  // 과거는 자동추가 금지(미결산 오염 방지)
+    if(_calNonSite(it.title)) return;                            // 현장 아님(연차·점검표·미팅 등) 제외
     var tkey=it.date+'|'+_nkey(it.title);
     if(d.calDismiss[tkey]) return;                               // 대표가 '빼기' 한 건 다시 안 넣음
     var p=_parseCalTitle(it.title);
@@ -2604,8 +2613,11 @@ function runCalAuto(){
     if(!res || !res.ok){ _calAutoErr=(res&&res.error)||'연결 실패'; renderCalAutoPanel(); return; }
     _calAutoErr='';
     var d2=getData();
+    var _b=(d2.schedule||[]).length;
+    if(Array.isArray(d2.schedule)) d2.schedule=d2.schedule.filter(function(s){ return !(s && s.source==='auto' && _calNonSite(s.calTitle||s.site)); });  // 이미 들어온 비현장 자동정리
+    var cleaned=_b-((d2.schedule||[]).length);
     var added=_calAutoMerge(d2, res.items||[]);
-    if(added>0){ setData(d2); toast('달력에서 새 현장 '+added+'건 넣었어요. 확인해 주세요.'); if(typeof render==='function') render(); }
+    if(added>0 || cleaned>0){ setData(d2); if(added>0) toast('달력에서 새 현장 '+added+'건 넣었어요. 확인해 주세요.'); if(typeof render==='function') render(); }
     renderCalAutoPanel();
   });
 }
