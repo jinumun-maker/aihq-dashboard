@@ -1120,6 +1120,7 @@
 
   <!-- ② 📅 일정 달력 -->
   <div class="subpg" data-subpg="개요일정">
+    <div id="calAutoPanel"></div>
     <div class="card" id="pmCard" style="margin-top:14px">
       <h2>🙋 나의 메모 <span style="font-weight:500;color:var(--muted);font-size:12px">나만 보기 · 다른 사람에겐 안 보여요 · 폰·PC 동기화</span></h2>
       <div class="pm-add">
@@ -1166,6 +1167,17 @@
           <div id="calAgendaMain" style="max-height:420px;overflow-y:auto;border-left:1px solid var(--line);padding-left:16px"></div>
         </div>
       </div>
+    </div>
+    <div class="card" id="calAutoCfgCard" style="margin-top:22px">
+      <h2>🔗 달력 자동연결 <span style="font-weight:500;color:var(--muted);font-size:12px">한 번만 설정 · 열면 새 현장이 자동으로 들어와요</span></h2>
+      <div style="font-size:12.5px;color:var(--muted);line-height:1.7;margin:4px 0 12px">구글 <b>script.google.com</b>에서 만든 <b>웹 앱 주소</b>를 붙여넣고 <b>저장</b>하세요. 만드는 법을 다시 보려면 개발방(클로드)에 <b>"달력 자동연결 알려줘"</b> 하세요.</div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+        <input id="calCfgUrl" placeholder="https://script.google.com/.../exec" style="flex:1;min-width:220px;padding:10px;border:1px solid var(--line);border-radius:9px;background:var(--bg);color:var(--ink)">
+        <button class="primary" onclick="calSaveUrl()">저장</button>
+        <button onclick="calTestNow()" style="padding:10px 14px;border:1px solid var(--line);border-radius:9px;background:var(--bg);color:var(--ink);cursor:pointer;font-weight:600">🔍 지금 테스트</button>
+      </div>
+      <label style="display:flex;align-items:center;gap:8px;margin-top:12px;font-size:13px;cursor:pointer"><input type="checkbox" id="calCfgOn" onchange="calToggle()"> <b>자동으로 새 현장 넣기</b> 켜기 <span style="color:var(--muted)">(끄면 안 들어와요)</span></label>
+      <div id="calCfgMsg" style="font-size:12.5px;color:var(--muted);margin-top:10px;min-height:16px"></div>
     </div>
   </div><!-- /개요일정 -->
 
@@ -2075,7 +2087,7 @@ if(window.AIHQ_DATA){
     {date:"2026-08-08",name:"달리 칠암동 산대"},
     {date:"2026-08-10",name:"합천 청소 25평"}
   ];
-  window.AIHQ_DATA.calSync = "2026-11-26";
+  window.AIHQ_DATA.calSync = "2026-11-27";
 }
 /* 🏫 학교 영업 — 기록은 getData()/setData() 상태의 schools 필드에 저장되어 기존 클라우드 동기화로 팀 공유됩니다. */
 (function(){
@@ -2523,7 +2535,154 @@ function startCloudSync(){
     _lastCloud=_clean(CLOUD_D);   // 저장 기준 갱신(서버 최신 상태) → 이후 _cloudSave는 '바뀐 필드'만 보냄
     if(_applyCalSync(CLOUD_D)){ _cloudSave(CLOUD_D); }   // 구글 캘린더 최신화 1회 반영(바뀐 캘린더 필드만 저장)
     render();
+    if(!_calAutoRan){ _calAutoRan=true; setTimeout(function(){ try{ renderCalAutoPanel(); runCalAuto(); }catch(e){} }, 1500); }
   }, function(e){ console.error('클라우드 동기화 오류', e); });
+}
+
+/* ── 📅 달력 자동연결 (구글 Apps Script → '추가만', 삭제 없음) ── */
+var CAL_PROXY_KEY='rmt-cal-8f3k29';
+var _calAutoRan=false,_calAutoErr='',_calAutoBusy=false;
+function _calE(s){ return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+
+function _calFetch(url, cb){
+  if(!url){ cb(null); return; }
+  var full=url + (url.indexOf('?')<0?'?':'&') + 'key=' + encodeURIComponent(CAL_PROXY_KEY);
+  var done=false;
+  var to=setTimeout(function(){ if(!done){ done=true; cb(null); } }, 15000);
+  fetch(full, {method:'GET'}).then(function(r){ return r.json(); }).then(function(j){
+    if(done) return; done=true; clearTimeout(to); cb(j);
+  }).catch(function(){ if(done) return; done=true; clearTimeout(to); cb(null); });
+}
+
+function _parseCalTitle(t){
+  t=String(t||'');
+  var phone=(t.match(/01[016789]\d{7,8}/)||t.match(/\d{10,11}/)||[])[0]||'';
+  var qm=t.match(/견적\s*([0-9]+)/);
+  var quote=qm?(+qm[1])*10000:0;
+  var site=t;
+  if(phone) site=site.replace(phone,' ');
+  site=site.replace(/견적\s*[0-9]+/,' ').replace(/\s{2,}/g,' ').trim();
+  if(!site) site=t.trim();
+  return { site:site, contact:phone, quote:quote };
+}
+
+// 추가 전용 병합: 캘린더에 '새로 생긴' 현장만 넣는다. 기존 항목·배치인원·과거는 절대 건드리지 않는다.
+function _calAutoMerge(d, items){
+  if(!d) return 0;
+  if(!Array.isArray(d.schedule)) d.schedule=[];
+  d.calDismiss=d.calDismiss||{};
+  d.deleted=d.deleted||{};
+  var today=(typeof realToday==='function')?realToday():new Date().toISOString().slice(0,10);
+  var added=0;
+  (items||[]).forEach(function(it){
+    if(!it||!it.date||!it.title) return;
+    if(it.date < today) return;                                  // 과거는 자동추가 금지(미결산 오염 방지)
+    var tkey=it.date+'|'+_nkey(it.title);
+    if(d.calDismiss[tkey]) return;                               // 대표가 '빼기' 한 건 다시 안 넣음
+    var p=_parseCalTitle(it.title);
+    if(d.deleted[it.date+'|'+_nkey(p.site)]) return;             // 영구 삭제표식
+    var exists=d.schedule.some(function(s){
+      if(!s||s.date!==it.date) return false;
+      if(p.contact && s.contact && s.contact===p.contact) return true;
+      return _schedKey(s)===_schedKey({site:p.site});
+    });
+    if(exists) return;                                            // 이미 있으면 건너뜀(중복 방지)
+    d.schedule.push({ date:it.date, co:'daman', site:p.site, work:'', crew:'', contact:p.contact, quote:p.quote, status:'예약', source:'auto', calTitle:it.title, autoAt:Date.now() });
+    added++;
+  });
+  if(added>0) d.schedule.sort(function(a,b){ return a.date<b.date?-1:a.date>b.date?1:0; });
+  return added;
+}
+
+function runCalAuto(){
+  if(typeof CLOUD_MODE==='undefined' || !CLOUD_MODE){ renderCalAutoPanel(); return; }
+  var d=getData();
+  if(!d || !d.calAutoOn || !d.calProxyUrl){ renderCalAutoPanel(); return; }
+  if(_calAutoBusy) return; _calAutoBusy=true;
+  _calFetch(d.calProxyUrl, function(res){
+    _calAutoBusy=false;
+    if(!res || !res.ok){ _calAutoErr=(res&&res.error)||'연결 실패'; renderCalAutoPanel(); return; }
+    _calAutoErr='';
+    var d2=getData();
+    var added=_calAutoMerge(d2, res.items||[]);
+    if(added>0){ setData(d2); toast('달력에서 새 현장 '+added+'건 넣었어요. 확인해 주세요.'); if(typeof render==='function') render(); }
+    renderCalAutoPanel();
+  });
+}
+
+function renderCalAutoPanel(){
+  var d=(typeof getData==='function')?getData():null; if(!d) return;
+  var urlEl=document.getElementById('calCfgUrl'); if(urlEl && document.activeElement!==urlEl) urlEl.value=d.calProxyUrl||'';
+  var onEl=document.getElementById('calCfgOn'); if(onEl) onEl.checked=!!d.calAutoOn;
+  var box=document.getElementById('calAutoPanel'); if(!box) return;
+  var auto=(d.schedule||[]).filter(function(s){ return s && s.source==='auto'; });
+  auto.sort(function(a,b){ return a.date<b.date?-1:a.date>b.date?1:0; });
+  var html='';
+  if(_calAutoErr){
+    html+='<div class="card" style="margin-top:14px;border-left:4px solid var(--warn)"><div style="font-size:13px">⚠️ 달력을 못 읽었어요 <span style="color:var(--muted)">('+_calE(_calAutoErr)+')</span>. 평소처럼 저에게 <b>"캘린더 최신화해줘"</b> 하셔도 돼요.</div></div>';
+  }
+  if(auto.length){
+    html+='<div class="card" style="margin-top:14px;border-left:4px solid var(--daman)">';
+    html+='<h2>🆕 달력에서 자동으로 들어온 현장 <span style="font-weight:500;color:var(--muted);font-size:12px">'+auto.length+'건 · 맞으면 ✅확인, 아니면 ↩️빼기</span></h2>';
+    html+='<div style="display:flex;flex-direction:column;gap:8px;margin-top:6px">';
+    auto.forEach(function(s){
+      var idx=d.schedule.indexOf(s);
+      html+='<div style="display:flex;gap:9px;align-items:flex-start;padding:10px;border:1px solid var(--line);border-radius:9px">';
+      html+='<div style="flex:1;min-width:0"><div style="font-weight:700;font-size:13.5px">'+_calE(s.date)+' · '+_calE(s.site||'(이름 확인 필요)')+'</div>';
+      html+='<div style="font-size:12px;color:var(--muted);margin-top:3px">'+(s.contact?('☎ '+_calE(s.contact)+' · '):'')+(s.quote?('견적 '+Math.round(s.quote/10000)+'만 · '):'')+'<span style="opacity:.85">원문: '+_calE(s.calTitle||'')+'</span></div></div>';
+      html+='<button onclick="calAutoConfirm('+idx+')" style="padding:7px 11px;border:1px solid var(--line);border-radius:8px;background:var(--bg);color:var(--ink);cursor:pointer;font-weight:600;white-space:nowrap">✅ 확인</button>';
+      html+='<button onclick="calAutoUndo('+idx+')" style="padding:7px 11px;border:1px solid var(--line);border-radius:8px;background:var(--bg);color:var(--muted);cursor:pointer;font-weight:600;white-space:nowrap">↩️ 빼기</button>';
+      html+='</div>';
+    });
+    html+='</div></div>';
+  }
+  box.innerHTML=html;
+  box.style.display = html ? '' : 'none';
+}
+
+function calAutoConfirm(i){
+  var d=getData(); var s=(d.schedule||[])[i]; if(!s) return;
+  delete s.source; delete s.autoAt; delete s.calTitle;
+  setData(d); toast('확인했어요. 일정에 남겨둘게요.');
+  renderCalAutoPanel(); if(typeof render==='function') render();
+}
+
+function calAutoUndo(i){
+  var d=getData(); var s=(d.schedule||[])[i]; if(!s) return;
+  d.calDismiss=d.calDismiss||{};
+  d.calDismiss[s.date+'|'+_nkey(s.calTitle||s.site)]=true;
+  d.schedule.splice(i,1);
+  setData(d); toast('뺐어요. 다음에도 자동으로 안 넣을게요.');
+  renderCalAutoPanel(); if(typeof render==='function') render();
+}
+
+function calSaveUrl(){
+  var el=document.getElementById('calCfgUrl'); if(!el) return;
+  var u=(el.value||'').trim();
+  var d=getData(); d.calProxyUrl=u;
+  if(u && typeof d.calAutoOn==='undefined') d.calAutoOn=true;
+  setData(d);
+  var cb=document.getElementById('calCfgOn'); if(cb) cb.checked=!!d.calAutoOn;
+  toast(u?'달력 주소 저장했어요.':'달력 주소를 비웠어요.');
+  if(u) calTestNow();
+}
+
+function calToggle(){
+  var cb=document.getElementById('calCfgOn'); if(!cb) return;
+  var d=getData(); d.calAutoOn=!!cb.checked; setData(d);
+  toast(d.calAutoOn?'자동 넣기 켰어요.':'자동 넣기 껐어요.');
+  if(d.calAutoOn) runCalAuto(); else renderCalAutoPanel();
+}
+
+function calTestNow(){
+  var d=getData(); var msg=document.getElementById('calCfgMsg');
+  if(!d.calProxyUrl){ if(msg) msg.textContent='먼저 주소를 넣고 저장하세요.'; return; }
+  if(msg) msg.textContent='달력 읽는 중…';
+  _calFetch(d.calProxyUrl, function(res){
+    if(!res || !res.ok){ if(msg) msg.textContent='❌ 못 읽었어요: '+((res&&res.error)||'연결 실패')+' (주소·배포 설정을 확인하세요)'; return; }
+    var cnt=(res.items||[]).length;
+    if(msg) msg.textContent='✅ 연결됨 — 현장 '+cnt+'건 읽었어요'+(d.calAutoOn?'. 열면 새 현장이 자동으로 들어와요.':' (※ 자동 넣기는 꺼져 있어요).');
+  });
 }
 
 /* 배치인원 헬퍼 */
